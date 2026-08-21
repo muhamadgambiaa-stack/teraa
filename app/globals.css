@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+:root {
+  /* Palette drawn from Gambian textile dye colors and river-clay tones,
+     not a generic SaaS palette */
+  --ink: #16241f;          /* near-black green-ink for text */
+  --paper: #faf7f0;        /* warm off-white background */
+  --indigo: #1f3d5c;       /* deep indigo — primary actions, trust */
+  --clay: #b3532b;         /* baobab-bark clay — accents, price tags */
+  --leaf: #2f6d4f;         /* cassava-leaf green — success, verified badge */
+  --sand: #e8dfc8;         /* card borders, dividers */
+  --gold: #c99a3d;         /* ratings, highlights */
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.font-display {
+  font-family: Georgia, "Iowan Old Style", serif;
+}
