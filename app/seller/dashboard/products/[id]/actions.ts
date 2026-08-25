@@ -17,7 +17,15 @@ async function requireOwnProduct(productId: string) {
 
   const { data: product, error } = await supabase
     .from("products")
-    .select("id, seller_id, status, stock_quantity")
+    .select(
+      `
+        id,
+        seller_id,
+        status,
+        stock_quantity,
+        moderation_reason
+        `,
+    )
     .eq("id", productId)
     .maybeSingle();
 
@@ -29,22 +37,38 @@ async function requireOwnProduct(productId: string) {
     throw new Error("You are not allowed to manage this listing.");
   }
 
-  return { supabase, product };
+  return {
+    supabase,
+    product,
+  };
 }
 
 export async function updateListing(productId: string, formData: FormData) {
-  const { supabase } = await requireOwnProduct(productId);
+  const { supabase, product } = await requireOwnProduct(productId);
 
   const title = String(formData.get("title") ?? "").trim();
+
   const description = String(formData.get("description") ?? "").trim();
+
   const locationCity = String(formData.get("location_city") ?? "").trim();
+
   const condition = String(formData.get("condition") ?? "");
+
   const price = Number(formData.get("price"));
+
   const stockQuantity = Number(formData.get("stock_quantity"));
 
-  if (!title) throw new Error("Product title is required.");
-  if (!description) throw new Error("Product description is required.");
-  if (!locationCity) throw new Error("Location is required.");
+  if (!title) {
+    throw new Error("Product title is required.");
+  }
+
+  if (!description) {
+    throw new Error("Product description is required.");
+  }
+
+  if (!locationCity) {
+    throw new Error("Location is required.");
+  }
 
   if (!Number.isFinite(price) || price <= 0) {
     throw new Error("Enter a valid price.");
@@ -58,15 +82,15 @@ export async function updateListing(productId: string, formData: FormData) {
     throw new Error("Invalid product condition.");
   }
 
-  const { data: current } = await supabase
-    .from("products")
-    .select("status")
-    .eq("id", productId)
-    .single();
+  /*
+   * ADMIN-REMOVED LISTING:
+   *
+   * Seller may edit the listing to correct the issue,
+   * but status MUST remain admin_hidden.
+   */
+  let nextStatus = product.status;
 
-  let nextStatus = current?.status ?? "active";
-
-  if (nextStatus !== "hidden") {
+  if (product.status !== "admin_hidden" && product.status !== "hidden") {
     nextStatus = stockQuantity > 0 ? "active" : "out_of_stock";
   }
 
@@ -93,15 +117,23 @@ export async function updateListing(productId: string, formData: FormData) {
   revalidatePath("/");
   revalidatePath("/search");
 
-  redirect("/seller/dashboard");
+  redirect(`/seller/dashboard/products/${productId}`);
 }
 
 export async function hideListing(productId: string) {
-  const { supabase } = await requireOwnProduct(productId);
+  const { supabase, product } = await requireOwnProduct(productId);
+
+  if (product.status === "admin_hidden") {
+    throw new Error(
+      "This listing was removed by Teraa and cannot be changed by the seller.",
+    );
+  }
 
   const { error } = await supabase
     .from("products")
-    .update({ status: "hidden" })
+    .update({
+      status: "hidden",
+    })
     .eq("id", productId);
 
   if (error) {
@@ -110,7 +142,6 @@ export async function hideListing(productId: string) {
 
   revalidatePath(`/seller/dashboard/products/${productId}`);
   revalidatePath("/seller/dashboard");
-  revalidatePath(`/products/${productId}`);
   revalidatePath("/");
   revalidatePath("/search");
 
@@ -120,11 +151,23 @@ export async function hideListing(productId: string) {
 export async function reactivateListing(productId: string) {
   const { supabase, product } = await requireOwnProduct(productId);
 
+  if (product.status === "admin_hidden") {
+    throw new Error(
+      "This listing was removed by Teraa. Only an administrator can restore it.",
+    );
+  }
+
+  if (product.status !== "hidden") {
+    throw new Error("This listing is not seller-hidden.");
+  }
+
   const nextStatus = product.stock_quantity > 0 ? "active" : "out_of_stock";
 
   const { error } = await supabase
     .from("products")
-    .update({ status: nextStatus })
+    .update({
+      status: nextStatus,
+    })
     .eq("id", productId);
 
   if (error) {
@@ -133,7 +176,6 @@ export async function reactivateListing(productId: string) {
 
   revalidatePath(`/seller/dashboard/products/${productId}`);
   revalidatePath("/seller/dashboard");
-  revalidatePath(`/products/${productId}`);
   revalidatePath("/");
   revalidatePath("/search");
 

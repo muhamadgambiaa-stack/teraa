@@ -22,6 +22,7 @@ type Product = {
   price: number;
   status: string;
   seller_id: string;
+  moderation_reason: string | null;
 };
 
 type Seller = {
@@ -58,10 +59,7 @@ export default async function AdminReportsPage() {
   const rows = reports ?? [];
 
   /*
-   * Load reporters separately.
-   *
-   * This avoids relying on Supabase automatically
-   * detecting relationships between tables.
+   * REPORTERS
    */
   const reporterIds = [
     ...new Set(rows.map((report) => report.reporter_id).filter(Boolean)),
@@ -90,7 +88,7 @@ export default async function AdminReportsPage() {
   }
 
   /*
-   * Currently your reports are targeting products.
+   * REPORTED PRODUCTS
    */
   const productIds = [
     ...new Set(
@@ -111,7 +109,8 @@ export default async function AdminReportsPage() {
         title,
         price,
         status,
-        seller_id
+        seller_id,
+        moderation_reason
         `,
       )
       .in("id", productIds);
@@ -123,6 +122,9 @@ export default async function AdminReportsPage() {
     }
   }
 
+  /*
+   * SELLERS
+   */
   const sellerIds = [...new Set(products.map((product) => product.seller_id))];
 
   let sellers: Seller[] = [];
@@ -146,6 +148,9 @@ export default async function AdminReportsPage() {
     }
   }
 
+  /*
+   * COMBINE EVERYTHING
+   */
   const enrichedReports = rows.map((report) => {
     const reporter =
       reporters.find((user) => user.id === report.reporter_id) ?? null;
@@ -218,179 +223,265 @@ export default async function AdminReportsPage() {
         )}
 
         <div className="space-y-4 mb-10">
-          {open.map((report) => (
-            <div
-              key={report.id}
-              className="rounded-xl border p-5 bg-white"
-              style={{
-                borderColor: "var(--clay)",
-              }}
-            >
-              <div className="flex items-center justify-between gap-4 mb-4">
-                <span
-                  className="text-[10px] font-semibold uppercase rounded-full px-2 py-1"
-                  style={{
-                    background: "var(--sand)",
-                    color: "var(--ink)",
-                  }}
-                >
-                  {report.target_type}
-                </span>
+          {open.map((report) => {
+            const alreadyRemoved = report.product?.status === "admin_hidden";
 
-                <span className="text-xs text-gray-400">
-                  {new Date(report.created_at).toLocaleString()}
-                </span>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-5">
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                    Reported by
-                  </p>
-
-                  {report.reporter ? (
-                    <div className="text-sm space-y-1">
-                      <p className="font-medium">
-                        {report.reporter.full_name ?? "Teraa user"}
-                      </p>
-
-                      {report.reporter.phone_number && (
-                        <p className="text-gray-500">
-                          Phone: {report.reporter.phone_number}
-                        </p>
-                      )}
-
-                      {report.reporter.city && (
-                        <p className="text-gray-500">
-                          Location: {report.reporter.city}
-                        </p>
-                      )}
-
-                      <p className="text-xs text-gray-400 break-all">
-                        User ID: {report.reporter.id}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">
-                      Reporter information unavailable.
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                    Reported listing
-                  </p>
-
-                  {report.product ? (
-                    <div className="text-sm space-y-1">
-                      <p className="font-medium">{report.product.title}</p>
-
-                      <p
-                        className="font-semibold"
-                        style={{
-                          color: "var(--clay)",
-                        }}
-                      >
-                        GMD {Number(report.product.price).toLocaleString()}
-                      </p>
-
-                      <p className="text-gray-500">
-                        Status: {report.product.status}
-                      </p>
-
-                      {report.seller && (
-                        <>
-                          <p className="text-gray-500">
-                            Seller: {report.seller.business_name}
-                          </p>
-
-                          <p className="text-gray-500">
-                            Verification: {report.seller.verification_status}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">
-                      Listing no longer available.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div
-                className="border-t mt-5 pt-4"
+            return (
+              <article
+                key={report.id}
+                className="rounded-xl border p-5 bg-white"
                 style={{
-                  borderColor: "var(--sand)",
+                  borderColor: "var(--clay)",
                 }}
               >
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                  Reason
-                </p>
-
-                <p className="text-sm">{report.reason}</p>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mt-5">
-                {report.product && (
-                  <Link
-                    href={`/products/${report.product.id}`}
-                    className="rounded-full px-4 py-2 text-xs font-medium border"
+                <div className="flex items-center justify-between gap-4 mb-5">
+                  <span
+                    className="text-[10px] font-semibold uppercase rounded-full px-2 py-1"
                     style={{
-                      borderColor: "var(--sand)",
+                      background: "var(--sand)",
+                      color: "var(--ink)",
                     }}
                   >
-                    View listing
-                  </Link>
+                    {report.target_type}
+                  </span>
+
+                  <span className="text-xs text-gray-400">
+                    {new Date(report.created_at).toLocaleString()}
+                  </span>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-5">
+                  {/* REPORTER */}
+
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                      Reported by
+                    </p>
+
+                    {report.reporter ? (
+                      <div className="text-sm space-y-1">
+                        <p className="font-medium">
+                          {report.reporter.full_name ?? "Teraa user"}
+                        </p>
+
+                        {report.reporter.phone_number && (
+                          <p className="text-gray-500">
+                            Phone: {report.reporter.phone_number}
+                          </p>
+                        )}
+
+                        {report.reporter.city && (
+                          <p className="text-gray-500">
+                            Location: {report.reporter.city}
+                          </p>
+                        )}
+
+                        <p className="text-xs text-gray-400 break-all">
+                          User ID: {report.reporter.id}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        Reporter information unavailable.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* LISTING / SELLER */}
+
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                      Reported listing
+                    </p>
+
+                    {report.product ? (
+                      <div className="text-sm space-y-1">
+                        <p className="font-medium">{report.product.title}</p>
+
+                        <p
+                          className="font-semibold"
+                          style={{
+                            color: "var(--clay)",
+                          }}
+                        >
+                          GMD {Number(report.product.price).toLocaleString()}
+                        </p>
+
+                        <p className="text-gray-500">
+                          Status: {report.product.status}
+                        </p>
+
+                        {report.seller && (
+                          <>
+                            <p className="text-gray-500">
+                              Seller: {report.seller.business_name}
+                            </p>
+
+                            <p className="text-gray-500">
+                              Seller verification:{" "}
+                              {report.seller.verification_status}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        Listing is no longer available.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* REPORT REASON */}
+
+                <div
+                  className="border-t mt-5 pt-4"
+                  style={{
+                    borderColor: "var(--sand)",
+                  }}
+                >
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                    Report reason
+                  </p>
+
+                  <p className="text-sm">{report.reason}</p>
+                </div>
+
+                {alreadyRemoved && report.product?.moderation_reason && (
+                  <div
+                    className="rounded-lg p-3 mt-4 text-sm"
+                    style={{
+                      background: "#fdf0f0",
+                      color: "var(--clay)",
+                    }}
+                  >
+                    <p className="font-semibold">
+                      Listing already removed by Teraa
+                    </p>
+
+                    <p className="mt-1">{report.product.moderation_reason}</p>
+                  </div>
                 )}
 
-                {report.product && report.product.status !== "hidden" && (
-                  <form
-                    action={hideReportedListing.bind(
-                      null,
-                      report.id,
-                      report.product.id,
-                    )}
-                  >
+                {/* ACTIONS */}
+
+                <div className="flex flex-wrap gap-2 mt-5">
+                  {report.product && (
+                    <Link
+                      href={`/products/${report.product.id}`}
+                      className="rounded-full px-4 py-2 text-xs font-medium border"
+                      style={{
+                        borderColor: "var(--sand)",
+                      }}
+                    >
+                      View listing
+                    </Link>
+                  )}
+
+                  {report.product && !alreadyRemoved && (
+                    <details className="w-full sm:w-auto">
+                      <summary
+                        className="cursor-pointer list-none rounded-full px-4 py-2 text-xs font-medium text-white w-fit"
+                        style={{
+                          background: "var(--clay)",
+                        }}
+                      >
+                        Remove listing
+                      </summary>
+
+                      <form
+                        action={hideReportedListing.bind(
+                          null,
+                          report.id,
+                          report.product.id,
+                        )}
+                        className="mt-3 rounded-xl border p-4 space-y-3 max-w-sm"
+                        style={{
+                          borderColor: "var(--sand)",
+                        }}
+                      >
+                        <p className="text-xs font-medium">
+                          Why is Teraa removing this listing?
+                        </p>
+
+                        <select
+                          name="moderation_reason"
+                          required
+                          defaultValue=""
+                          className="w-full rounded-lg border px-3 py-2 text-sm bg-white"
+                          style={{
+                            borderColor: "var(--sand)",
+                          }}
+                        >
+                          <option value="" disabled>
+                            Select reason
+                          </option>
+
+                          <option value="Prohibited item">
+                            Prohibited item
+                          </option>
+
+                          <option value="Counterfeit or suspected counterfeit product">
+                            Counterfeit or suspected counterfeit
+                          </option>
+
+                          <option value="Misleading or inaccurate listing information">
+                            Misleading or inaccurate information
+                          </option>
+
+                          <option value="Suspected scam or fraudulent activity">
+                            Suspected scam or fraud
+                          </option>
+
+                          <option value="Duplicate or spam listing">
+                            Duplicate or spam
+                          </option>
+
+                          <option value="Violation of Teraa marketplace policy">
+                            Marketplace policy violation
+                          </option>
+                        </select>
+
+                        <button
+                          type="submit"
+                          className="w-full rounded-full py-2 text-white text-xs font-medium"
+                          style={{
+                            background: "var(--clay)",
+                          }}
+                        >
+                          Remove listing and resolve report
+                        </button>
+                      </form>
+                    </details>
+                  )}
+
+                  <form action={markReportReviewed.bind(null, report.id)}>
+                    <button
+                      type="submit"
+                      className="rounded-full px-4 py-2 text-xs font-medium border"
+                      style={{
+                        borderColor: "var(--sand)",
+                      }}
+                    >
+                      Mark reviewed
+                    </button>
+                  </form>
+
+                  <form action={markReportResolved.bind(null, report.id)}>
                     <button
                       type="submit"
                       className="rounded-full px-4 py-2 text-xs font-medium text-white"
                       style={{
-                        background: "var(--clay)",
+                        background: "var(--leaf)",
                       }}
                     >
-                      Hide listing
+                      Resolve
                     </button>
                   </form>
-                )}
-
-                <form action={markReportReviewed.bind(null, report.id)}>
-                  <button
-                    type="submit"
-                    className="rounded-full px-4 py-2 text-xs font-medium border"
-                    style={{
-                      borderColor: "var(--sand)",
-                    }}
-                  >
-                    Mark reviewed
-                  </button>
-                </form>
-
-                <form action={markReportResolved.bind(null, report.id)}>
-                  <button
-                    type="submit"
-                    className="rounded-full px-4 py-2 text-xs font-medium text-white"
-                    style={{
-                      background: "var(--leaf)",
-                    }}
-                  >
-                    Resolve
-                  </button>
-                </form>
-              </div>
-            </div>
-          ))}
+                </div>
+              </article>
+            );
+          })}
         </div>
 
         {other.length > 0 && (

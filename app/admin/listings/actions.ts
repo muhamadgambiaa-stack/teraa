@@ -3,33 +3,51 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/require-admin";
 
-export async function adminHideListing(productId: string) {
-  const { supabase } = await requireAdmin();
+function cleanReason(formData: FormData) {
+  const reason = String(formData.get("moderation_reason") ?? "").trim();
+
+  if (!reason) {
+    throw new Error("Please provide a reason for removing this listing.");
+  }
+
+  return reason;
+}
+
+export async function adminHideListing(productId: string, formData: FormData) {
+  const { supabase, user } = await requireAdmin();
+
+  const moderationReason = cleanReason(formData);
 
   const { error } = await supabase
     .from("products")
     .update({
-      status: "hidden",
+      status: "admin_hidden",
+      moderation_reason: moderationReason,
+      moderated_at: new Date().toISOString(),
+      moderated_by: user.id,
     })
     .eq("id", productId);
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(error.message || "Couldn't remove listing.");
   }
 
   revalidatePath("/admin/listings");
+  revalidatePath("/admin/reports");
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath("/search");
   revalidatePath(`/products/${productId}`);
+  revalidatePath("/seller/dashboard");
+  revalidatePath(`/seller/dashboard/products/${productId}`);
 }
 
-export async function adminReactivateListing(productId: string) {
+export async function adminRestoreListing(productId: string) {
   const { supabase } = await requireAdmin();
 
   const { data: product, error: productError } = await supabase
     .from("products")
-    .select("stock_quantity")
+    .select("id, stock_quantity")
     .eq("id", productId)
     .single();
 
@@ -37,21 +55,27 @@ export async function adminReactivateListing(productId: string) {
     throw new Error("Listing not found.");
   }
 
-  const status = product.stock_quantity > 0 ? "active" : "out_of_stock";
+  const nextStatus = product.stock_quantity > 0 ? "active" : "out_of_stock";
 
   const { error } = await supabase
     .from("products")
     .update({
-      status,
+      status: nextStatus,
+      moderation_reason: null,
+      moderated_at: null,
+      moderated_by: null,
     })
     .eq("id", productId);
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(error.message || "Couldn't restore listing.");
   }
 
   revalidatePath("/admin/listings");
+  revalidatePath("/admin/reports");
   revalidatePath("/");
   revalidatePath("/search");
   revalidatePath(`/products/${productId}`);
+  revalidatePath("/seller/dashboard");
+  revalidatePath(`/seller/dashboard/products/${productId}`);
 }

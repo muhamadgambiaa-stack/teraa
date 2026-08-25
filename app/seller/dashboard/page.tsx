@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SellerNav } from "@/components/SellerNav";
+
 import { CONDITION_LABELS, type ProductCondition } from "@/types/database";
 
 export default async function SellerDashboardPage() {
@@ -13,17 +15,10 @@ export default async function SellerDashboardPage() {
     error: userError,
   } = await supabase.auth.getUser();
 
-  // User is not authenticated.
   if (userError || !user) {
     redirect("/login");
   }
 
-  /*
-   * Try to load the seller profile.
-   *
-   * We use maybeSingle() instead of single() because older accounts
-   * may not have a sellers row yet due to the previous signup bug.
-   */
   const { data: initialSeller, error: sellerLookupError } = await supabase
     .from("sellers")
     .select(
@@ -39,31 +34,8 @@ export default async function SellerDashboardPage() {
   let seller = initialSeller;
 
   /*
-   * RECOVERY FOR OLD ACCOUNTS
-   *
-   * Previous versions of signup could successfully create:
-   *
-   * auth.users
-   * public.users
-   *
-   * but fail to create:
-   *
-   * public.sellers
-   *
-   * This caused:
-   *
-   * Seller dashboard
-   *      ↓
-   * No sellers record
-   *      ↓
-   * /signup
-   *      ↓
-   * User already has an account
-   *      ↓
-   * endless loop
-   *
-   * If the user's profile says they are a seller, automatically
-   * recreate the missing sellers row.
+   * Repair accounts created before the seller signup
+   * problem was fixed.
    */
   if (!seller) {
     const { data: profile, error: profileError } = await supabase
@@ -85,10 +57,6 @@ export default async function SellerDashboardPage() {
       if (repairError) {
         console.error("Could not create missing seller profile:", repairError);
       } else {
-        /*
-         * Load the newly created seller row so the dashboard
-         * can continue normally without requiring another request.
-         */
         const { data: repairedSeller, error: repairedSellerError } =
           await supabase
             .from("sellers")
@@ -110,12 +78,6 @@ export default async function SellerDashboardPage() {
     }
   }
 
-  /*
-   * User is logged in but is not registered as a seller.
-   *
-   * Do NOT redirect them to signup because they already have
-   * an account. Send them to their account page instead.
-   */
   if (!seller) {
     redirect("/account");
   }
@@ -242,16 +204,17 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
     .from("products")
     .select(
       `
-        id,
-        title,
-        price,
-        status,
-        condition,
-        stock_quantity,
-        product_photos (
-          photo_url,
-          is_cover
-        )
+      id,
+      title,
+      price,
+      status,
+      condition,
+      stock_quantity,
+      moderation_reason,
+      product_photos(
+        photo_url,
+        is_cover
+      )
       `,
     )
     .eq("seller_id", sellerId)
@@ -308,61 +271,79 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
   return (
     <div className="space-y-2">
       {products.map((product) => {
-        const photos = (
-          product as {
-            product_photos?: {
-              photo_url: string;
-              is_cover: boolean;
-            }[];
-          }
-        ).product_photos;
+        const photos =
+          (
+            product as {
+              product_photos?: {
+                photo_url: string;
+                is_cover: boolean;
+              }[];
+            }
+          ).product_photos ?? [];
 
         const cover =
-          photos?.find((photo) => photo.is_cover)?.photo_url ??
-          photos?.[0]?.photo_url;
+          photos.find((photo) => photo.is_cover)?.photo_url ??
+          photos[0]?.photo_url;
 
         return (
           <Link
             key={product.id}
             href={`/seller/dashboard/products/${product.id}`}
-            className="flex items-center gap-3 rounded-lg border p-3 bg-white transition hover:shadow-sm"
+            className="block rounded-lg border p-3 bg-white transition hover:shadow-sm"
             style={{
-              borderColor: "var(--sand)",
+              borderColor:
+                product.status === "admin_hidden"
+                  ? "var(--clay)"
+                  : "var(--sand)",
             }}
           >
-            <div
-              className="w-14 h-14 rounded-md shrink-0 overflow-hidden"
-              style={{
-                background: "var(--sand)",
-              }}
-            >
-              {cover ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={cover}
-                  alt={product.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                  No image
-                </div>
-              )}
+            <div className="flex items-center gap-3">
+              <div
+                className="w-14 h-14 rounded-md shrink-0 overflow-hidden"
+                style={{
+                  background: "var(--sand)",
+                }}
+              >
+                {cover ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={cover}
+                    alt={product.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                    No image
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{product.title}</p>
+
+                <p className="text-xs text-gray-500 truncate">
+                  GMD {Number(product.price).toLocaleString()}
+                  {" · "}
+                  {CONDITION_LABELS[product.condition as ProductCondition]}
+                  {" · "}
+                  Stock: {product.stock_quantity}
+                </p>
+              </div>
+
+              <StatusPill status={product.status} />
             </div>
 
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{product.title}</p>
-
-              <p className="text-xs text-gray-500 truncate">
-                GMD {Number(product.price).toLocaleString()}
-                {" · "}
-                {CONDITION_LABELS[product.condition as ProductCondition]}
-                {" · "}
-                Stock: {product.stock_quantity}
-              </p>
-            </div>
-
-            <StatusPill status={product.status} />
+            {product.status === "admin_hidden" && product.moderation_reason && (
+              <div
+                className="mt-3 rounded-md px-3 py-2 text-xs"
+                style={{
+                  background: "#fdf0f0",
+                  color: "var(--clay)",
+                }}
+              >
+                Teraa removed this listing: {product.moderation_reason}
+              </div>
+            )}
           </Link>
         );
       })}
@@ -395,6 +376,12 @@ function StatusPill({ status }: { status: string }) {
       bg: "#eeeeee",
       color: "#666666",
       label: "Hidden",
+    },
+
+    admin_hidden: {
+      bg: "#fdf0f0",
+      color: "var(--clay)",
+      label: "Removed by Teraa",
     },
   };
 
