@@ -22,7 +22,18 @@ export default async function SellerDashboardPage() {
   const { data: initialSeller, error: sellerLookupError } = await supabase
     .from("sellers")
     .select(
-      "id, business_name, verification_status, id_document_url, rating_avg, total_sales",
+      `
+      id,
+      business_name,
+      verification_status,
+      id_document_url,
+      rating_avg,
+      total_sales,
+      account_status,
+      admin_note,
+      verification_request_reason,
+      status_updated_at
+      `,
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -33,10 +44,7 @@ export default async function SellerDashboardPage() {
 
   let seller = initialSeller;
 
-  /*
-   * Repair accounts created before the seller signup
-   * problem was fixed.
-   */
+  // Repair older seller accounts that are missing a sellers row.
   if (!seller) {
     const { data: profile, error: profileError } = await supabase
       .from("users")
@@ -57,21 +65,24 @@ export default async function SellerDashboardPage() {
       if (repairError) {
         console.error("Could not create missing seller profile:", repairError);
       } else {
-        const { data: repairedSeller, error: repairedSellerError } =
-          await supabase
-            .from("sellers")
-            .select(
-              "id, business_name, verification_status, id_document_url, rating_avg, total_sales",
-            )
-            .eq("id", user.id)
-            .maybeSingle();
-
-        if (repairedSellerError) {
-          console.error(
-            "Could not reload repaired seller profile:",
-            repairedSellerError,
-          );
-        }
+        const { data: repairedSeller } = await supabase
+          .from("sellers")
+          .select(
+            `
+            id,
+            business_name,
+            verification_status,
+            id_document_url,
+            rating_avg,
+            total_sales,
+            account_status,
+            admin_note,
+            verification_request_reason,
+            status_updated_at
+            `,
+          )
+          .eq("id", user.id)
+          .maybeSingle();
 
         seller = repairedSeller;
       }
@@ -81,6 +92,14 @@ export default async function SellerDashboardPage() {
   if (!seller) {
     redirect("/account");
   }
+
+  const isSuspended = seller.account_status === "suspended";
+
+  const isBanned = seller.account_status === "banned";
+
+  const requiresVerification =
+    seller.verification_status === "pending" &&
+    Boolean(seller.verification_request_reason);
 
   return (
     <>
@@ -101,34 +120,165 @@ export default async function SellerDashboardPage() {
             </h1>
           </div>
 
-          {seller.verification_status === "approved" && (
-            <Link
-              href="/seller/dashboard/new"
-              className="rounded-full px-4 py-2 text-white text-sm font-medium"
-              style={{
-                background: "var(--indigo)",
-              }}
-            >
-              + New listing
-            </Link>
-          )}
+          {seller.verification_status === "approved" &&
+            seller.account_status === "active" && (
+              <Link
+                href="/seller/dashboard/new"
+                className="rounded-full px-4 py-2 text-white text-sm font-medium"
+                style={{
+                  background: "var(--indigo)",
+                }}
+              >
+                + New listing
+              </Link>
+            )}
         </div>
 
-        {seller.verification_status === "pending" && (
-          <VerificationPending hasDocument={Boolean(seller.id_document_url)} />
+        {/* BANNED SELLER */}
+
+        {isBanned && (
+          <AccountBlockedNotice
+            title="Your seller account has been banned"
+            reason={seller.admin_note}
+            permanent
+          />
         )}
 
-        {seller.verification_status === "rejected" && <VerificationRejected />}
+        {/* SUSPENDED SELLER */}
 
-        {seller.verification_status === "approved" && (
-          <>
-            <SellerNav active="listings" />
-
-            <SellerListings sellerId={seller.id} />
-          </>
+        {isSuspended && (
+          <AccountBlockedNotice
+            title="Your seller account is suspended"
+            reason={seller.admin_note}
+          />
         )}
+
+        {/* ADDITIONAL VERIFICATION REQUEST */}
+
+        {!isBanned && !isSuspended && requiresVerification && (
+          <AdditionalVerificationNotice
+            reason={seller.verification_request_reason!}
+          />
+        )}
+
+        {/* NORMAL FIRST VERIFICATION */}
+
+        {!isBanned &&
+          !isSuspended &&
+          seller.verification_status === "pending" &&
+          !requiresVerification && (
+            <VerificationPending
+              hasDocument={Boolean(seller.id_document_url)}
+            />
+          )}
+
+        {/* REJECTED */}
+
+        {!isBanned &&
+          !isSuspended &&
+          seller.verification_status === "rejected" && (
+            <VerificationRejected reason={seller.verification_request_reason} />
+          )}
+
+        {/* ACTIVE VERIFIED SELLER */}
+
+        {!isBanned &&
+          !isSuspended &&
+          seller.verification_status === "approved" && (
+            <>
+              <SellerNav active="listings" />
+
+              <SellerListings sellerId={seller.id} />
+            </>
+          )}
       </main>
     </>
+  );
+}
+
+function AccountBlockedNotice({
+  title,
+  reason,
+  permanent = false,
+}: {
+  title: string;
+  reason: string | null;
+  permanent?: boolean;
+}) {
+  return (
+    <div
+      className="rounded-xl border p-6"
+      style={{
+        borderColor: "var(--clay)",
+        background: "#fdf0f0",
+      }}
+    >
+      <p
+        className="font-semibold text-lg"
+        style={{
+          color: "var(--clay)",
+        }}
+      >
+        {title}
+      </p>
+
+      <p className="text-sm text-gray-700 mt-2">
+        {permanent
+          ? "You can no longer publish or reactivate listings on Teraa."
+          : "You temporarily cannot publish or reactivate listings on Teraa."}
+      </p>
+
+      {reason && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase text-gray-500">
+            Reason
+          </p>
+
+          <p className="text-sm mt-1">{reason}</p>
+        </div>
+      )}
+
+      <p className="text-xs text-gray-500 mt-4">
+        Contact Teraa support if you believe this decision should be reviewed.
+      </p>
+    </div>
+  );
+}
+
+function AdditionalVerificationNotice({ reason }: { reason: string }) {
+  return (
+    <div
+      className="rounded-xl border p-6"
+      style={{
+        borderColor: "var(--gold)",
+        background: "#fbf3df",
+      }}
+    >
+      <p className="font-semibold text-lg">Additional verification required</p>
+
+      <p className="text-sm text-gray-700 mt-2">
+        Teraa needs additional information before your seller account can
+        continue operating normally.
+      </p>
+
+      <div className="mt-4">
+        <p className="text-xs font-semibold uppercase text-gray-500">
+          What we need
+        </p>
+
+        <p className="text-sm mt-1">{reason}</p>
+      </div>
+
+      <Link
+        href="/seller/dashboard/verify"
+        className="inline-block rounded-full px-5 py-2 text-white text-sm font-medium mt-5"
+        style={{
+          background: "var(--gold)",
+        }}
+      >
+        Submit verification
+      </Link>
+    </div>
   );
 }
 
@@ -168,7 +318,7 @@ function VerificationPending({ hasDocument }: { hasDocument: boolean }) {
   );
 }
 
-function VerificationRejected() {
+function VerificationRejected({ reason }: { reason: string | null }) {
   return (
     <div
       className="rounded-xl border p-6"
@@ -179,10 +329,19 @@ function VerificationRejected() {
     >
       <p className="font-semibold mb-1">Verification wasn&apos;t approved</p>
 
-      <p className="text-sm text-gray-700 mb-4 max-w-md">
-        Your submitted document couldn&apos;t be verified. Make sure the photo
-        is clear and the details are readable, then submit it again.
-      </p>
+      {reason ? (
+        <>
+          <p className="text-xs font-semibold uppercase text-gray-500 mt-3">
+            Reason
+          </p>
+
+          <p className="text-sm mt-1 mb-4">{reason}</p>
+        </>
+      ) : (
+        <p className="text-sm text-gray-700 my-3">
+          Your submitted document couldn&apos;t be verified.
+        </p>
+      )}
 
       <Link
         href="/seller/dashboard/verify"
@@ -191,7 +350,7 @@ function VerificationRejected() {
           background: "var(--indigo)",
         }}
       >
-        Resubmit document
+        Submit new verification
       </Link>
     </div>
   );
@@ -223,20 +382,9 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
     });
 
   if (error) {
-    console.error("Could not load seller listings:", error);
-
     return (
-      <div
-        className="rounded-xl border p-8 text-center"
-        style={{
-          borderColor: "var(--sand)",
-        }}
-      >
-        <p className="font-medium mb-1">Couldn&apos;t load your listings</p>
-
-        <p className="text-sm text-gray-500">
-          Please refresh the page and try again.
-        </p>
+      <div className="rounded-xl border p-8 text-center">
+        Couldn&apos;t load your listings.
       </div>
     );
   }
@@ -249,21 +397,7 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
           borderColor: "var(--sand)",
         }}
       >
-        <p className="font-medium mb-1">No listings yet</p>
-
-        <p className="text-sm text-gray-500 mb-4">
-          Create your first listing to start selling on Teraa.
-        </p>
-
-        <Link
-          href="/seller/dashboard/new"
-          className="inline-block rounded-full px-5 py-2 text-white text-sm font-medium"
-          style={{
-            background: "var(--indigo)",
-          }}
-        >
-          + New listing
-        </Link>
+        <p className="font-medium">No listings yet</p>
       </div>
     );
   }
@@ -289,7 +423,7 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
           <Link
             key={product.id}
             href={`/seller/dashboard/products/${product.id}`}
-            className="block rounded-lg border p-3 bg-white transition hover:shadow-sm"
+            className="block rounded-lg border p-3 bg-white"
             style={{
               borderColor:
                 product.status === "admin_hidden"
@@ -299,34 +433,30 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
           >
             <div className="flex items-center gap-3">
               <div
-                className="w-14 h-14 rounded-md shrink-0 overflow-hidden"
+                className="w-14 h-14 rounded-md overflow-hidden shrink-0"
                 style={{
                   background: "var(--sand)",
                 }}
               >
-                {cover ? (
+                {cover && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={cover}
                     alt={product.title}
                     className="w-full h-full object-cover"
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                    No image
-                  </div>
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{product.title}</p>
 
-                <p className="text-xs text-gray-500 truncate">
+                <p className="text-xs text-gray-500">
                   GMD {Number(product.price).toLocaleString()}
                   {" · "}
                   {CONDITION_LABELS[product.condition as ProductCondition]}
-                  {" · "}
-                  Stock: {product.stock_quantity}
+                  {" · Stock: "}
+                  {product.stock_quantity}
                 </p>
               </div>
 
@@ -373,8 +503,8 @@ function StatusPill({ status }: { status: string }) {
     },
 
     hidden: {
-      bg: "#eeeeee",
-      color: "#666666",
+      bg: "#eee",
+      color: "#666",
       label: "Hidden",
     },
 
@@ -389,7 +519,7 @@ function StatusPill({ status }: { status: string }) {
 
   return (
     <span
-      className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold"
+      className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
       style={{
         background: selected.bg,
         color: selected.color,

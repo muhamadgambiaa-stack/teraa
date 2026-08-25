@@ -29,11 +29,15 @@ type Seller = {
   id: string;
   business_name: string;
   verification_status: string;
+  account_status: string;
 };
 
 export default async function AdminReportsPage() {
   const { supabase } = await requireAdmin();
 
+  /*
+   * LOAD REPORTS
+   */
   const { data: reports, error: reportsError } = await supabase
     .from("reports")
     .select(
@@ -59,7 +63,10 @@ export default async function AdminReportsPage() {
   const rows = reports ?? [];
 
   /*
-   * REPORTERS
+   * LOAD REPORTERS
+   *
+   * Load separately instead of relying
+   * on an embedded Supabase relationship.
    */
   const reporterIds = [
     ...new Set(rows.map((report) => report.reporter_id).filter(Boolean)),
@@ -88,7 +95,7 @@ export default async function AdminReportsPage() {
   }
 
   /*
-   * REPORTED PRODUCTS
+   * LOAD REPORTED PRODUCTS
    */
   const productIds = [
     ...new Set(
@@ -116,14 +123,14 @@ export default async function AdminReportsPage() {
       .in("id", productIds);
 
     if (error) {
-      console.error("Reported products lookup failed:", error);
+      console.error("Reported product lookup failed:", error);
     } else {
       products = (data ?? []) as Product[];
     }
   }
 
   /*
-   * SELLERS
+   * LOAD SELLERS
    */
   const sellerIds = [...new Set(products.map((product) => product.seller_id))];
 
@@ -136,7 +143,8 @@ export default async function AdminReportsPage() {
         `
         id,
         business_name,
-        verification_status
+        verification_status,
+        account_status
         `,
       )
       .in("id", sellerIds);
@@ -149,7 +157,10 @@ export default async function AdminReportsPage() {
   }
 
   /*
-   * COMBINE EVERYTHING
+   * COMBINE REPORT +
+   * REPORTER +
+   * PRODUCT +
+   * SELLER
    */
   const enrichedReports = rows.map((report) => {
     const reporter =
@@ -172,15 +183,21 @@ export default async function AdminReportsPage() {
     };
   });
 
-  const open = enrichedReports.filter((report) => report.status === "open");
+  const openReports = enrichedReports.filter(
+    (report) => report.status === "open",
+  );
 
-  const other = enrichedReports.filter((report) => report.status !== "open");
+  const closedReports = enrichedReports.filter(
+    (report) => report.status !== "open",
+  );
 
   return (
     <>
       <SiteHeader />
 
       <main className="max-w-4xl mx-auto px-4 py-6">
+        {/* PAGE HEADER */}
+
         <div className="mb-6">
           <p className="text-xs text-gray-500 mb-1">Admin</p>
 
@@ -194,16 +211,19 @@ export default async function AdminReportsPage() {
           </h1>
 
           <p className="text-sm text-gray-500 mt-1">
-            {open.length} open report
-            {open.length === 1 ? "" : "s"}
+            {openReports.length} open report
+            {openReports.length === 1 ? "" : "s"}
           </p>
         </div>
 
+        {/* QUERY ERROR */}
+
         {reportsError && (
           <div
-            className="rounded-xl border p-4 mb-6 text-sm"
+            className="rounded-xl border p-5 mb-6 text-sm"
             style={{
               borderColor: "#e0a0a0",
+
               background: "#fdf0f0",
             }}
           >
@@ -211,7 +231,9 @@ export default async function AdminReportsPage() {
           </div>
         )}
 
-        {!reportsError && open.length === 0 && (
+        {/* NO OPEN REPORTS */}
+
+        {!reportsError && openReports.length === 0 && (
           <div
             className="rounded-xl border p-8 text-center text-sm text-gray-500 mb-8"
             style={{
@@ -222,8 +244,10 @@ export default async function AdminReportsPage() {
           </div>
         )}
 
+        {/* OPEN REPORTS */}
+
         <div className="space-y-4 mb-10">
-          {open.map((report) => {
+          {openReports.map((report) => {
             const alreadyRemoved = report.product?.status === "admin_hidden";
 
             return (
@@ -234,11 +258,14 @@ export default async function AdminReportsPage() {
                   borderColor: "var(--clay)",
                 }}
               >
+                {/* TOP */}
+
                 <div className="flex items-center justify-between gap-4 mb-5">
                   <span
                     className="text-[10px] font-semibold uppercase rounded-full px-2 py-1"
                     style={{
                       background: "var(--sand)",
+
                       color: "var(--ink)",
                     }}
                   >
@@ -250,7 +277,7 @@ export default async function AdminReportsPage() {
                   </span>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-5">
+                <div className="grid sm:grid-cols-2 gap-6">
                   {/* REPORTER */}
 
                   <div>
@@ -277,7 +304,7 @@ export default async function AdminReportsPage() {
                         )}
 
                         <p className="text-xs text-gray-400 break-all">
-                          User ID: {report.reporter.id}
+                          ID: {report.reporter.id}
                         </p>
                       </div>
                     ) : (
@@ -287,7 +314,7 @@ export default async function AdminReportsPage() {
                     )}
                   </div>
 
-                  {/* LISTING / SELLER */}
+                  {/* PRODUCT */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
@@ -318,15 +345,18 @@ export default async function AdminReportsPage() {
                             </p>
 
                             <p className="text-gray-500">
-                              Seller verification:{" "}
-                              {report.seller.verification_status}
+                              Verification: {report.seller.verification_status}
+                            </p>
+
+                            <p className="text-gray-500">
+                              Account: {report.seller.account_status}
                             </p>
                           </>
                         )}
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500">
-                        Listing is no longer available.
+                        Listing no longer available.
                       </p>
                     )}
                   </div>
@@ -347,11 +377,14 @@ export default async function AdminReportsPage() {
                   <p className="text-sm">{report.reason}</p>
                 </div>
 
+                {/* EXISTING MODERATION */}
+
                 {alreadyRemoved && report.product?.moderation_reason && (
                   <div
                     className="rounded-lg p-3 mt-4 text-sm"
                     style={{
                       background: "#fdf0f0",
+
                       color: "var(--clay)",
                     }}
                   >
@@ -366,6 +399,20 @@ export default async function AdminReportsPage() {
                 {/* ACTIONS */}
 
                 <div className="flex flex-wrap gap-2 mt-5">
+                  {/* OPEN FULL REPORT */}
+
+                  <Link
+                    href={`/admin/reports/${report.id}`}
+                    className="rounded-full px-4 py-2 text-xs font-medium border"
+                    style={{
+                      borderColor: "var(--sand)",
+                    }}
+                  >
+                    Open report
+                  </Link>
+
+                  {/* PUBLIC LISTING */}
+
                   {report.product && (
                     <Link
                       href={`/products/${report.product.id}`}
@@ -377,6 +424,22 @@ export default async function AdminReportsPage() {
                       View listing
                     </Link>
                   )}
+
+                  {/* SELLER ADMIN */}
+
+                  {report.seller && (
+                    <Link
+                      href={`/admin/sellers/${report.seller.id}`}
+                      className="rounded-full px-4 py-2 text-xs font-medium border"
+                      style={{
+                        borderColor: "var(--sand)",
+                      }}
+                    >
+                      View seller
+                    </Link>
+                  )}
+
+                  {/* REMOVE LISTING */}
 
                   {report.product && !alreadyRemoved && (
                     <details className="w-full sm:w-auto">
@@ -401,7 +464,7 @@ export default async function AdminReportsPage() {
                         }}
                       >
                         <p className="text-xs font-medium">
-                          Why is Teraa removing this listing?
+                          Reason shown to seller
                         </p>
 
                         <select
@@ -455,6 +518,8 @@ export default async function AdminReportsPage() {
                     </details>
                   )}
 
+                  {/* REVIEW */}
+
                   <form action={markReportReviewed.bind(null, report.id)}>
                     <button
                       type="submit"
@@ -466,6 +531,8 @@ export default async function AdminReportsPage() {
                       Mark reviewed
                     </button>
                   </form>
+
+                  {/* RESOLVE */}
 
                   <form action={markReportResolved.bind(null, report.id)}>
                     <button
@@ -484,9 +551,18 @@ export default async function AdminReportsPage() {
           })}
         </div>
 
-        {other.length > 0 && (
-          <>
-            <h2 className="font-semibold mb-3">Closed reports</h2>
+        {/* CLOSED REPORTS */}
+
+        {closedReports.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <h2 className="font-semibold">Closed reports</h2>
+
+              <span className="text-xs text-gray-500">
+                {closedReports.length} report
+                {closedReports.length === 1 ? "" : "s"}
+              </span>
+            </div>
 
             <div
               className="rounded-xl border bg-white overflow-hidden"
@@ -494,31 +570,53 @@ export default async function AdminReportsPage() {
                 borderColor: "var(--sand)",
               }}
             >
-              {other.map((report) => (
-                <div
+              {closedReports.map((report) => (
+                <Link
                   key={report.id}
-                  className="flex items-center justify-between gap-4 px-4 py-3 border-b last:border-b-0"
+                  href={`/admin/reports/${report.id}`}
+                  className="flex items-center justify-between gap-4 px-4 py-3 border-b last:border-b-0 hover:bg-gray-50 transition"
                   style={{
                     borderColor: "var(--sand)",
                   }}
                 >
                   <div className="min-w-0">
-                    <p className="text-sm truncate">
-                      {report.product?.title ?? report.reason}
+                    <p className="text-sm font-medium truncate">
+                      {report.product?.title ?? "Report"}
                     </p>
 
-                    <p className="text-xs text-gray-400 truncate">
+                    <p className="text-xs text-gray-400 truncate mt-0.5">
                       {report.reason}
                     </p>
+
+                    {report.seller && (
+                      <p className="text-xs text-gray-400 truncate mt-0.5">
+                        Seller: {report.seller.business_name}
+                      </p>
+                    )}
                   </div>
 
-                  <span className="text-xs text-gray-500 capitalize">
-                    {report.status}
-                  </span>
-                </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span
+                      className="rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize"
+                      style={{
+                        background:
+                          report.status === "resolved" ? "#e3f0e8" : "#fbf3df",
+
+                        color:
+                          report.status === "resolved"
+                            ? "var(--leaf)"
+                            : "var(--gold)",
+                      }}
+                    >
+                      {report.status}
+                    </span>
+
+                    <span className="text-gray-400">→</span>
+                  </div>
+                </Link>
               ))}
             </div>
-          </>
+          </section>
         )}
       </main>
     </>
