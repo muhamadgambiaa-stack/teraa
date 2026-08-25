@@ -19,12 +19,12 @@ async function requireOwnProduct(productId: string) {
     .from("products")
     .select(
       `
-        id,
-        seller_id,
-        status,
-        stock_quantity,
-        moderation_reason
-        `,
+      id,
+      seller_id,
+      status,
+      stock_quantity,
+      moderation_reason
+      `,
     )
     .eq("id", productId)
     .maybeSingle();
@@ -40,6 +40,7 @@ async function requireOwnProduct(productId: string) {
   return {
     supabase,
     product,
+    user,
   };
 }
 
@@ -82,12 +83,6 @@ export async function updateListing(productId: string, formData: FormData) {
     throw new Error("Invalid product condition.");
   }
 
-  /*
-   * ADMIN-REMOVED LISTING:
-   *
-   * Seller may edit the listing to correct the issue,
-   * but status MUST remain admin_hidden.
-   */
   let nextStatus = product.status;
 
   if (product.status !== "admin_hidden" && product.status !== "hidden") {
@@ -180,4 +175,70 @@ export async function reactivateListing(productId: string) {
   revalidatePath("/search");
 
   redirect("/seller/dashboard");
+}
+
+export async function requestListingReview(
+  productId: string,
+  formData: FormData,
+) {
+  const { supabase, product, user } = await requireOwnProduct(productId);
+
+  if (product.status !== "admin_hidden") {
+    throw new Error(
+      "Only listings removed by Teraa can be submitted for review.",
+    );
+  }
+
+  const message = String(formData.get("message") ?? "").trim();
+
+  if (message.length < 10) {
+    throw new Error(
+      "Please briefly explain what you changed before requesting a review.",
+    );
+  }
+
+  const { data: seller, error: sellerError } = await supabase
+    .from("sellers")
+    .select("account_status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (sellerError || !seller) {
+    throw new Error("Seller account could not be found.");
+  }
+
+  if (seller.account_status === "banned") {
+    throw new Error("Banned seller accounts cannot request listing reviews.");
+  }
+
+  const { data: existingAppeal, error: appealLookupError } = await supabase
+    .from("listing_appeals")
+    .select("id, status")
+    .eq("product_id", productId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (appealLookupError) {
+    throw new Error(appealLookupError.message);
+  }
+
+  if (existingAppeal) {
+    throw new Error("A review request is already pending for this listing.");
+  }
+
+  const { error } = await supabase.from("listing_appeals").insert({
+    product_id: productId,
+    seller_id: user.id,
+    message,
+  });
+
+  if (error) {
+    throw new Error(error.message || "Couldn't submit review request.");
+  }
+
+  revalidatePath(`/seller/dashboard/products/${productId}`);
+
+  revalidatePath("/seller/dashboard");
+
+  revalidatePath("/admin/appeals");
 }

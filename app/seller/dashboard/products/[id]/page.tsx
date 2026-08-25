@@ -4,7 +4,12 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 
-import { hideListing, reactivateListing, updateListing } from "./actions";
+import {
+  hideListing,
+  reactivateListing,
+  requestListingReview,
+  updateListing,
+} from "./actions";
 
 export default async function ManageListingPage({
   params,
@@ -55,6 +60,34 @@ export default async function ManageListingPage({
     redirect("/seller/dashboard");
   }
 
+  const { data: appeals, error: appealsError } = await supabase
+    .from("listing_appeals")
+    .select(
+      `
+        id,
+        message,
+        status,
+        admin_response,
+        created_at,
+        reviewed_at
+        `,
+    )
+    .eq("product_id", product.id)
+    .eq("seller_id", user.id)
+    .order("created_at", {
+      ascending: false,
+    })
+    .limit(10);
+
+  if (appealsError) {
+    console.error("Could not load listing appeals:", appealsError);
+  }
+
+  const latestAppeal = appeals?.[0] ?? null;
+
+  const pendingAppeal =
+    appeals?.find((appeal) => appeal.status === "pending") ?? null;
+
   const photos =
     (
       product as {
@@ -69,7 +102,9 @@ export default async function ManageListingPage({
     photos.find((photo) => photo.is_cover)?.photo_url ?? photos[0]?.photo_url;
 
   const isHidden = product.status === "hidden";
+
   const isOutOfStock = product.status === "out_of_stock";
+
   const isAdminHidden = product.status === "admin_hidden";
 
   return (
@@ -88,7 +123,9 @@ export default async function ManageListingPage({
 
             <h1
               className="font-display text-3xl mt-2"
-              style={{ color: "var(--ink)" }}
+              style={{
+                color: "var(--ink)",
+              }}
             >
               Manage listing
             </h1>
@@ -115,6 +152,8 @@ export default async function ManageListingPage({
           </div>
         )}
 
+        {/* ADMIN REMOVAL NOTICE */}
+
         {isAdminHidden && (
           <div
             className="rounded-xl border p-5 mb-6"
@@ -133,8 +172,8 @@ export default async function ManageListingPage({
             </p>
 
             <p className="text-sm text-gray-700 mt-2">
-              This listing is no longer visible to buyers because it violated or
-              may have violated Teraa marketplace policy.
+              This listing is not visible to buyers because it was removed
+              through Teraa&apos;s moderation process.
             </p>
 
             {product.moderation_reason && (
@@ -154,11 +193,109 @@ export default async function ManageListingPage({
             )}
 
             <p className="text-xs text-gray-500 mt-4">
-              You may edit the listing to correct the problem, but you cannot
-              reactivate it yourself. Only Teraa can restore this listing.
+              You can edit the listing to correct the issue. You cannot
+              reactivate it yourself.
             </p>
           </div>
         )}
+
+        {/* APPEAL STATUS */}
+
+        {isAdminHidden && pendingAppeal && (
+          <div
+            className="rounded-xl border p-5 mb-6"
+            style={{
+              borderColor: "var(--gold)",
+              background: "#fbf3df",
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold">Review request pending</p>
+
+                <p className="text-sm text-gray-700 mt-1">
+                  Teraa has received your request to review this listing again.
+                </p>
+              </div>
+
+              <span
+                className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
+                style={{
+                  background: "#fff",
+                  color: "var(--gold)",
+                }}
+              >
+                Pending
+              </span>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-xs font-semibold uppercase text-gray-500">
+                Your message
+              </p>
+
+              <p className="text-sm mt-1">{pendingAppeal.message}</p>
+            </div>
+
+            <p className="text-xs text-gray-500 mt-4">
+              Submitted {new Date(pendingAppeal.created_at).toLocaleString()}
+            </p>
+          </div>
+        )}
+
+        {isAdminHidden &&
+          !pendingAppeal &&
+          latestAppeal &&
+          latestAppeal.status === "rejected" && (
+            <div
+              className="rounded-xl border p-5 mb-6"
+              style={{
+                borderColor: "var(--clay)",
+                background: "#fdf0f0",
+              }}
+            >
+              <p className="font-semibold">
+                Previous review request was rejected
+              </p>
+
+              {latestAppeal.admin_response && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold uppercase text-gray-500">
+                    Teraa&apos;s response
+                  </p>
+
+                  <p className="text-sm mt-1">{latestAppeal.admin_response}</p>
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 mt-4">
+                You may correct the remaining issue and submit another review
+                request.
+              </p>
+            </div>
+          )}
+
+        {latestAppeal &&
+          latestAppeal.status === "approved" &&
+          !isAdminHidden && (
+            <div
+              className="rounded-xl border p-4 mb-6 text-sm"
+              style={{
+                borderColor: "var(--leaf)",
+                background: "#e3f0e8",
+              }}
+            >
+              <p className="font-semibold">Listing restored</p>
+
+              <p className="text-gray-700 mt-1">
+                Teraa approved your review request and restored this listing.
+              </p>
+
+              {latestAppeal.admin_response && (
+                <p className="mt-2">{latestAppeal.admin_response}</p>
+              )}
+            </div>
+          )}
 
         {!isAdminHidden && isOutOfStock && (
           <div
@@ -192,6 +329,8 @@ export default async function ManageListingPage({
             </p>
           </div>
         )}
+
+        {/* EDIT LISTING */}
 
         <form
           action={updateListing.bind(null, product.id)}
@@ -288,6 +427,7 @@ export default async function ManageListingPage({
               }}
             >
               <option value="new">Brand new</option>
+
               <option value="used">Used</option>
             </select>
           </div>
@@ -318,6 +458,53 @@ export default async function ManageListingPage({
           </button>
         </form>
 
+        {/* REVIEW REQUEST */}
+
+        {isAdminHidden && !pendingAppeal && (
+          <section
+            className="border-t mt-8 pt-6"
+            style={{
+              borderColor: "var(--sand)",
+            }}
+          >
+            <h2 className="font-semibold mb-2">Request another review</h2>
+
+            <p className="text-sm text-gray-500 mb-4">
+              First correct the issue described above. Then explain what you
+              changed and ask Teraa to review the listing again.
+            </p>
+
+            <form
+              action={requestListingReview.bind(null, product.id)}
+              className="space-y-3"
+            >
+              <textarea
+                name="message"
+                required
+                minLength={10}
+                rows={4}
+                placeholder="Example: I updated the description and removed the misleading information. Please review the listing again."
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none resize-y"
+                style={{
+                  borderColor: "var(--sand)",
+                }}
+              />
+
+              <button
+                type="submit"
+                className="rounded-full px-5 py-2.5 text-white text-sm font-medium"
+                style={{
+                  background: "var(--indigo)",
+                }}
+              >
+                Request review
+              </button>
+            </form>
+          </section>
+        )}
+
+        {/* LISTING VISIBILITY */}
+
         <div
           className="border-t mt-8 pt-6"
           style={{
@@ -339,7 +526,7 @@ export default async function ManageListingPage({
               </p>
 
               <p className="text-gray-600 mt-1">
-                Teraa must review and restore the listing.
+                Submit a review request above after correcting the issue.
               </p>
             </div>
           ) : !isHidden ? (
@@ -365,8 +552,7 @@ export default async function ManageListingPage({
           ) : (
             <>
               <p className="text-sm text-gray-500 mb-4">
-                This listing was hidden by you. You can make it available again
-                whenever you want.
+                This listing was hidden by you. You may make it available again.
               </p>
 
               <form action={reactivateListing.bind(null, product.id)}>
@@ -383,6 +569,63 @@ export default async function ManageListingPage({
             </>
           )}
         </div>
+
+        {/* APPEAL HISTORY */}
+
+        {appeals && appeals.length > 0 && (
+          <section
+            className="border-t mt-8 pt-6"
+            style={{
+              borderColor: "var(--sand)",
+            }}
+          >
+            <h2 className="font-semibold mb-3">Review history</h2>
+
+            <div className="space-y-2">
+              {appeals.map((appeal) => (
+                <div
+                  key={appeal.id}
+                  className="rounded-lg border p-3 bg-white"
+                  style={{
+                    borderColor: "var(--sand)",
+                  }}
+                >
+                  <div className="flex justify-between gap-3">
+                    <span
+                      className="text-xs font-semibold capitalize"
+                      style={{
+                        color:
+                          appeal.status === "approved"
+                            ? "var(--leaf)"
+                            : appeal.status === "rejected"
+                              ? "var(--clay)"
+                              : "var(--gold)",
+                      }}
+                    >
+                      {appeal.status}
+                    </span>
+
+                    <span className="text-xs text-gray-400">
+                      {new Date(appeal.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <p className="text-sm mt-2">{appeal.message}</p>
+
+                  {appeal.admin_response && (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-gray-500">
+                        Teraa response
+                      </p>
+
+                      <p className="text-sm mt-1">{appeal.admin_response}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </>
   );

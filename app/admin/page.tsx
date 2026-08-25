@@ -1,49 +1,254 @@
 import Link from "next/link";
+
 import { requireAdmin } from "@/lib/require-admin";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export default async function AdminHomePage() {
   const { supabase } = await requireAdmin();
 
-  const [{ count: pendingSellers }, { count: openReports }, { count: totalProducts }, { count: totalOrders }] =
-    await Promise.all([
-      supabase.from("sellers").select("id", { count: "exact", head: true }).eq("verification_status", "pending"),
-      supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "open"),
-      supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
-      supabase.from("orders").select("id", { count: "exact", head: true }),
-    ]);
+  const [
+    { count: pendingSellers },
+    { count: openReports },
+    { count: totalProducts },
+    { count: totalOrders },
+    { count: pendingAppeals },
+    { count: suspendedSellers },
+  ] = await Promise.all([
+    supabase
+      .from("sellers")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("verification_status", "pending"),
+
+    supabase
+      .from("reports")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "open"),
+
+    supabase
+      .from("products")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "active"),
+
+    supabase.from("orders").select("id", {
+      count: "exact",
+      head: true,
+    }),
+
+    supabase
+      .from("listing_appeals")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "pending"),
+
+    supabase
+      .from("sellers")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("account_status", "suspended"),
+  ]);
 
   const stats = [
-    { label: "Sellers awaiting review", value: pendingSellers ?? 0, href: "/admin/sellers", urgent: (pendingSellers ?? 0) > 0 },
-    { label: "Open reports", value: openReports ?? 0, href: "/admin/reports", urgent: (openReports ?? 0) > 0 },
-    { label: "Active listings", value: totalProducts ?? 0, href: "/" },
-    { label: "Total orders", value: totalOrders ?? 0, href: "#" },
+    {
+      label: "Sellers awaiting review",
+      value: pendingSellers ?? 0,
+      href: "/admin/sellers?verification=pending",
+      urgent: (pendingSellers ?? 0) > 0,
+    },
+
+    {
+      label: "Open reports",
+      value: openReports ?? 0,
+      href: "/admin/reports",
+      urgent: (openReports ?? 0) > 0,
+    },
+
+    {
+      label: "Pending appeals",
+      value: pendingAppeals ?? 0,
+      href: "/admin/appeals",
+      urgent: (pendingAppeals ?? 0) > 0,
+    },
+
+    {
+      label: "Suspended sellers",
+      value: suspendedSellers ?? 0,
+      href: "/admin/sellers?account=suspended",
+      urgent: (suspendedSellers ?? 0) > 0,
+    },
+
+    {
+      label: "Active listings",
+      value: totalProducts ?? 0,
+      href: "/admin/listings",
+      urgent: false,
+    },
+
+    {
+      label: "Total orders",
+      value: totalOrders ?? 0,
+      href: "/admin/orders",
+      urgent: false,
+    },
   ];
 
   return (
     <>
       <SiteHeader />
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        <h1 className="font-display text-2xl mb-6" style={{ color: "var(--ink)" }}>
-          Admin
-        </h1>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {stats.map((s) => (
+      <main className="max-w-5xl mx-auto px-4 py-6">
+        <div className="mb-6">
+          <p className="text-xs text-gray-500 mb-1">Teraa administration</p>
+
+          <h1
+            className="font-display text-2xl"
+            style={{
+              color: "var(--ink)",
+            }}
+          >
+            Admin
+          </h1>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Review marketplace activity, moderation and account issues.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {stats.map((stat) => (
             <Link
-              key={s.label}
-              href={s.href}
+              key={stat.label}
+              href={stat.href}
               className="rounded-xl border p-4 bg-white hover:shadow-sm transition-shadow"
-              style={{ borderColor: s.urgent ? "var(--clay)" : "var(--sand)" }}
+              style={{
+                borderColor: stat.urgent ? "var(--clay)" : "var(--sand)",
+              }}
             >
-              <p className="text-2xl font-bold" style={{ color: s.urgent ? "var(--clay)" : "var(--ink)" }}>
-                {s.value}
+              <p
+                className="text-2xl font-bold"
+                style={{
+                  color: stat.urgent ? "var(--clay)" : "var(--ink)",
+                }}
+              >
+                {stat.value}
               </p>
-              <p className="text-xs text-gray-500 mt-1">{s.label}</p>
+
+              <p className="text-xs text-gray-500 mt-1">{stat.label}</p>
             </Link>
           ))}
         </div>
+
+        <section className="mt-8">
+          <h2 className="font-semibold mb-3">Management</h2>
+
+          <div
+            className="rounded-xl border bg-white overflow-hidden"
+            style={{
+              borderColor: "var(--sand)",
+            }}
+          >
+            <AdminLink
+              href="/admin/sellers"
+              title="Sellers"
+              description="Verification, suspension, bans and seller history"
+            />
+
+            <AdminLink
+              href="/admin/listings"
+              title="Listings"
+              description="Search and moderate all marketplace listings"
+            />
+
+            <AdminLink
+              href="/admin/reports"
+              title="Reports"
+              description="Investigate open and closed user reports"
+            />
+
+            <AdminLink
+              href="/admin/appeals"
+              title="Listing appeals"
+              description="Review requests to restore removed listings"
+            />
+
+            <AdminLink
+              href="/admin/orders"
+              title="Orders"
+              description="Inspect marketplace orders and payment issues"
+            />
+
+            <AdminLink
+              href="/admin/users"
+              title="Users"
+              description="Manage buyers and general user accounts"
+              comingSoon
+            />
+          </div>
+        </section>
       </main>
     </>
+  );
+}
+
+function AdminLink({
+  href,
+  title,
+  description,
+  comingSoon = false,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  comingSoon?: boolean;
+}) {
+  if (comingSoon) {
+    return (
+      <div
+        className="flex items-center justify-between gap-4 px-4 py-4 border-b last:border-b-0 opacity-60"
+        style={{
+          borderColor: "var(--sand)",
+        }}
+      >
+        <div>
+          <p className="font-medium text-sm">{title}</p>
+
+          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        </div>
+
+        <span className="text-[10px] rounded-full px-2 py-1 bg-gray-100 text-gray-500">
+          Coming soon
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between gap-4 px-4 py-4 border-b last:border-b-0 hover:bg-gray-50 transition"
+      style={{
+        borderColor: "var(--sand)",
+      }}
+    >
+      <div>
+        <p className="font-medium text-sm">{title}</p>
+
+        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+      </div>
+
+      <span className="text-gray-400">→</span>
+    </Link>
   );
 }
