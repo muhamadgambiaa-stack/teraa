@@ -131,7 +131,9 @@ export default async function SellerDashboardPage() {
 
             <h1
               className="font-display text-2xl"
-              style={{ color: "var(--ink)" }}
+              style={{
+                color: "var(--ink)",
+              }}
             >
               {seller.business_name}
             </h1>
@@ -141,7 +143,9 @@ export default async function SellerDashboardPage() {
             <Link
               href="/seller/dashboard/new"
               className="rounded-full px-4 py-2 text-white text-sm font-medium"
-              style={{ background: "var(--indigo)" }}
+              style={{
+                background: "var(--indigo)",
+              }}
             >
               + New listing
             </Link>
@@ -191,7 +195,9 @@ function VerificationPending({ hasDocument }: { hasDocument: boolean }) {
         <Link
           href="/seller/dashboard/verify"
           className="inline-block rounded-full px-5 py-2 text-white text-sm font-medium"
-          style={{ background: "var(--indigo)" }}
+          style={{
+            background: "var(--indigo)",
+          }}
         >
           Upload ID document
         </Link>
@@ -219,7 +225,9 @@ function VerificationRejected() {
       <Link
         href="/seller/dashboard/verify"
         className="inline-block rounded-full px-5 py-2 text-white text-sm font-medium"
-        style={{ background: "var(--indigo)" }}
+        style={{
+          background: "var(--indigo)",
+        }}
       >
         Resubmit document
       </Link>
@@ -257,7 +265,9 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
     return (
       <div
         className="rounded-xl border p-8 text-center"
-        style={{ borderColor: "var(--sand)" }}
+        style={{
+          borderColor: "var(--sand)",
+        }}
       >
         <p className="font-medium mb-1">Couldn&apos;t load your listings</p>
 
@@ -272,7 +282,9 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
     return (
       <div
         className="rounded-xl border p-10 text-center"
-        style={{ borderColor: "var(--sand)" }}
+        style={{
+          borderColor: "var(--sand)",
+        }}
       >
         <p className="font-medium mb-1">No listings yet</p>
 
@@ -283,7 +295,9 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
         <Link
           href="/seller/dashboard/new"
           className="inline-block rounded-full px-5 py-2 text-white text-sm font-medium"
-          style={{ background: "var(--indigo)" }}
+          style={{
+            background: "var(--indigo)",
+          }}
         >
           + New listing
         </Link>
@@ -310,9 +324,11 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
         return (
           <Link
             key={product.id}
-            href={`/products/${product.id}`}
+            href={`/seller/dashboard/products/${product.id}`}
             className="flex items-center gap-3 rounded-lg border p-3 bg-white transition hover:shadow-sm"
-            style={{ borderColor: "var(--sand)" }}
+            style={{
+              borderColor: "var(--sand)",
+            }}
           >
             <div
               className="w-14 h-14 rounded-md shrink-0 overflow-hidden"
