@@ -1,337 +1,344 @@
+import Link from "next/link";
+
 import { requireAdmin } from "@/lib/require-admin";
 import { SiteHeader } from "@/components/SiteHeader";
-import { approveSeller, rejectSeller } from "./actions";
+
+type SearchParams = Promise<{
+  q?: string;
+  verification?: string;
+  account?: string;
+}>;
 
 type UserInfo = {
   id: string;
+  full_name: string | null;
   phone_number: string | null;
   city: string | null;
 };
 
-export default async function AdminSellersPage() {
+export default async function AdminSellersPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
+
+  const search = params.q?.trim() ?? "";
+
+  const verification = params.verification ?? "all";
+
+  const account = params.account ?? "all";
+
   const { supabase } = await requireAdmin();
 
-  // ---------------------------------------------------------
-  // 1. LOAD PENDING SELLERS
-  // ---------------------------------------------------------
-
-  const { data: pending, error: pendingError } = await supabase
+  let request = supabase
     .from("sellers")
     .select(
       `
-        id,
-        business_name,
-        id_document_url,
-        verification_status,
-        created_at
+      id,
+      business_name,
+      verification_status,
+      account_status,
+      rating_avg,
+      total_sales,
+      created_at,
+      verification_request_reason,
+      admin_note
       `,
     )
-    .eq("verification_status", "pending")
     .order("created_at", {
-      ascending: true,
-    });
+      ascending: false,
+    })
+    .limit(100);
 
-  if (pendingError) {
-    console.error("Could not load pending sellers:", pendingError);
+  if (search) {
+    request = request.ilike("business_name", `%${search}%`);
   }
 
-  // ---------------------------------------------------------
-  // 2. LOAD MATCHING USER INFORMATION SEPARATELY
-  //
-  // sellers.id and users.id both use the authenticated user's
-  // UUID, so we do not need to rely on Supabase detecting an
-  // embedded relationship.
-  // ---------------------------------------------------------
+  if (verification !== "all") {
+    request = request.eq("verification_status", verification);
+  }
 
-  const sellerIds = pending?.map((seller) => seller.id) ?? [];
+  if (account !== "all") {
+    request = request.eq("account_status", account);
+  }
+
+  const { data: sellers, error } = await request;
+
+  const sellerIds = (sellers ?? []).map((seller) => seller.id);
 
   let users: UserInfo[] = [];
 
   if (sellerIds.length > 0) {
-    const { data: userRows, error: usersError } = await supabase
+    const { data, error: usersError } = await supabase
       .from("users")
       .select(
         `
-          id,
-          phone_number,
-          city
+        id,
+        full_name,
+        phone_number,
+        city
         `,
       )
       .in("id", sellerIds);
 
     if (usersError) {
-      console.error("Could not load seller user information:", usersError);
+      console.error("Seller users lookup failed:", usersError);
     } else {
-      users = (userRows ?? []) as UserInfo[];
+      users = (data ?? []) as UserInfo[];
     }
   }
-
-  // ---------------------------------------------------------
-  // 3. LOAD RECENT APPROVAL / REJECTION DECISIONS
-  // ---------------------------------------------------------
-
-  const { data: recent, error: recentError } = await supabase
-    .from("sellers")
-    .select(
-      `
-        id,
-        business_name,
-        verification_status,
-        created_at
-      `,
-    )
-    .in("verification_status", ["approved", "rejected"])
-    .order("created_at", {
-      ascending: false,
-    })
-    .limit(10);
-
-  if (recentError) {
-    console.error("Could not load recent seller decisions:", recentError);
-  }
-
-  // ---------------------------------------------------------
-  // 4. GENERATE TEMPORARY PRIVATE ID DOCUMENT URLS
-  // ---------------------------------------------------------
-
-  const sellersWithUrls = await Promise.all(
-    (pending ?? []).map(async (seller) => {
-      let signedUrl: string | null = null;
-
-      if (seller.id_document_url) {
-        const { data, error } = await supabase.storage
-          .from("seller-documents")
-          .createSignedUrl(seller.id_document_url, 300);
-
-        if (error) {
-          console.error(
-            `Could not create signed URL for seller ${seller.id}:`,
-            error,
-          );
-        } else {
-          signedUrl = data?.signedUrl ?? null;
-        }
-      }
-
-      const userInfo = users.find((user) => user.id === seller.id) ?? null;
-
-      return {
-        ...seller,
-        signedUrl,
-        userInfo,
-      };
-    }),
-  );
 
   return (
     <>
       <SiteHeader />
 
-      <main className="max-w-3xl mx-auto px-4 py-6">
+      <main className="max-w-5xl mx-auto px-4 py-6">
         <div className="mb-6">
-          <p className="text-xs text-gray-500 mb-1">Admin</p>
+          <p className="text-xs text-gray-500">Admin</p>
 
           <h1
-            className="font-display text-2xl mb-1"
+            className="font-display text-2xl"
             style={{
               color: "var(--ink)",
             }}
           >
-            Seller verification
+            Sellers
           </h1>
 
-          <p className="text-sm text-gray-500">
-            {sellersWithUrls.length} seller
-            {sellersWithUrls.length === 1 ? "" : "s"} awaiting review
+          <p className="text-sm text-gray-500 mt-1">
+            Manage verification, account access and seller activity.
           </p>
         </div>
 
-        {pendingError && (
-          <div
-            className="rounded-xl border p-4 mb-5 text-sm"
+        <form method="GET" className="flex flex-wrap gap-2 mb-6">
+          <input
+            name="q"
+            type="search"
+            defaultValue={search}
+            placeholder="Search seller..."
+            className="flex-1 min-w-52 rounded-full border px-4 py-2 text-sm"
             style={{
-              borderColor: "#e0a0a0",
-              background: "#fdf0f0",
-              color: "#8c3232",
+              borderColor: "var(--sand)",
             }}
-          >
-            Teraa couldn&apos;t load the seller verification queue. Please try
-            again.
-          </div>
-        )}
+          />
 
-        {!pendingError && sellersWithUrls.length === 0 && (
-          <div
-            className="rounded-xl border p-8 text-center"
+          <select
+            name="verification"
+            defaultValue={verification}
+            className="rounded-full border px-4 py-2 text-sm bg-white"
             style={{
               borderColor: "var(--sand)",
             }}
           >
-            <p className="font-medium mb-1">No sellers awaiting review</p>
+            <option value="all">All verification</option>
 
-            <p className="text-sm text-gray-500">
-              New verification submissions will appear here.
-            </p>
+            <option value="pending">Pending</option>
+
+            <option value="approved">Approved</option>
+
+            <option value="rejected">Rejected</option>
+          </select>
+
+          <select
+            name="account"
+            defaultValue={account}
+            className="rounded-full border px-4 py-2 text-sm bg-white"
+            style={{
+              borderColor: "var(--sand)",
+            }}
+          >
+            <option value="all">All accounts</option>
+
+            <option value="active">Active</option>
+
+            <option value="suspended">Suspended</option>
+
+            <option value="banned">Banned</option>
+          </select>
+
+          <button
+            type="submit"
+            className="rounded-full px-5 py-2 text-sm text-white font-medium"
+            style={{
+              background: "var(--indigo)",
+            }}
+          >
+            Search
+          </button>
+        </form>
+
+        {error && (
+          <div
+            className="rounded-xl border p-5 mb-6"
+            style={{
+              borderColor: "#e0a0a0",
+            }}
+          >
+            Couldn&apos;t load sellers.
           </div>
         )}
 
-        <div className="space-y-4">
-          {sellersWithUrls.map((seller) => (
-            <div
-              key={seller.id}
-              className="rounded-xl border p-4 bg-white"
-              style={{
-                borderColor: "var(--sand)",
-              }}
-            >
-              <div className="flex gap-4 flex-wrap sm:flex-nowrap">
-                {/* ID DOCUMENT */}
+        {!error && (!sellers || sellers.length === 0) && (
+          <div
+            className="rounded-xl border p-10 text-center text-sm text-gray-500"
+            style={{
+              borderColor: "var(--sand)",
+            }}
+          >
+            No sellers found.
+          </div>
+        )}
 
-                <div className="w-full sm:w-48 shrink-0">
-                  {seller.signedUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={seller.signedUrl}
-                      alt={`Verification document for ${seller.business_name}`}
-                      className="w-full aspect-[4/3] object-cover rounded-lg border"
-                      style={{
-                        borderColor: "var(--sand)",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      className="w-full aspect-[4/3] rounded-lg border flex flex-col items-center justify-center text-center px-3"
-                      style={{
-                        borderColor: "var(--sand)",
-                        background: "#fafafa",
-                      }}
-                    >
-                      <p className="text-xs text-gray-500">
-                        No document available
-                      </p>
-                    </div>
-                  )}
-                </div>
+        <div className="space-y-3">
+          {(sellers ?? []).map((seller) => {
+            const profile =
+              users.find((entry) => entry.id === seller.id) ?? null;
 
-                {/* SELLER DETAILS */}
-
-                <div className="flex-1 min-w-0">
-                  <div className="mb-3">
+            return (
+              <Link
+                key={seller.id}
+                href={`/admin/sellers/${seller.id}`}
+                className="block rounded-xl border bg-white p-4 hover:shadow-sm transition"
+                style={{
+                  borderColor:
+                    seller.account_status === "banned" ||
+                    seller.account_status === "suspended"
+                      ? "var(--clay)"
+                      : "var(--sand)",
+                }}
+              >
+                <div className="flex justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="font-semibold">{seller.business_name}</p>
 
-                    {seller.userInfo && (
-                      <div className="mt-1 text-xs text-gray-500 space-y-0.5">
-                        {seller.userInfo.phone_number && (
-                          <p>Phone: {seller.userInfo.phone_number}</p>
-                        )}
+                    {profile && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {profile.full_name}
 
-                        {seller.userInfo.city && (
-                          <p>Location: {seller.userInfo.city}</p>
-                        )}
-                      </div>
+                        {profile.city ? ` · ${profile.city}` : ""}
+
+                        {profile.phone_number
+                          ? ` · ${profile.phone_number}`
+                          : ""}
+                      </p>
                     )}
 
-                    <p className="text-xs text-gray-400 mt-2">
-                      Submitted{" "}
-                      {new Date(seller.created_at).toLocaleDateString()}
+                    <p className="text-xs text-gray-400 mt-1">
+                      Sales: {seller.total_sales ?? 0}
+                      {" · "}
+                      Rating: {Number(seller.rating_avg ?? 0).toFixed(1)}
                     </p>
                   </div>
 
-                  {/* STATUS */}
+                  <div className="flex flex-col items-end gap-1">
+                    <VerificationBadge status={seller.verification_status} />
 
-                  <div className="mb-4">
-                    <span
-                      className="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
-                      style={{
-                        background: "#fbf3df",
-                        color: "var(--gold)",
-                      }}
-                    >
-                      Pending review
-                    </span>
-                  </div>
-
-                  {/* ACTIONS */}
-
-                  <div className="flex gap-2 flex-wrap">
-                    <form action={approveSeller.bind(null, seller.id)}>
-                      <button
-                        type="submit"
-                        className="rounded-full px-5 py-2 text-xs font-medium text-white"
-                        style={{
-                          background: "var(--leaf)",
-                        }}
-                      >
-                        Approve seller
-                      </button>
-                    </form>
-
-                    <form action={rejectSeller.bind(null, seller.id)}>
-                      <button
-                        type="submit"
-                        className="rounded-full px-5 py-2 text-xs font-medium border"
-                        style={{
-                          borderColor: "var(--clay)",
-                          color: "var(--clay)",
-                        }}
-                      >
-                        Reject
-                      </button>
-                    </form>
+                    <AccountBadge status={seller.account_status} />
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
 
-        {/* RECENT DECISIONS */}
-
-        {recent && recent.length > 0 && (
-          <section className="mt-10">
-            <h2 className="font-semibold mb-3">Recent decisions</h2>
-
-            <div
-              className="rounded-xl border overflow-hidden bg-white"
-              style={{
-                borderColor: "var(--sand)",
-              }}
-            >
-              {recent.map((seller) => (
-                <div
-                  key={seller.id}
-                  className="flex items-center justify-between gap-3 px-4 py-3 border-b last:border-b-0"
-                  style={{
-                    borderColor: "var(--sand)",
-                  }}
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {seller.business_name}
-                    </p>
-
-                    <p className="text-xs text-gray-400">
-                      {new Date(seller.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-
-                  <span
-                    className="text-xs font-semibold capitalize"
+                {seller.verification_request_reason && (
+                  <p
+                    className="rounded-md px-3 py-2 mt-3 text-xs"
                     style={{
-                      color:
-                        seller.verification_status === "approved"
-                          ? "var(--leaf)"
-                          : "var(--clay)",
+                      background: "#fbf3df",
                     }}
                   >
-                    {seller.verification_status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+                    Verification request: {seller.verification_request_reason}
+                  </p>
+                )}
+              </Link>
+            );
+          })}
+        </div>
       </main>
     </>
+  );
+}
+
+function VerificationBadge({ status }: { status: string }) {
+  const styles: Record<
+    string,
+    {
+      label: string;
+      bg: string;
+      color: string;
+    }
+  > = {
+    approved: {
+      label: "Verified",
+      bg: "#e3f0e8",
+      color: "var(--leaf)",
+    },
+
+    pending: {
+      label: "Pending",
+      bg: "#fbf3df",
+      color: "var(--gold)",
+    },
+
+    rejected: {
+      label: "Rejected",
+      bg: "#fdf0f0",
+      color: "var(--clay)",
+    },
+  };
+
+  const selected = styles[status] ?? styles.pending;
+
+  return (
+    <span
+      className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
+      style={{
+        background: selected.bg,
+        color: selected.color,
+      }}
+    >
+      {selected.label}
+    </span>
+  );
+}
+
+function AccountBadge({ status }: { status: string }) {
+  const styles: Record<
+    string,
+    {
+      label: string;
+      bg: string;
+      color: string;
+    }
+  > = {
+    active: {
+      label: "Active",
+      bg: "#e6edf3",
+      color: "var(--indigo)",
+    },
+
+    suspended: {
+      label: "Suspended",
+      bg: "#fbf3df",
+      color: "var(--gold)",
+    },
+
+    banned: {
+      label: "Banned",
+      bg: "#fdf0f0",
+      color: "var(--clay)",
+    },
+  };
+
+  const selected = styles[status] ?? styles.active;
+
+  return (
+    <span
+      className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
+      style={{
+        background: selected.bg,
+        color: selected.color,
+      }}
+    >
+      {selected.label}
+    </span>
   );
 }
