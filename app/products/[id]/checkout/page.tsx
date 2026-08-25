@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { GAMBIA_CITIES } from "@/types/database";
@@ -9,10 +10,21 @@ async function getProduct(id: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("products")
-    .select("id, title, price, stock_quantity, status, location_city, product_photos(photo_url, is_cover)")
+    .select("id, title, price, stock_quantity, status, location_city, seller_id, product_photos(photo_url, is_cover)")
     .eq("id", id)
     .single();
   return data;
+}
+
+async function getSellerPaymentMethods(sellerId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("seller_payment_methods")
+    .select("id, method_type, provider_name")
+    .eq("seller_id", sellerId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+  return data ?? [];
 }
 
 export default async function CheckoutPage({
@@ -24,9 +36,18 @@ export default async function CheckoutPage({
 }) {
   const { id } = await params;
   const { error } = await searchParams;
-  const product = await getProduct(id);
 
+  // Buyers must have a Teraa account to check out. Checking this at page
+  // load, not just on submit, so someone without an account never sees a
+  // form they can't actually use, and doesn't lose what they typed.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect(`/login?redirect=/products/${id}/checkout`);
+
+  const product = await getProduct(id);
   if (!product) notFound();
+
+  const paymentMethods = await getSellerPaymentMethods(product.seller_id);
 
   const photos = (product as { product_photos?: { photo_url: string; is_cover: boolean }[] }).product_photos;
   const cover = photos?.find((p) => p.is_cover)?.photo_url ?? photos?.[0]?.photo_url;
@@ -34,6 +55,7 @@ export default async function CheckoutPage({
 
   const errorMessages: Record<string, string> = {
     missing_city: "Choose a delivery city to continue.",
+    missing_payment: "Choose how you'd like to pay.",
     order_failed: "Something went wrong placing your order. Try again.",
     out_of_stock: "This item just went out of stock.",
     not_found: "This listing is no longer available.",
@@ -94,23 +116,49 @@ export default async function CheckoutPage({
             <div>
               <label className="text-sm font-medium block mb-2">Payment method</label>
               <div className="space-y-2">
-                <label
-                  className="flex items-start gap-2 rounded-lg border p-3 cursor-pointer text-sm"
-                  style={{ borderColor: "var(--sand)" }}
-                >
-                  <input type="radio" name="paymentMethod" value="wave" defaultChecked className="mt-0.5" />
-                  <span>
-                    <span className="font-medium block">Pay with Wave</span>
-                    <span className="text-xs text-gray-500">
-                      You&apos;ll get the seller&apos;s Wave number after checkout to send payment directly.
+                {paymentMethods.map((m, i) => (
+                  <label
+                    key={m.id}
+                    className="flex items-start gap-2 rounded-lg border p-3 cursor-pointer text-sm"
+                    style={{ borderColor: "var(--sand)" }}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value={m.id}
+                      defaultChecked={i === 0}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="font-medium block">
+                        Pay with {m.provider_name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {m.method_type === "bank" ? "Bank transfer" : "Mobile money"},
+                        you&apos;ll get the account details after checkout to send payment directly.
+                      </span>
                     </span>
-                  </span>
-                </label>
+                  </label>
+                ))}
+
+                {paymentMethods.length === 0 && (
+                  <p className="text-xs text-gray-500 rounded-lg border p-3" style={{ borderColor: "var(--sand)" }}>
+                    This seller hasn&apos;t added a digital payment method yet, cash on
+                    delivery is your only option for now.
+                  </p>
+                )}
+
                 <label
                   className="flex items-start gap-2 rounded-lg border p-3 cursor-pointer text-sm"
                   style={{ borderColor: "var(--sand)" }}
                 >
-                  <input type="radio" name="paymentMethod" value="cod" className="mt-0.5" />
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="cod"
+                    defaultChecked={paymentMethods.length === 0}
+                    className="mt-0.5"
+                  />
                   <span>
                     <span className="font-medium block">Cash on delivery</span>
                     <span className="text-xs text-gray-500">
@@ -149,8 +197,8 @@ export default async function CheckoutPage({
             </div>
 
             <p className="text-xs text-gray-500">
-              Teraa doesn&apos;t hold payment in escrow. For Wave orders, you pay the
-              seller directly; for cash on delivery, inspect the item before paying.
+              Teraa doesn&apos;t hold payment in escrow. For digital payments, you pay
+              the seller directly, for cash on delivery, inspect the item before paying.
             </p>
 
             <button

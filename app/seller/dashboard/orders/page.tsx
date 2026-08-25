@@ -36,7 +36,7 @@ export default async function SellerOrdersPage() {
   const { data: orders } = await supabase
     .from("orders")
     .select(
-      "id, status, payment_method, payment_status, delivery_city, delivery_notes, created_at, order_items(quantity, price_at_purchase, products(title)), users:buyer_id(full_name, phone_number)"
+      "id, status, payment_method, payment_status, delivery_city, delivery_notes, created_at, order_items(quantity, price_at_purchase, products(title)), users:buyer_id(full_name, phone_number), seller_payment_methods(provider_name)"
     )
     .eq("seller_id", seller.id)
     .order("created_at", { ascending: false });
@@ -65,6 +65,8 @@ export default async function SellerOrdersPage() {
             const items = (o as { order_items?: { quantity: number; price_at_purchase: number; products?: { title: string } | { title: string }[] }[] }).order_items ?? [];
             const buyerRaw = (o as { users?: { full_name: string; phone_number: string } | { full_name: string; phone_number: string }[] }).users;
             const buyer = Array.isArray(buyerRaw) ? buyerRaw[0] : buyerRaw;
+            const methodRaw = (o as { seller_payment_methods?: { provider_name: string } | { provider_name: string }[] }).seller_payment_methods;
+            const method = Array.isArray(methodRaw) ? methodRaw[0] : methodRaw;
             const total = items.reduce((sum, i) => sum + i.quantity * Number(i.price_at_purchase), 0);
             const status = o.status as OrderStatus;
             const style = STATUS_STYLES[status];
@@ -98,8 +100,8 @@ export default async function SellerOrdersPage() {
                   {buyer && <p>{buyer.full_name} · {buyer.phone_number}</p>}
                   <p>Deliver to: {o.delivery_city}{o.delivery_notes ? `, ${o.delivery_notes}` : ""}</p>
                   <p>
-                    Payment: {o.payment_method === "wave" ? "Wave" : "Cash on delivery"}
-                    {o.payment_method === "wave" && ` (${o.payment_status})`}
+                    Payment: {o.payment_method === "digital" ? (method?.provider_name ?? "Digital") : "Cash on delivery"}
+                    {o.payment_method === "digital" && ` (${o.payment_status})`}
                   </p>
                 </div>
 

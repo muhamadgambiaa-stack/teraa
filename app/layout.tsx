@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Teraa: Buy & sell, safely",
   description:
-    "Teraa is The Gambia's trusted marketplace. Verified sellers, secure Wave payments, cash on delivery.",
+    "Teraa is The Gambia's trusted marketplace. Verified sellers, bank transfer, mobile money, and cash on delivery.",
 };
 
 export default function RootLayout({

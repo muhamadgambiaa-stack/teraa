@@ -18,7 +18,7 @@ export default async function OrderPage({
   const { data: order } = await supabase
     .from("orders")
     .select(
-      "id, status, payment_method, payment_status, delivery_city, delivery_notes, created_at, buyer_id, order_items(quantity, price_at_purchase, products(title)), sellers(id, business_name, wave_number, verification_status)"
+      "id, status, payment_method, payment_status, delivery_city, delivery_notes, created_at, buyer_id, order_items(quantity, price_at_purchase, products(title)), sellers(id, business_name, verification_status), seller_payment_methods(provider_name, method_type, account_name, account_number)"
     )
     .eq("id", id)
     .single();
@@ -26,8 +26,10 @@ export default async function OrderPage({
   if (!order) notFound();
 
   const items = (order as { order_items?: { quantity: number; price_at_purchase: number; products?: { title: string } | { title: string }[] }[] }).order_items ?? [];
-  const sellerRaw = (order as { sellers?: { id: string; business_name: string; wave_number: string | null } | { id: string; business_name: string; wave_number: string | null }[] }).sellers;
+  const sellerRaw = (order as { sellers?: { id: string; business_name: string } | { id: string; business_name: string }[] }).sellers;
   const seller = Array.isArray(sellerRaw) ? sellerRaw[0] : sellerRaw;
+  const paymentMethodRaw = (order as { seller_payment_methods?: { provider_name: string; method_type: string; account_name: string; account_number: string } | { provider_name: string; method_type: string; account_name: string; account_number: string }[] }).seller_payment_methods;
+  const chosenMethod = Array.isArray(paymentMethodRaw) ? paymentMethodRaw[0] : paymentMethodRaw;
   const total = items.reduce((sum, i) => sum + i.quantity * Number(i.price_at_purchase), 0);
 
   const isBuyer = order.buyer_id === user.id;
@@ -76,17 +78,19 @@ export default async function OrderPage({
           </div>
         </div>
 
-        {order.payment_method === "wave" && seller && (
+        {order.payment_method === "digital" && (
           <div className="rounded-lg border p-4 mb-4" style={{ borderColor: "var(--gold)", background: "#fbf3df" }}>
-            <p className="text-sm font-medium mb-1">Complete your Wave payment</p>
-            {seller.wave_number ? (
+            <p className="text-sm font-medium mb-1">Complete your payment</p>
+            {chosenMethod ? (
               <p className="text-sm">
-                Send GMD {total.toLocaleString()} to <strong>{seller.wave_number}</strong> via Wave,
-                then message the seller to confirm.
+                Send GMD {total.toLocaleString()} to <strong>{chosenMethod.provider_name}</strong>
+                {" "}({chosenMethod.method_type === "bank" ? "bank transfer" : "mobile money"}),
+                account name <strong>{chosenMethod.account_name}</strong>, number{" "}
+                <strong>{chosenMethod.account_number}</strong>, then message the seller to confirm.
               </p>
             ) : (
               <p className="text-sm text-gray-600">
-                The seller hasn&apos;t added a Wave number yet. Contact them directly to arrange payment.
+                Contact the seller directly to arrange payment.
               </p>
             )}
           </div>

@@ -51,7 +51,7 @@ export default function SignupPage() {
 
     // Create the profile row. RLS policy "users_insert_own" only allows
     // a user to insert their own row, matched by auth.uid(). Phone is
-    // still collected here, it's used for Wave payment coordination and
+    // still collected here, it's used for delivery coordination and
     // delivery contact, just not for authentication anymore.
     const { error: profileError } = await supabase.from("users").insert({
       id: data.user.id,
@@ -123,7 +123,7 @@ export default function SignupPage() {
                 className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
                 style={{ borderColor: "var(--sand)" }}
               />
-              <p className="text-xs text-gray-500 mt-1">Used for Wave payments and delivery contact.</p>
+              <p className="text-xs text-gray-500 mt-1">Used for delivery contact and payment coordination.</p>
             </div>
             <div>
               <label className="text-sm font-medium block mb-1">City</label>

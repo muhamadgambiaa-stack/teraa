@@ -10,7 +10,7 @@ async function getProduct(id: string) {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, title, description, price, stock_quantity, status, condition, location_city, created_at, product_photos(photo_url, is_cover, sort_order), sellers(id, business_name, verification_status, rating_avg, total_sales, wave_number)"
+      "id, title, description, price, stock_quantity, status, condition, location_city, created_at, product_photos(photo_url, is_cover, sort_order), sellers(id, business_name, verification_status, rating_avg, total_sales)"
     )
     .eq("id", id)
     .single();
@@ -126,7 +126,7 @@ export default async function ProductDetailPage({
             {/* Payment & delivery info — honest, no overpromising */}
             <div className="rounded-lg border p-3 mb-6 text-xs space-y-1.5" style={{ borderColor: "var(--sand)" }}>
               <p className="font-medium text-sm mb-1">Payment options</p>
-              <p>💳 Pay via Wave: you and the seller arrange the transfer directly</p>
+              <p>💳 Bank transfer or mobile money: you and the seller arrange the transfer directly</p>
               <p>💵 Cash on delivery: inspect the item before you pay</p>
               <p className="text-gray-500 pt-1">
                 Teraa verifies seller ID but does not hold funds in escrow. Meet in a

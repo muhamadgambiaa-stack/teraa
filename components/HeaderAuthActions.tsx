@@ -16,9 +16,7 @@ export function HeaderAuthActions() {
   useEffect(() => {
     let active = true;
     (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         if (active) setChecked(true);
         return;
@@ -65,16 +63,17 @@ export function HeaderAuthActions() {
   }
 
   const dashboardLink =
-    role === "admin"
-      ? { href: "/admin", label: "Admin" }
-      : role === "seller"
-        ? { href: "/seller/dashboard", label: "Seller dashboard" }
-        : null;
+    role === "admin" ? { href: "/admin", label: "Admin" } :
+    role === "seller" ? { href: "/seller/dashboard", label: "Seller dashboard" } :
+    null;
 
   return (
     <>
       <Link href="/orders" className="hover:underline hidden sm:inline">
         My orders
+      </Link>
+      <Link href="/account" className="hover:underline hidden sm:inline">
+        Account
       </Link>
       {dashboardLink && (
         <Link
@@ -94,10 +93,7 @@ export function HeaderAuthActions() {
           Sell on Teraa
         </Link>
       )}
-      <button
-        onClick={handleLogout}
-        className="text-gray-500 hover:underline hidden sm:inline"
-      >
+      <button onClick={handleLogout} className="text-gray-500 hover:underline hidden sm:inline">
         Log out
       </button>
     </>

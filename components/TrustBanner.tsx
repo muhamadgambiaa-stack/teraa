@@ -13,7 +13,7 @@ export function TrustBanner() {
           </h2>
           <p className="text-sm opacity-90 max-w-md">
             Sellers with a green checkmark have submitted a Gambian ID for review.
-            Pay with Wave or arrange cash on delivery. Always inspect items before you pay cash.
+            Pay by bank transfer, mobile money, or arrange cash on delivery. Always inspect items before you pay cash.
           </p>
         </div>
         <Link

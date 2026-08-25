@@ -13,12 +13,13 @@ create type user_role as enum ('buyer', 'seller', 'admin');
 create type verification_status as enum ('pending', 'approved', 'rejected');
 create type product_status as enum ('active', 'out_of_stock', 'hidden');
 create type order_status as enum ('placed', 'confirmed', 'shipped', 'delivered', 'completed', 'cancelled');
-create type payment_method as enum ('wave', 'cod');
+create type payment_method as enum ('digital', 'cod');
 create type payment_status as enum ('pending', 'paid', 'failed');
 create type payout_status as enum ('pending', 'paid');
 create type report_target as enum ('seller', 'product', 'order');
 create type report_status as enum ('open', 'reviewed', 'resolved');
 create type product_condition as enum ('new', 'used_like_new', 'used_good', 'used_fair');
+create type payment_method_type as enum ('bank', 'mobile_money');
 
 -- ============================================================
 -- USERS (extends Supabase auth.users)
@@ -47,6 +48,24 @@ create table public.sellers (
   shop_banner_url text,
   rating_avg numeric(2,1) not null default 0,
   total_sales integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- ============================================================
+-- SELLER PAYMENT METHODS
+-- A seller can add one or more ways to pay them directly: a bank
+-- account, or a mobile money account (Wave, or any other provider).
+-- Cash on delivery is not stored here, it's a universal checkout
+-- option that doesn't need a seller to configure anything.
+-- ============================================================
+create table public.seller_payment_methods (
+  id uuid primary key default uuid_generate_v4(),
+  seller_id uuid not null references public.sellers(id) on delete cascade,
+  method_type payment_method_type not null,
+  provider_name text not null, -- e.g. "Wave", "QMoney", "Trust Bank"
+  account_name text not null,
+  account_number text not null, -- bank account number, or mobile money phone number
+  is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
 
@@ -105,6 +124,7 @@ create table public.orders (
   seller_id uuid not null references public.sellers(id),
   status order_status not null default 'placed',
   payment_method payment_method not null,
+  seller_payment_method_id uuid references public.seller_payment_methods(id),
   payment_status payment_status not null default 'pending',
   delivery_city text,
   delivery_notes text,
@@ -204,6 +224,7 @@ create index idx_messages_conversation on public.messages(conversation_id);
 -- ============================================================
 alter table public.users enable row level security;
 alter table public.sellers enable row level security;
+alter table public.seller_payment_methods enable row level security;
 alter table public.products enable row level security;
 alter table public.product_photos enable row level security;
 alter table public.cart_items enable row level security;
@@ -240,6 +261,28 @@ create policy "sellers_insert_own" on public.sellers
   for insert with check (id = auth.uid());
 create policy "sellers_update_own_or_admin" on public.sellers
   for update using (id = auth.uid() or public.is_admin());
+
+-- SELLER PAYMENT METHODS: buyers can see active methods belonging to an
+-- approved seller (so they can pick one at checkout); seller manages own;
+-- admin sees/manages all.
+create policy "seller_payment_methods_select" on public.seller_payment_methods
+  for select using (
+    (
+      is_active = true
+      and exists (
+        select 1 from public.sellers s
+        where s.id = seller_id and s.verification_status = 'approved'
+      )
+    )
+    or seller_id = auth.uid()
+    or public.is_admin()
+  );
+create policy "seller_payment_methods_insert_own" on public.seller_payment_methods
+  for insert with check (seller_id = auth.uid());
+create policy "seller_payment_methods_update_own_or_admin" on public.seller_payment_methods
+  for update using (seller_id = auth.uid() or public.is_admin());
+create policy "seller_payment_methods_delete_own_or_admin" on public.seller_payment_methods
+  for delete using (seller_id = auth.uid() or public.is_admin());
 
 -- CATEGORIES: public read, admin write
 create policy "categories_select_all" on public.categories for select using (true);

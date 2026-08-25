@@ -25,9 +25,9 @@ export default function SafetyPage() {
           <h2 className="text-sm font-semibold mb-2">How payments work</h2>
           <ul className="text-sm text-gray-700 space-y-2 list-disc pl-5">
             <li>
-              <strong>Wave:</strong> you send payment directly to the seller&apos;s Wave
-              number. Teraa does not hold or process this payment. It&apos;s a direct
-              transfer between you and the seller.
+              <strong>Bank transfer or mobile money:</strong> you send payment directly
+              to the seller&apos;s bank or mobile money account. Teraa does not hold or
+              process this payment, it&apos;s a direct transfer between you and the seller.
             </li>
             <li>
               <strong>Cash on delivery:</strong> you pay in person when the item is
@@ -36,7 +36,7 @@ export default function SafetyPage() {
           </ul>
           <p className="text-sm text-gray-700 mt-3">
             Teraa does not currently offer escrow or buyer protection refunds. Treat
-            transactions the way you would meeting someone from a classified ad.
+            transactions the way you would meeting someone from a classified ad,
             verify what you&apos;re getting before you pay.
           </p>
         </section>

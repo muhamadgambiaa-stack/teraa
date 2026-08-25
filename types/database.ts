@@ -29,7 +29,19 @@ export type OrderStatus =
   | "delivered"
   | "completed"
   | "cancelled";
-export type PaymentMethod = "wave" | "cod";
+export type PaymentMethod = "digital" | "cod";
+export type PaymentMethodType = "bank" | "mobile_money";
+
+export interface SellerPaymentMethod {
+  id: string;
+  seller_id: string;
+  method_type: PaymentMethodType;
+  provider_name: string;
+  account_name: string;
+  account_number: string;
+  is_active: boolean;
+  created_at: string;
+}
 export type PaymentStatus = "pending" | "paid" | "failed";
 
 export interface AppUser {
