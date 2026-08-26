@@ -138,9 +138,9 @@ export async function markOrderReceived(orderId: string) {
 export async function submitReview(formData: FormData) {
   const { supabase, user } = await requireActiveBuyer();
 
-  const orderId = String(formData.get("orderId") ?? "");
-
-  const sellerId = String(formData.get("sellerId") ?? "");
+  const orderId = String(formData.get("orderId") ?? "").trim();
+  const sellerId = String(formData.get("sellerId") ?? "").trim();
+  const productId = String(formData.get("productId") ?? "").trim();
 
   const rating = Number(formData.get("rating"));
 
@@ -149,6 +149,7 @@ export async function submitReview(formData: FormData) {
   if (
     !orderId ||
     !sellerId ||
+    !productId ||
     !Number.isInteger(rating) ||
     rating < 1 ||
     rating > 5
@@ -193,35 +194,73 @@ export async function submitReview(formData: FormData) {
   }
 
   /*
+   * IMPORTANT SECURITY CHECK:
+   *
+   * Never trust productId from the browser.
+   *
+   * Verify that the product being reviewed
+   * actually belongs to this order.
+   */
+  const { data: orderItem, error: orderItemError } = await supabase
+    .from("order_items")
+    .select(
+      `
+      product_id
+      `,
+    )
+    .eq("order_id", orderId)
+    .eq("product_id", productId)
+    .maybeSingle();
+
+  if (orderItemError || !orderItem) {
+    throw new Error("This product does not belong to this order.");
+  }
+
+  /*
    * Prevent duplicate reviews for the
-   * same completed order.
+   * same product in the same order.
    */
   const { data: existingReview, error: existingReviewError } = await supabase
     .from("reviews")
     .select("id")
     .eq("order_id", orderId)
+    .eq("product_id", productId)
     .maybeSingle();
 
   if (existingReviewError) {
     console.error("Could not check existing review:", existingReviewError);
+
+    throw new Error("Could not verify review status.");
   }
 
   if (existingReview) {
-    throw new Error("You already reviewed this order.");
+    throw new Error("You already reviewed this product.");
   }
 
+  /*
+   * Create the product review.
+   */
   const { error } = await supabase.from("reviews").insert({
     order_id: orderId,
     buyer_id: user.id,
     seller_id: sellerId,
+    product_id: productId,
     rating,
     comment: comment || null,
   });
 
   if (error) {
+    console.error("Review creation failed:", error);
+
     throw new Error(error.message || "Couldn't submit review.");
   }
 
+  /*
+   * Refresh every page affected by the review.
+   */
   revalidatePath(`/orders/${orderId}`);
+  revalidatePath(`/products/${productId}`);
   revalidatePath(`/profile/${sellerId}`);
+  revalidatePath("/");
+  revalidatePath("/search");
 }

@@ -9,6 +9,24 @@ import { CONDITION_LABELS, type ProductCondition } from "@/types/database";
 
 import { messageSeller } from "./actions";
 
+type ProductReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  buyer_id: string;
+  users:
+    | {
+        full_name: string;
+        profile_photo_url: string | null;
+      }
+    | {
+        full_name: string;
+        profile_photo_url: string | null;
+      }[]
+    | null;
+};
+
 async function getProduct(id: string) {
   const supabase = await createClient();
 
@@ -38,7 +56,6 @@ async function getProduct(id: string) {
         business_name,
         verification_status,
         account_status,
-        rating_avg,
         total_sales
       )
       `,
@@ -74,6 +91,9 @@ export default async function ProductDetailPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  /*
+   * PRODUCT PHOTOS
+   */
   const photos =
     (
       product as {
@@ -91,6 +111,9 @@ export default async function ProductDetailPage({
       a.sort_order - b.sort_order,
   );
 
+  /*
+   * SELLER
+   */
   const sellerRaw = (
     product as {
       sellers?:
@@ -99,7 +122,6 @@ export default async function ProductDetailPage({
             business_name: string;
             verification_status: string;
             account_status: string;
-            rating_avg: number;
             total_sales: number;
           }
         | {
@@ -107,7 +129,6 @@ export default async function ProductDetailPage({
             business_name: string;
             verification_status: string;
             account_status: string;
-            rating_avg: number;
             total_sales: number;
           }[];
     }
@@ -125,21 +146,47 @@ export default async function ProductDetailPage({
   const isOwnListing = Boolean(user && seller && user.id === seller.id);
 
   /*
-   * REVIEW COUNT
+   * PRODUCT REVIEWS
+   *
+   * Reviews are now attached to this specific
+   * product instead of counting every review
+   * received by the seller.
    */
-  let reviewCount = 0;
+  const { data: reviewData, error: reviewError } = await supabase
+    .from("reviews")
+    .select(
+      `
+        id,
+        rating,
+        comment,
+        created_at,
+        buyer_id,
 
-  if (seller) {
-    const { count } = await supabase
-      .from("reviews")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("seller_id", seller.id);
+        users:buyer_id(
+          full_name,
+          profile_photo_url
+        )
+        `,
+    )
+    .eq("product_id", product.id)
+    .order("created_at", {
+      ascending: false,
+    })
+    .limit(50);
 
-    reviewCount = count ?? 0;
+  if (reviewError) {
+    console.error("Could not load product reviews:", reviewError);
   }
+
+  const reviews = (reviewData ?? []) as ProductReview[];
+
+  const reviewCount = reviews.length;
+
+  const productRating =
+    reviewCount > 0
+      ? reviews.reduce((total, review) => total + Number(review.rating), 0) /
+        reviewCount
+      : 0;
 
   return (
     <>
@@ -158,10 +205,12 @@ export default async function ProductDetailPage({
           <span className="truncate">{product.title}</span>
         </nav>
 
-        <div className="grid md:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-6 lg:gap-10 items-start">
+        {/* MAIN PRODUCT AREA */}
+
+        <div className="grid md:grid-cols-[minmax(0,420px)_minmax(0,1fr)] gap-6 lg:gap-9 items-start">
           {/* PRODUCT PHOTOS */}
 
-          <section>
+          <section className="w-full max-w-[420px] mx-auto md:mx-0">
             <div
               className="w-full rounded-xl overflow-hidden flex items-center justify-center"
               style={{
@@ -177,7 +226,7 @@ export default async function ProductDetailPage({
                   className="w-full h-full object-contain"
                 />
               ) : (
-                <div className="w-full h-full min-h-[240px] flex flex-col items-center justify-center text-gray-400">
+                <div className="w-full h-full min-h-[220px] flex flex-col items-center justify-center text-gray-400">
                   <ImageIcon />
 
                   <p className="text-xs mt-2">No photo provided</p>
@@ -195,7 +244,7 @@ export default async function ProductDetailPage({
                     key={index}
                     src={photo.photo_url}
                     alt={`${product.title} photo ${index + 2}`}
-                    className="w-16 h-16 sm:w-[72px] sm:h-[72px] object-cover rounded-lg border shrink-0 bg-white"
+                    className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-lg border shrink-0 bg-white"
                     style={{
                       borderColor: "var(--sand)",
                     }}
@@ -225,6 +274,29 @@ export default async function ProductDetailPage({
             >
               GMD {Number(product.price).toLocaleString()}
             </p>
+
+            {/* PRODUCT RATING */}
+
+            {reviewCount > 0 && (
+              <a
+                href="#product-reviews"
+                className="inline-flex items-center gap-2 mt-2 text-xs hover:underline"
+              >
+                <StaticStarRating rating={productRating} size={14} />
+
+                <strong
+                  style={{
+                    color: "var(--ink)",
+                  }}
+                >
+                  {productRating.toFixed(1)}
+                </strong>
+
+                <span className="text-gray-500">
+                  {reviewCount} {reviewCount === 1 ? "review" : "reviews"}
+                </span>
+              </a>
+            )}
 
             {/* PRODUCT META */}
 
@@ -283,28 +355,6 @@ export default async function ProductDetailPage({
                     </Link>
 
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
-                      {seller.rating_avg > 0 && (
-                        <span className="inline-flex items-center gap-1">
-                          <StarIcon />
-
-                          <strong
-                            className="font-semibold"
-                            style={{
-                              color: "var(--ink)",
-                            }}
-                          >
-                            {Number(seller.rating_avg).toFixed(1)}
-                          </strong>
-
-                          {reviewCount > 0 && (
-                            <span>
-                              ({reviewCount}{" "}
-                              {reviewCount === 1 ? "review" : "reviews"})
-                            </span>
-                          )}
-                        </span>
-                      )}
-
                       {seller.total_sales > 0 && (
                         <span>
                           {seller.total_sales}{" "}
@@ -315,7 +365,7 @@ export default async function ProductDetailPage({
                       {isVerified && (
                         <span className="inline-flex items-center gap-1">
                           <ShieldIcon />
-                          Verified
+                          Verified seller
                         </span>
                       )}
                     </div>
@@ -467,6 +517,151 @@ export default async function ProductDetailPage({
             )}
           </section>
         </div>
+
+        {/* PRODUCT REVIEWS */}
+
+        <section id="product-reviews" className="mt-10 sm:mt-12 scroll-mt-24">
+          <div className="flex items-end justify-between gap-4 mb-4">
+            <div>
+              <h2
+                className="font-display text-xl"
+                style={{
+                  color: "var(--ink)",
+                }}
+              >
+                Product reviews
+              </h2>
+
+              <p className="text-xs text-gray-500 mt-1">
+                Reviews from buyers who purchased this product through Teraa.
+              </p>
+            </div>
+
+            {reviewCount > 0 && (
+              <div className="text-right shrink-0">
+                <div className="flex items-center justify-end gap-1.5">
+                  <StarIcon />
+
+                  <span
+                    className="font-bold text-lg"
+                    style={{
+                      color: "var(--ink)",
+                    }}
+                  >
+                    {productRating.toFixed(1)}
+                  </span>
+                </div>
+
+                <p className="text-[10px] text-gray-500">
+                  {reviewCount} {reviewCount === 1 ? "review" : "reviews"}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {reviewCount === 0 ? (
+            <div
+              className="rounded-xl border bg-white p-7 text-center"
+              style={{
+                borderColor: "var(--sand)",
+              }}
+            >
+              <div
+                className="w-10 h-10 rounded-full mx-auto flex items-center justify-center"
+                style={{
+                  background: "#fbf3df",
+                  color: "var(--gold)",
+                }}
+              >
+                <StarOutlineIcon />
+              </div>
+
+              <p className="text-sm font-medium mt-3">No product reviews yet</p>
+
+              <p className="text-xs text-gray-500 mt-1">
+                Reviews will appear after buyers complete their orders.
+              </p>
+            </div>
+          ) : (
+            <div
+              className="rounded-xl border bg-white overflow-hidden"
+              style={{
+                borderColor: "var(--sand)",
+              }}
+            >
+              {reviews.map((review) => {
+                const buyerRaw = review.users;
+
+                const buyer = Array.isArray(buyerRaw) ? buyerRaw[0] : buyerRaw;
+
+                const reviewerName = buyer?.full_name?.trim() || "Teraa buyer";
+
+                const initial = reviewerName.charAt(0).toUpperCase() || "T";
+
+                return (
+                  <article
+                    key={review.id}
+                    className="p-4 sm:p-5 border-b last:border-b-0"
+                    style={{
+                      borderColor: "var(--sand)",
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      {buyer?.profile_photo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={buyer.profile_photo_url}
+                          alt=""
+                          className="w-9 h-9 rounded-full object-cover shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-xs text-white font-semibold shrink-0"
+                          style={{
+                            background: "var(--indigo)",
+                          }}
+                        >
+                          {initial}
+                        </div>
+                      )}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium">
+                              {reviewerName}
+                            </p>
+
+                            <div className="mt-1">
+                              <StaticStarRating
+                                rating={Number(review.rating)}
+                                size={13}
+                              />
+                            </div>
+                          </div>
+
+                          <time className="text-[10px] text-gray-400 shrink-0">
+                            {formatReviewDate(review.created_at)}
+                          </time>
+                        </div>
+
+                        {review.comment ? (
+                          <p className="text-sm text-gray-600 leading-relaxed mt-3 whitespace-pre-wrap">
+                            {review.comment}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-400 mt-3">
+                            Buyer left a rating without a written review.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </main>
     </>
   );
@@ -502,6 +697,47 @@ function PaymentRow({
 
         <p className="text-xs text-gray-500 mt-0.5">{description}</p>
       </div>
+    </div>
+  );
+}
+
+/* --------------------------------
+   STAR RATING
+-------------------------------- */
+
+function StaticStarRating({
+  rating,
+  size = 14,
+}: {
+  rating: number;
+  size?: number;
+}) {
+  const roundedRating = Math.round(rating);
+
+  return (
+    <div
+      className="flex items-center gap-0.5"
+      aria-label={`${rating.toFixed(1)} out of 5 stars`}
+    >
+      {[1, 2, 3, 4, 5].map((value) => (
+        <svg
+          key={value}
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill={value <= roundedRating ? "currentColor" : "none"}
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            color: "var(--gold)",
+          }}
+          aria-hidden="true"
+        >
+          <path d="m12 2.5 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5-4.7-4.6 6.5-.9L12 2.5Z" />
+        </svg>
+      ))}
     </div>
   );
 }
@@ -588,6 +824,24 @@ function StarIcon() {
       style={{
         color: "var(--gold)",
       }}
+      aria-hidden="true"
+    >
+      <path d="m12 2.5 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5-4.7-4.6 6.5-.9L12 2.5Z" />
+    </svg>
+  );
+}
+
+function StarOutlineIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
       <path d="m12 2.5 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5-4.7-4.6 6.5-.9L12 2.5Z" />
@@ -726,12 +980,11 @@ function ChevronRightIcon() {
 }
 
 /* --------------------------------
-   DATE
+   DATES
 -------------------------------- */
 
 function formatListingDate(value: string) {
   const date = new Date(value);
-
   const now = new Date();
 
   const difference = now.getTime() - date.getTime();
@@ -751,6 +1004,14 @@ function formatListingDate(value: string) {
   }
 
   return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatReviewDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",

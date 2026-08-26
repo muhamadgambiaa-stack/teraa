@@ -40,9 +40,13 @@ export default async function OrderPage({
       buyer_id,
 
       order_items(
+        product_id,
         quantity,
         price_at_purchase,
-        products(title)
+        products(
+          id,
+          title
+        )
       ),
 
       sellers(
@@ -66,10 +70,6 @@ export default async function OrderPage({
     notFound();
   }
 
-  /*
-   * RLS protects the order too, but we also
-   * verify ownership at the page level.
-   */
   if (order.buyer_id !== user.id) {
     notFound();
   }
@@ -78,14 +78,17 @@ export default async function OrderPage({
     (
       order as {
         order_items?: {
+          product_id: string;
           quantity: number;
           price_at_purchase: number;
 
           products?:
             | {
+                id: string;
                 title: string;
               }
             | {
+                id: string;
                 title: string;
               }[];
         }[];
@@ -135,38 +138,45 @@ export default async function OrderPage({
     0,
   );
 
-  /*
-   * Buyers may cancel only before shipping.
-   */
   const canCancel = ["placed", "confirmed"].includes(order.status);
 
-  /*
-   * Buyers may only confirm receipt once
-   * shipping has started.
-   */
   const canMarkReceived = ["shipped", "delivered"].includes(order.status);
 
   /*
-   * Look for an existing review only after
-   * the order has been completed.
+   * Teraa currently creates one product per order.
+   * This gives us the product that the buyer can review.
+   */
+  const reviewItem = items[0] ?? null;
+
+  const reviewProductRaw = reviewItem?.products;
+
+  const reviewProduct = Array.isArray(reviewProductRaw)
+    ? reviewProductRaw[0]
+    : reviewProductRaw;
+
+  /*
+   * Existing review for this exact product/order.
    */
   let existingReview: {
     id: string;
+    product_id: string | null;
     rating: number;
     comment: string | null;
   } | null = null;
 
-  if (order.status === "completed") {
+  if (order.status === "completed" && reviewItem) {
     const { data } = await supabase
       .from("reviews")
       .select(
         `
         id,
+        product_id,
         rating,
         comment
         `,
       )
       .eq("order_id", order.id)
+      .eq("product_id", reviewItem.product_id)
       .maybeSingle();
 
     existingReview = data;
@@ -215,18 +225,20 @@ export default async function OrderPage({
             borderColor: "var(--sand)",
           }}
         >
-          {items.map((item, index) => {
-            const productTitle = Array.isArray(item.products)
-              ? item.products[0]?.title
-              : item.products?.title;
+          {items.map((item) => {
+            const productRaw = item.products;
+
+            const product = Array.isArray(productRaw)
+              ? productRaw[0]
+              : productRaw;
 
             return (
               <div
-                key={index}
+                key={item.product_id}
                 className="flex justify-between gap-4 text-sm py-1"
               >
-                <span>
-                  {item.quantity} × {productTitle}
+                <span className="min-w-0">
+                  {item.quantity} × {product?.title ?? "Product"}
                 </span>
 
                 <span className="shrink-0">
@@ -424,73 +436,86 @@ export default async function OrderPage({
           </div>
         )}
 
-        {/* REVIEW FORM */}
+        {/* PRODUCT REVIEW */}
 
-        {order.status === "completed" && seller && !existingReview && (
-          <form
-            action={submitReview}
-            className="rounded-xl border p-4 mb-4 bg-white"
-            style={{
-              borderColor: "var(--sand)",
-            }}
-          >
-            <input type="hidden" name="orderId" value={order.id} />
-
-            <input type="hidden" name="sellerId" value={seller.id} />
-
-            <div className="mb-4">
-              <p className="text-sm font-semibold">Rate your experience</p>
-
-              <p className="text-xs text-gray-500 mt-1">
-                How was your experience with {seller.business_name}?
-              </p>
-            </div>
-
-            <StarRatingInput />
-
-            <div className="mt-4">
-              <label
-                htmlFor="review-comment"
-                className="text-xs font-medium block mb-1.5"
-              >
-                Review{" "}
-                <span className="font-normal text-gray-400">(optional)</span>
-              </label>
-
-              <textarea
-                id="review-comment"
-                name="comment"
-                rows={3}
-                placeholder="How was the item, communication and delivery?"
-                className="w-full rounded-lg border px-3 py-2 text-sm outline-none resize-none"
-                style={{
-                  borderColor: "var(--sand)",
-                }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="rounded-full px-5 py-2 text-xs font-semibold text-white mt-3"
+        {order.status === "completed" &&
+          seller &&
+          reviewItem &&
+          reviewProduct &&
+          !existingReview && (
+            <form
+              action={submitReview}
+              className="rounded-xl border p-4 mb-4 bg-white"
               style={{
-                background: "var(--indigo)",
+                borderColor: "var(--sand)",
               }}
             >
-              Submit review
-            </button>
-          </form>
-        )}
+              <input type="hidden" name="orderId" value={order.id} />
 
-        {/* EXISTING REVIEW */}
+              <input type="hidden" name="sellerId" value={seller.id} />
 
-        {existingReview && (
+              <input
+                type="hidden"
+                name="productId"
+                value={reviewItem.product_id}
+              />
+
+              <div className="mb-4">
+                <p className="text-sm font-semibold">Rate this product</p>
+
+                <p className="text-xs text-gray-500 mt-1">
+                  How was <strong>{reviewProduct.title}</strong>? Was it as
+                  described?
+                </p>
+              </div>
+
+              <StarRatingInput />
+
+              <div className="mt-4">
+                <label
+                  htmlFor="review-comment"
+                  className="text-xs font-medium block mb-1.5"
+                >
+                  Product review{" "}
+                  <span className="font-normal text-gray-400">(optional)</span>
+                </label>
+
+                <textarea
+                  id="review-comment"
+                  name="comment"
+                  rows={3}
+                  placeholder="Describe the product quality, condition, and whether it matched the listing."
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none resize-none"
+                  style={{
+                    borderColor: "var(--sand)",
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="rounded-full px-5 py-2 text-xs font-semibold text-white mt-3"
+                style={{
+                  background: "var(--indigo)",
+                }}
+              >
+                Submit product review
+              </button>
+            </form>
+          )}
+
+        {/* EXISTING PRODUCT REVIEW */}
+
+        {existingReview && reviewProduct && (
           <div
             className="rounded-xl border p-4 mb-4 bg-white"
             style={{
               borderColor: "var(--sand)",
             }}
           >
-            <p className="text-sm font-medium">Your review</p>
+            <p className="text-sm font-medium">Your product review</p>
+
+            <p className="text-xs text-gray-500 mt-1">{reviewProduct.title}</p>
 
             <div className="flex items-center gap-2 mt-2">
               <StaticStarRating rating={Number(existingReview.rating)} />
@@ -524,10 +549,6 @@ export default async function OrderPage({
   );
 }
 
-/* --------------------------------
-   ORDER STATUS
--------------------------------- */
-
 function OrderStatus({ status }: { status: string }) {
   const labels: Record<string, string> = {
     placed: "Order placed",
@@ -551,10 +572,6 @@ function OrderStatus({ status }: { status: string }) {
     </span>
   );
 }
-
-/* --------------------------------
-   STATIC STAR RATING
--------------------------------- */
 
 function StaticStarRating({ rating }: { rating: number }) {
   return (
@@ -584,10 +601,6 @@ function StaticStarRating({ rating }: { rating: number }) {
     </div>
   );
 }
-
-/* --------------------------------
-   ICONS
--------------------------------- */
 
 function CheckIcon() {
   return (
