@@ -4,6 +4,21 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 
+type UserSummary = {
+  id: string;
+  full_name: string | null;
+  profile_photo_url: string | null;
+};
+
+type MessageSummary = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  read_at: string | null;
+};
+
 export default async function MessagesPage() {
   const supabase = await createClient();
 
@@ -26,14 +41,16 @@ export default async function MessagesPage() {
       created_at,
       products(
         id,
-        title
+        title,
+        product_photos(
+          photo_url,
+          is_cover,
+          sort_order
+        )
       )
       `,
     )
-    .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-    .order("created_at", {
-      ascending: false,
-    });
+    .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
 
   if (error) {
     console.error("Conversation lookup failed:", error);
@@ -51,49 +68,133 @@ export default async function MessagesPage() {
     ),
   ];
 
-  let users: {
-    id: string;
-    full_name: string | null;
-  }[] = [];
+  let users: UserSummary[] = [];
 
   if (participantIds.length > 0) {
-    const { data } = await supabase
+    const { data, error: usersError } = await supabase
       .from("users")
-      .select("id, full_name")
+      .select(
+        `
+        id,
+        full_name,
+        profile_photo_url
+        `,
+      )
       .in("id", participantIds);
 
-    users = data ?? [];
+    if (usersError) {
+      console.error("Message participant lookup failed:", usersError);
+    } else {
+      users = (data ?? []) as UserSummary[];
+    }
   }
 
   const conversationIds = rows.map((conversation) => conversation.id);
 
-  let allMessages: {
-    id: string;
-    conversation_id: string;
-    sender_id: string;
-    content: string;
-    created_at: string;
-    read_at: string | null;
-  }[] = [];
+  let allMessages: MessageSummary[] = [];
 
   if (conversationIds.length > 0) {
-    const { data } = await supabase
+    const { data, error: messagesError } = await supabase
       .from("messages")
-      .select("id, conversation_id, sender_id, content, created_at, read_at")
+      .select(
+        `
+        id,
+        conversation_id,
+        sender_id,
+        content,
+        created_at,
+        read_at
+        `,
+      )
       .in("conversation_id", conversationIds)
       .order("created_at", {
         ascending: false,
       });
 
-    allMessages = data ?? [];
+    if (messagesError) {
+      console.error("Message lookup failed:", messagesError);
+    } else {
+      allMessages = (data ?? []) as MessageSummary[];
+    }
   }
+
+  /*
+   * Prepare conversation information once,
+   * then sort by the newest message.
+   */
+  const prepared = rows
+    .map((conversation) => {
+      const otherUserId =
+        conversation.buyer_id === user.id
+          ? conversation.seller_id
+          : conversation.buyer_id;
+
+      const otherUser = users.find((entry) => entry.id === otherUserId) ?? null;
+
+      const conversationMessages = allMessages.filter(
+        (message) => message.conversation_id === conversation.id,
+      );
+
+      const latestMessage = conversationMessages[0] ?? null;
+
+      const unreadCount = conversationMessages.filter(
+        (message) => message.sender_id !== user.id && message.read_at === null,
+      ).length;
+
+      const productRaw = (
+        conversation as {
+          products?:
+            | {
+                id: string;
+                title: string;
+                product_photos?: {
+                  photo_url: string;
+                  is_cover: boolean;
+                  sort_order: number;
+                }[];
+              }
+            | {
+                id: string;
+                title: string;
+                product_photos?: {
+                  photo_url: string;
+                  is_cover: boolean;
+                  sort_order: number;
+                }[];
+              }[];
+        }
+      ).products;
+
+      const product = Array.isArray(productRaw) ? productRaw[0] : productRaw;
+
+      const photos = product?.product_photos ?? [];
+
+      const productPhoto =
+        photos.find((photo) => photo.is_cover)?.photo_url ??
+        [...photos].sort((a, b) => a.sort_order - b.sort_order)[0]?.photo_url ??
+        null;
+
+      return {
+        conversation,
+        otherUser,
+        otherUserId,
+        latestMessage,
+        unreadCount,
+        product,
+        productPhoto,
+        sortDate: latestMessage?.created_at ?? conversation.created_at,
+      };
+    })
+    .sort(
+      (a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime(),
+    );
 
   return (
     <>
       <SiteHeader />
 
-      <main className="max-w-2xl mx-auto px-4 py-6">
-        <div className="mb-6">
+      <main className="max-w-2xl mx-auto px-4 py-5">
+        <div className="mb-5">
           <h1
             className="font-display text-2xl"
             style={{
@@ -108,9 +209,9 @@ export default async function MessagesPage() {
           </p>
         </div>
 
-        {rows.length === 0 ? (
+        {prepared.length === 0 ? (
           <div
-            className="rounded-xl border p-10 text-center"
+            className="rounded-xl border p-10 text-center bg-white"
             style={{
               borderColor: "var(--sand)",
             }}
@@ -120,8 +221,19 @@ export default async function MessagesPage() {
             <p className="font-medium">No messages yet</p>
 
             <p className="text-sm text-gray-500 mt-1">
-              Your conversations will appear here.
+              When you message a seller or a buyer contacts you, the
+              conversation will appear here.
             </p>
+
+            <Link
+              href="/"
+              className="inline-block rounded-full px-5 py-2.5 text-white text-sm font-medium mt-5"
+              style={{
+                background: "var(--indigo)",
+              }}
+            >
+              Browse products
+            </Link>
           </div>
         ) : (
           <div
@@ -130,105 +242,185 @@ export default async function MessagesPage() {
               borderColor: "var(--sand)",
             }}
           >
-            {rows.map((conversation) => {
-              const otherUserId =
-                conversation.buyer_id === user.id
-                  ? conversation.seller_id
-                  : conversation.buyer_id;
+            {prepared.map(
+              ({
+                conversation,
+                otherUser,
+                otherUserId,
+                latestMessage,
+                unreadCount,
+                product,
+                productPhoto,
+              }) => {
+                const displayName = otherUser?.full_name ?? "Teraa user";
 
-              const otherUser = users.find((entry) => entry.id === otherUserId);
+                const initial = displayName.charAt(0).toUpperCase() || "T";
 
-              const messages = allMessages.filter(
-                (message) => message.conversation_id === conversation.id,
-              );
-
-              const latestMessage = messages[0] ?? null;
-
-              const unreadCount = messages.filter(
-                (message) => message.sender_id !== user.id && !message.read_at,
-              ).length;
-
-              const productRaw = (
-                conversation as {
-                  products?:
-                    | {
-                        id: string;
-                        title: string;
-                      }
-                    | {
-                        id: string;
-                        title: string;
-                      }[];
-                }
-              ).products;
-
-              const product = Array.isArray(productRaw)
-                ? productRaw[0]
-                : productRaw;
-
-              return (
-                <Link
-                  key={conversation.id}
-                  href={`/messages/${conversation.id}`}
-                  className="flex items-center gap-3 px-4 py-4 border-b last:border-b-0 hover:bg-gray-50 transition"
-                  style={{
-                    borderColor: "var(--sand)",
-                  }}
-                >
+                return (
                   <div
-                    className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 font-semibold"
+                    key={conversation.id}
+                    className="border-b last:border-b-0"
                     style={{
-                      background: "var(--sand)",
-                      color: "var(--indigo)",
+                      borderColor: "var(--sand)",
                     }}
                   >
-                    {(otherUser?.full_name ?? "T").charAt(0).toUpperCase()}
-                  </div>
+                    <Link
+                      href={`/messages/${conversation.id}`}
+                      className={`flex items-center gap-3 px-3 sm:px-4 py-4 hover:bg-gray-50 transition ${
+                        unreadCount > 0 ? "bg-[#fffdf8]" : ""
+                      }`}
+                    >
+                      {/* USER AVATAR */}
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium truncate">
-                        {otherUser?.full_name ?? "Teraa user"}
-                      </p>
+                      <div className="relative shrink-0">
+                        {otherUser?.profile_photo_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={otherUser.profile_photo_url}
+                            alt={displayName}
+                            className="w-12 h-12 rounded-full object-cover border"
+                            style={{
+                              borderColor: "var(--sand)",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="w-12 h-12 rounded-full flex items-center justify-center font-semibold text-white"
+                            style={{
+                              background: "var(--indigo)",
+                            }}
+                          >
+                            {initial}
+                          </div>
+                        )}
 
-                      {latestMessage && (
-                        <span className="text-[10px] text-gray-400 shrink-0">
-                          {new Date(
-                            latestMessage.created_at,
-                          ).toLocaleDateString()}
-                        </span>
-                      )}
+                        {unreadCount > 0 && (
+                          <span
+                            className="absolute -top-1 -right-1 min-w-[19px] h-[19px] px-1 rounded-full flex items-center justify-center text-[10px] text-white font-semibold border-2 border-white"
+                            style={{
+                              background: "var(--clay)",
+                            }}
+                          >
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* CONTENT */}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-3">
+                          <p
+                            className={`text-sm truncate ${
+                              unreadCount > 0 ? "font-semibold" : "font-medium"
+                            }`}
+                          >
+                            {displayName}
+                          </p>
+
+                          {latestMessage && (
+                            <span className="text-[10px] text-gray-400 shrink-0">
+                              {formatMessageTime(latestMessage.created_at)}
+                            </span>
+                          )}
+                        </div>
+
+                        {product && (
+                          <div className="flex items-center gap-2 mt-1">
+                            {productPhoto && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={productPhoto}
+                                alt=""
+                                className="w-6 h-6 rounded object-cover border shrink-0"
+                                style={{
+                                  borderColor: "var(--sand)",
+                                }}
+                              />
+                            )}
+
+                            <p className="text-xs text-gray-500 truncate">
+                              {product.title}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between gap-3 mt-1">
+                          <p
+                            className={`text-xs truncate ${
+                              unreadCount > 0
+                                ? "text-gray-700 font-medium"
+                                : "text-gray-400"
+                            }`}
+                          >
+                            {latestMessage
+                              ? latestMessage.sender_id === user.id
+                                ? `You: ${latestMessage.content}`
+                                : latestMessage.content
+                              : "Start conversation"}
+                          </p>
+
+                          {unreadCount > 0 && (
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{
+                                background: "var(--clay)",
+                              }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+
+                    {/* PROFILE SHORTCUT */}
+
+                    <div className="px-4 pb-2 -mt-1 flex justify-end">
+                      <Link
+                        href={`/profile/${otherUserId}`}
+                        className="text-[11px] text-gray-400 hover:underline"
+                      >
+                        View profile
+                      </Link>
                     </div>
-
-                    {product && (
-                      <p className="text-xs text-gray-500 truncate mt-0.5">
-                        {product.title}
-                      </p>
-                    )}
-
-                    <div className="flex items-center justify-between gap-3 mt-1">
-                      <p className="text-xs text-gray-400 truncate">
-                        {latestMessage?.content ?? "Start conversation"}
-                      </p>
-
-                      {unreadCount > 0 && (
-                        <span
-                          className="min-w-5 h-5 rounded-full px-1.5 flex items-center justify-center text-[10px] text-white font-semibold shrink-0"
-                          style={{
-                            background: "var(--clay)",
-                          }}
-                        >
-                          {unreadCount}
-                        </span>
-                      )}
-                    </div>
                   </div>
-                </Link>
-              );
-            })}
+                );
+              },
+            )}
           </div>
         )}
       </main>
     </>
   );
+}
+
+function formatMessageTime(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+
+  const sameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
+  if (sameDay) {
+    return date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  const sameYear = date.getFullYear() === now.getFullYear();
+
+  if (sameYear) {
+    return date.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+    });
+  }
+
+  return date.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
