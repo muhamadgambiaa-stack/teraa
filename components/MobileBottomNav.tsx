@@ -2,30 +2,132 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import { createClient } from "@/lib/supabase/client";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUnreadMessages() {
+      const supabase = createClient();
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        if (active) {
+          setUnreadMessages(0);
+        }
+
+        return;
+      }
+
+      /*
+       * First find every conversation where
+       * the current user is either buyer or seller.
+       */
+      const { data: conversations, error: conversationError } = await supabase
+        .from("conversations")
+        .select("id")
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
+
+      if (conversationError || !conversations || conversations.length === 0) {
+        if (active) {
+          setUnreadMessages(0);
+        }
+
+        return;
+      }
+
+      const conversationIds = conversations.map(
+        (conversation) => conversation.id,
+      );
+
+      /*
+       * Count messages:
+       *
+       * - inside this user's conversations
+       * - sent by somebody else
+       * - read_at is still null
+       */
+      const { count, error: messageError } = await supabase
+        .from("messages")
+        .select("id", {
+          count: "exact",
+          head: true,
+        })
+        .in("conversation_id", conversationIds)
+        .neq("sender_id", user.id)
+        .is("read_at", null);
+
+      if (messageError) {
+        console.error("Could not load unread messages:", messageError);
+
+        return;
+      }
+
+      if (active) {
+        setUnreadMessages(count ?? 0);
+      }
+    }
+
+    loadUnreadMessages();
+
+    /*
+     * Refresh when the user returns to the app/tab.
+     *
+     * This means if they receive/read messages
+     * elsewhere and return, the badge updates.
+     */
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") {
+        loadUnreadMessages();
+      }
+    }
+
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      active = false;
+
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [pathname]);
 
   const items = [
     {
       label: "Home",
       href: "/",
       icon: HomeIcon,
+      badge: 0,
     },
+
     {
       label: "Messages",
       href: "/messages",
       icon: MessageIcon,
+      badge: unreadMessages,
     },
+
     {
       label: "Notifications",
       href: "/notifications",
       icon: NotificationIcon,
+      badge: 0,
     },
+
     {
       label: "Me",
       href: "/account",
       icon: UserIcon,
+      badge: 0,
     },
   ];
 
@@ -36,9 +138,14 @@ export function MobileBottomNav() {
         borderColor: "var(--sand)",
       }}
     >
-      <div className="grid grid-cols-4">
+      <div
+        className="grid grid-cols-4"
+        style={{
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
         {items.map((item) => {
-          const active =
+          const activeItem =
             item.href === "/"
               ? pathname === "/"
               : pathname.startsWith(item.href);
@@ -49,14 +156,27 @@ export function MobileBottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className="flex flex-col items-center justify-center gap-1 py-2.5 text-xs"
+              className="relative flex flex-col items-center justify-center gap-1 py-2.5 text-xs"
               style={{
-                color: active ? "var(--indigo)" : "#6b7280",
+                color: activeItem ? "var(--indigo)" : "#6b7280",
               }}
             >
-              <Icon active={active} />
+              <div className="relative">
+                <Icon active={activeItem} />
 
-              <span className={active ? "font-semibold" : ""}>
+                {item.badge > 0 && (
+                  <span
+                    className="absolute -top-2 -right-3 min-w-[18px] h-[18px] rounded-full px-1 flex items-center justify-center text-[10px] text-white font-semibold"
+                    style={{
+                      background: "var(--clay)",
+                    }}
+                  >
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
+              </div>
+
+              <span className={activeItem ? "font-semibold" : ""}>
                 {item.label}
               </span>
             </Link>
@@ -76,6 +196,7 @@ function HomeIcon({ active }: { active: boolean }) {
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.8"
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -95,6 +216,7 @@ function MessageIcon({ active }: { active: boolean }) {
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.8"
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -114,6 +236,7 @@ function NotificationIcon({ active }: { active: boolean }) {
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.8"
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -133,6 +256,7 @@ function UserIcon({ active }: { active: boolean }) {
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.8"
+      aria-hidden="true"
     >
       <circle cx="12" cy="8" r="4" />
 
