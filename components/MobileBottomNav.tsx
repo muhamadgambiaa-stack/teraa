@@ -10,11 +10,12 @@ export function MobileBottomNav() {
   const pathname = usePathname();
 
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     let active = true;
 
-    async function loadUnreadMessages() {
+    async function loadBadges() {
       const supabase = createClient();
 
       const {
@@ -24,71 +25,86 @@ export function MobileBottomNav() {
       if (!user) {
         if (active) {
           setUnreadMessages(0);
+          setUnreadNotifications(0);
         }
 
         return;
       }
 
       /*
-       * First find every conversation where
-       * the current user is either buyer or seller.
+       * ----------------------------
+       * UNREAD MESSAGES
+       * ----------------------------
        */
+
       const { data: conversations, error: conversationError } = await supabase
         .from("conversations")
         .select("id")
         .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
 
-      if (conversationError || !conversations || conversations.length === 0) {
-        if (active) {
-          setUnreadMessages(0);
-        }
-
-        return;
+      if (conversationError) {
+        console.error("Could not load conversations:", conversationError);
       }
 
-      const conversationIds = conversations.map(
-        (conversation) => conversation.id,
-      );
+      if (!conversationError && conversations && conversations.length > 0) {
+        const conversationIds = conversations.map(
+          (conversation) => conversation.id,
+        );
+
+        const { count, error: messageError } = await supabase
+          .from("messages")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .in("conversation_id", conversationIds)
+          .neq("sender_id", user.id)
+          .is("read_at", null);
+
+        if (messageError) {
+          console.error("Could not load unread messages:", messageError);
+        } else if (active) {
+          setUnreadMessages(count ?? 0);
+        }
+      } else if (active) {
+        setUnreadMessages(0);
+      }
 
       /*
-       * Count messages:
-       *
-       * - inside this user's conversations
-       * - sent by somebody else
-       * - read_at is still null
+       * ----------------------------
+       * UNREAD NOTIFICATIONS
+       * ----------------------------
        */
-      const { count, error: messageError } = await supabase
-        .from("messages")
-        .select("id", {
-          count: "exact",
-          head: true,
-        })
-        .in("conversation_id", conversationIds)
-        .neq("sender_id", user.id)
-        .is("read_at", null);
 
-      if (messageError) {
-        console.error("Could not load unread messages:", messageError);
+      const { count: notificationCount, error: notificationError } =
+        await supabase
+          .from("notifications")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .eq("user_id", user.id)
+          .is("read_at", null);
 
-        return;
-      }
-
-      if (active) {
-        setUnreadMessages(count ?? 0);
+      if (notificationError) {
+        console.error(
+          "Could not load unread notifications:",
+          notificationError,
+        );
+      } else if (active) {
+        setUnreadNotifications(notificationCount ?? 0);
       }
     }
 
-    loadUnreadMessages();
+    loadBadges();
 
     /*
-     * Refresh when the user returns to the app/tab.
-     *
-     * This means if they receive/read messages
-     * elsewhere and return, the badge updates.
+     * Refresh whenever the route changes
+     * or the user returns to the browser/app.
      */
     function refreshWhenVisible() {
       if (document.visibilityState === "visible") {
-        loadUnreadMessages();
+        loadBadges();
       }
     }
 
@@ -120,7 +136,7 @@ export function MobileBottomNav() {
       label: "Notifications",
       href: "/notifications",
       icon: NotificationIcon,
-      badge: 0,
+      badge: unreadNotifications,
     },
 
     {
