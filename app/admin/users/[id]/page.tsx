@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/require-admin";
 import { SiteHeader } from "@/components/SiteHeader";
 
+import { banUser, restrictUser, restoreUser, suspendUser } from "../actions";
+
 export default async function AdminUserDetailPage({
   params,
 }: {
@@ -11,7 +13,7 @@ export default async function AdminUserDetailPage({
 }) {
   const { id } = await params;
 
-  const { supabase } = await requireAdmin();
+  const { supabase, user: admin } = await requireAdmin();
 
   const { data: user, error } = await supabase
     .from("users")
@@ -40,11 +42,14 @@ export default async function AdminUserDetailPage({
     notFound();
   }
 
+  const isOwnAccount = admin.id === user.id;
+  const isAdminAccount = user.role === "admin";
+
   return (
     <>
       <SiteHeader />
 
-      <main className="max-w-3xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-4 py-6">
         <Link
           href="/admin/users"
           className="text-sm text-gray-500 hover:underline"
@@ -58,7 +63,8 @@ export default async function AdminUserDetailPage({
             borderColor: "var(--sand)",
           }}
         >
-          {/* User header */}
+          {/* USER HEADER */}
+
           <div className="p-6">
             <div className="flex items-center gap-4">
               {user.profile_photo_url ? (
@@ -111,7 +117,8 @@ export default async function AdminUserDetailPage({
             </div>
           </div>
 
-          {/* Account information */}
+          {/* ACCOUNT INFO */}
+
           <div
             className="border-t p-6"
             style={{
@@ -138,7 +145,8 @@ export default async function AdminUserDetailPage({
             </div>
           </div>
 
-          {/* Moderation information */}
+          {/* CURRENT MODERATION STATUS */}
+
           <div
             className="border-t p-6"
             style={{
@@ -155,8 +163,7 @@ export default async function AdminUserDetailPage({
                   color: "var(--leaf)",
                 }}
               >
-                This account is currently active and has no marketplace
-                restrictions.
+                This account is currently active.
               </div>
             ) : (
               <div
@@ -180,7 +187,162 @@ export default async function AdminUserDetailPage({
             )}
           </div>
 
-          {/* Useful links */}
+          {/* ADMIN ACTIONS */}
+
+          <div
+            className="border-t p-6"
+            style={{
+              borderColor: "var(--sand)",
+            }}
+          >
+            <h2 className="font-semibold">Admin actions</h2>
+
+            <p className="text-sm text-gray-500 mt-1 mb-5">
+              Restrict, suspend or ban this account.
+            </p>
+
+            {isOwnAccount || isAdminAccount ? (
+              <div
+                className="rounded-lg border p-4 text-sm text-gray-500"
+                style={{
+                  borderColor: "var(--sand)",
+                }}
+              >
+                Admin accounts cannot be restricted, suspended or banned from
+                this page.
+              </div>
+            ) : user.account_status !== "active" ? (
+              <div>
+                <form action={restoreUser.bind(null, user.id)}>
+                  <button
+                    type="submit"
+                    className="rounded-full px-5 py-2.5 text-white text-sm font-medium"
+                    style={{
+                      background: "var(--leaf)",
+                    }}
+                  >
+                    Restore account
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-3 gap-4">
+                {/* RESTRICT */}
+
+                <form
+                  action={restrictUser.bind(null, user.id)}
+                  className="rounded-xl border p-4"
+                  style={{
+                    borderColor: "var(--sand)",
+                  }}
+                >
+                  <p className="font-medium text-sm">Restrict</p>
+
+                  <p className="text-xs text-gray-500 mt-1 mb-3">
+                    Block new marketplace actions while keeping account access.
+                  </p>
+
+                  <textarea
+                    name="reason"
+                    required
+                    rows={3}
+                    placeholder="Reason for restriction..."
+                    className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
+                    style={{
+                      borderColor: "var(--sand)",
+                    }}
+                  />
+
+                  <button
+                    type="submit"
+                    className="w-full rounded-full py-2 text-white text-xs font-medium mt-3"
+                    style={{
+                      background: "var(--gold)",
+                    }}
+                  >
+                    Restrict user
+                  </button>
+                </form>
+
+                {/* SUSPEND */}
+
+                <form
+                  action={suspendUser.bind(null, user.id)}
+                  className="rounded-xl border p-4"
+                  style={{
+                    borderColor: "var(--sand)",
+                  }}
+                >
+                  <p className="font-medium text-sm">Suspend</p>
+
+                  <p className="text-xs text-gray-500 mt-1 mb-3">
+                    Temporarily block the account from marketplace activity.
+                  </p>
+
+                  <textarea
+                    name="reason"
+                    required
+                    rows={3}
+                    placeholder="Reason for suspension..."
+                    className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
+                    style={{
+                      borderColor: "var(--sand)",
+                    }}
+                  />
+
+                  <button
+                    type="submit"
+                    className="w-full rounded-full py-2 text-white text-xs font-medium mt-3"
+                    style={{
+                      background: "var(--clay)",
+                    }}
+                  >
+                    Suspend user
+                  </button>
+                </form>
+
+                {/* BAN */}
+
+                <form
+                  action={banUser.bind(null, user.id)}
+                  className="rounded-xl border p-4"
+                  style={{
+                    borderColor: "var(--sand)",
+                  }}
+                >
+                  <p className="font-medium text-sm">Ban</p>
+
+                  <p className="text-xs text-gray-500 mt-1 mb-3">
+                    Permanently block normal marketplace activity.
+                  </p>
+
+                  <textarea
+                    name="reason"
+                    required
+                    rows={3}
+                    placeholder="Reason for ban..."
+                    className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
+                    style={{
+                      borderColor: "var(--sand)",
+                    }}
+                  />
+
+                  <button
+                    type="submit"
+                    className="w-full rounded-full py-2 text-white text-xs font-medium mt-3"
+                    style={{
+                      background: "#555",
+                    }}
+                  >
+                    Ban user
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+
+          {/* LINKS */}
+
           <div
             className="border-t p-6"
             style={{
