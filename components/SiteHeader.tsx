@@ -1,9 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { SearchBar } from "./SearchBar";
 import { HeaderAuthActions } from "./HeaderAuthActions";
 
 export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
+  const pathname = usePathname();
+
+  // Search should only appear on the homepage.
+  const showSearch = pathname === "/";
+
   return (
     <header
       className="border-b bg-white sticky top-0 z-40"
@@ -23,9 +31,11 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
           Teraa
         </Link>
 
-        <div className="flex-1">
-          <SearchBar initialQuery={searchQuery} />
-        </div>
+        {showSearch && (
+          <div className="flex-1">
+            <SearchBar initialQuery={searchQuery} />
+          </div>
+        )}
 
         <nav className="flex items-center gap-3 text-sm ml-auto shrink-0">
           <HeaderAuthActions />
@@ -34,7 +44,7 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
 
       {/* MOBILE HEADER */}
       <div className="sm:hidden">
-        <div className="px-4 pt-4 pb-3">
+        <div className={showSearch ? "px-4 pt-4 pb-3" : "px-4 py-4"}>
           <Link
             href="/"
             className="font-display text-3xl font-bold"
@@ -46,9 +56,11 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
           </Link>
         </div>
 
-        <div className="px-4 pb-4">
-          <SearchBar initialQuery={searchQuery} />
-        </div>
+        {showSearch && (
+          <div className="px-4 pb-4">
+            <SearchBar initialQuery={searchQuery} />
+          </div>
+        )}
       </div>
     </header>
   );
