@@ -126,6 +126,7 @@ export default async function AdminHomePage() {
           </p>
         </div>
 
+        {/* Dashboard statistics */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {stats.map((stat) => (
             <Link
@@ -150,6 +151,7 @@ export default async function AdminHomePage() {
           ))}
         </div>
 
+        {/* Management */}
         <section className="mt-8">
           <h2 className="font-semibold mb-3">Management</h2>
 
@@ -193,7 +195,6 @@ export default async function AdminHomePage() {
               href="/admin/users"
               title="Users"
               description="Manage buyers and general user accounts"
-              comingSoon
             />
           </div>
         </section>
@@ -206,34 +207,11 @@ function AdminLink({
   href,
   title,
   description,
-  comingSoon = false,
 }: {
   href: string;
   title: string;
   description: string;
-  comingSoon?: boolean;
 }) {
-  if (comingSoon) {
-    return (
-      <div
-        className="flex items-center justify-between gap-4 px-4 py-4 border-b last:border-b-0 opacity-60"
-        style={{
-          borderColor: "var(--sand)",
-        }}
-      >
-        <div>
-          <p className="font-medium text-sm">{title}</p>
-
-          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
-        </div>
-
-        <span className="text-[10px] rounded-full px-2 py-1 bg-gray-100 text-gray-500">
-          Coming soon
-        </span>
-      </div>
-    );
-  }
-
   return (
     <Link
       href={href}
