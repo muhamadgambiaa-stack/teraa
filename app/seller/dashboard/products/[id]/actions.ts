@@ -107,24 +107,23 @@ export async function updateListing(productId: string, formData: FormData) {
     await requireOwnProduct(productId);
 
   /*
-   * Allow a moderated seller to correct an
-   * admin-hidden listing so they can appeal it.
+   * Allow a seller to correct an admin-hidden
+   * listing so they can later submit an appeal.
    *
-   * Normal listings require a fully-active account.
+   * Normal listings require an active and
+   * verified seller account.
    */
   if (product.status !== "admin_hidden") {
     ensureSellerCanOperate({
       profileStatus: profile.account_status,
-
       sellerStatus: seller.account_status,
-
       verificationStatus: seller.verification_status,
     });
   }
 
   /*
-   * Banned accounts should not be able to modify
-   * anything, including moderated listings.
+   * Banned accounts cannot modify anything,
+   * including admin-hidden listings.
    */
   if (
     profile.account_status === "banned" ||
@@ -133,17 +132,27 @@ export async function updateListing(productId: string, formData: FormData) {
     redirect("/account/status");
   }
 
+  /*
+   * FORM VALUES
+   */
+
   const title = String(formData.get("title") ?? "").trim();
 
   const description = String(formData.get("description") ?? "").trim();
 
+  const categoryId = String(formData.get("category_id") ?? "").trim();
+
   const locationCity = String(formData.get("location_city") ?? "").trim();
 
-  const condition = String(formData.get("condition") ?? "");
+  const condition = String(formData.get("condition") ?? "").trim();
 
   const price = Number(formData.get("price"));
 
   const stockQuantity = Number(formData.get("stock_quantity"));
+
+  /*
+   * VALIDATION
+   */
 
   if (!title) {
     throw new Error("Product title is required.");
@@ -151,6 +160,10 @@ export async function updateListing(productId: string, formData: FormData) {
 
   if (!description) {
     throw new Error("Product description is required.");
+  }
+
+  if (!categoryId) {
+    throw new Error("Choose a product category.");
   }
 
   if (!locationCity) {
@@ -169,25 +182,59 @@ export async function updateListing(productId: string, formData: FormData) {
     throw new Error("Invalid product condition.");
   }
 
-  let nextStatus = product.status;
+  /*
+   * CATEGORY SECURITY CHECK
+   *
+   * Never trust the category UUID submitted
+   * by the browser. Confirm that it exists.
+   */
+  const { data: category, error: categoryError } = await supabase
+    .from("categories")
+    .select(
+      `
+      id,
+      name
+      `,
+    )
+    .eq("id", categoryId)
+    .maybeSingle();
+
+  if (categoryError || !category) {
+    throw new Error("The selected product category is invalid.");
+  }
 
   /*
-   * Important:
+   * DETERMINE NEXT LISTING STATUS
    *
-   * admin_hidden listings stay admin_hidden.
-   * Seller cannot restore them by editing stock.
+   * admin_hidden:
+   * Editing must never restore it.
    *
-   * Seller-hidden listings also stay hidden.
+   * hidden:
+   * Editing must never automatically make
+   * the seller-hidden product visible.
+   *
+   * Everything else:
+   * Stock controls whether it is active or
+   * out of stock.
    */
+  let nextStatus = product.status;
+
   if (product.status !== "admin_hidden" && product.status !== "hidden") {
     nextStatus = stockQuantity > 0 ? "active" : "out_of_stock";
   }
+
+  /*
+   * UPDATE PRODUCT
+   */
 
   const { error } = await supabase
     .from("products")
     .update({
       title,
+
       description,
+
+      category_id: categoryId,
 
       location_city: locationCity,
 
@@ -202,8 +249,14 @@ export async function updateListing(productId: string, formData: FormData) {
     .eq("id", productId);
 
   if (error) {
+    console.error("Listing update failed:", error);
+
     throw new Error(error.message || "Couldn't update listing.");
   }
+
+  /*
+   * REFRESH AFFECTED PAGES
+   */
 
   revalidatePath(`/seller/dashboard/products/${productId}`);
 
@@ -212,6 +265,7 @@ export async function updateListing(productId: string, formData: FormData) {
   revalidatePath(`/products/${productId}`);
 
   revalidatePath("/");
+
   revalidatePath("/search");
 
   redirect(`/seller/dashboard/products/${productId}`);
@@ -223,9 +277,7 @@ export async function hideListing(productId: string) {
 
   ensureSellerCanOperate({
     profileStatus: profile.account_status,
-
     sellerStatus: seller.account_status,
-
     verificationStatus: seller.verification_status,
   });
 
@@ -251,6 +303,7 @@ export async function hideListing(productId: string) {
   revalidatePath("/seller/dashboard");
 
   revalidatePath("/");
+
   revalidatePath("/search");
 
   redirect("/seller/dashboard");
@@ -262,9 +315,7 @@ export async function reactivateListing(productId: string) {
 
   ensureSellerCanOperate({
     profileStatus: profile.account_status,
-
     sellerStatus: seller.account_status,
-
     verificationStatus: seller.verification_status,
   });
 
@@ -296,6 +347,7 @@ export async function reactivateListing(productId: string) {
   revalidatePath("/seller/dashboard");
 
   revalidatePath("/");
+
   revalidatePath("/search");
 
   redirect("/seller/dashboard");
@@ -317,8 +369,8 @@ export async function requestListingReview(
   /*
    * Banned accounts cannot appeal.
    *
-   * Restricted/suspended accounts may still appeal
-   * an admin-hidden listing so disputes can be resolved.
+   * Restricted or suspended accounts may
+   * still appeal admin-hidden listings.
    */
   if (
     profile.account_status === "banned" ||
@@ -341,7 +393,12 @@ export async function requestListingReview(
 
   const { data: existingAppeal, error: appealLookupError } = await supabase
     .from("listing_appeals")
-    .select("id, status")
+    .select(
+      `
+      id,
+      status
+      `,
+    )
     .eq("product_id", productId)
     .eq("status", "pending")
     .maybeSingle();
