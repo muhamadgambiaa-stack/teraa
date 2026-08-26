@@ -50,7 +50,7 @@ export default async function NotificationsPage() {
     <>
       <SiteHeader />
 
-      <main className="max-w-2xl mx-auto px-4 py-5">
+      <main className="max-w-2xl mx-auto px-4 py-5 pb-24 sm:pb-6">
         <div className="flex items-start justify-between gap-4 mb-5">
           <div>
             <h1
@@ -89,7 +89,15 @@ export default async function NotificationsPage() {
               borderColor: "var(--sand)",
             }}
           >
-            <div className="text-3xl mb-3">🔔</div>
+            <div
+              className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center"
+              style={{
+                background: "#f3f4f6",
+                color: "var(--indigo)",
+              }}
+            >
+              <NotificationIcon type="default" size={22} />
+            </div>
 
             <p className="font-medium">No notifications yet</p>
 
@@ -114,12 +122,13 @@ export default async function NotificationsPage() {
                   }`}
                 >
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-lg"
+                    className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                     style={{
                       background: getNotificationBackground(notification.type),
+                      color: getNotificationColor(notification.type),
                     }}
                   >
-                    {getNotificationIcon(notification.type)}
+                    <NotificationIcon type={notification.type} />
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -202,28 +211,83 @@ export default async function NotificationsPage() {
   );
 }
 
-function getNotificationIcon(type: string) {
+function NotificationIcon({
+  type,
+  size = 18,
+}: {
+  type: string;
+  size?: number;
+}) {
+  const props = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
   switch (type) {
     case "order":
-      return "📦";
+      return (
+        <svg {...props}>
+          <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
+          <path d="m4 7.5 8 4.5 8-4.5" />
+          <path d="M12 12v9" />
+        </svg>
+      );
 
     case "payment":
-      return "💳";
+      return (
+        <svg {...props}>
+          <rect x="3" y="5" width="18" height="14" rx="2" />
+          <path d="M3 10h18" />
+          <path d="M7 15h3" />
+        </svg>
+      );
 
     case "message":
-      return "💬";
+      return (
+        <svg {...props}>
+          <path d="M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-4.5A2 2 0 0 1 2 15V7a2 2 0 0 1 2-2Z" />
+        </svg>
+      );
 
     case "verification":
-      return "✓";
+      return (
+        <svg {...props}>
+          <path d="M12 3 5 6v5c0 4.8 2.8 8 7 10 4.2-2 7-5.2 7-10V6l-7-3Z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+      );
 
     case "moderation":
-      return "⚠️";
+      return (
+        <svg {...props}>
+          <path d="M12 3 2.8 20h18.4L12 3Z" />
+          <path d="M12 9v4" />
+          <path d="M12 17h.01" />
+        </svg>
+      );
 
     case "appeal":
-      return "↩️";
+      return (
+        <svg {...props}>
+          <path d="M9 7 4 12l5 5" />
+          <path d="M4 12h9a7 7 0 0 1 7 7" />
+        </svg>
+      );
 
     default:
-      return "🔔";
+      return (
+        <svg {...props}>
+          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" />
+          <path d="M10 21h4" />
+        </svg>
+      );
   }
 }
 
@@ -233,8 +297,6 @@ function getNotificationBackground(type: string) {
       return "#e6edf3";
 
     case "payment":
-      return "#e3f0e8";
-
     case "verification":
       return "#e3f0e8";
 
@@ -249,9 +311,25 @@ function getNotificationBackground(type: string) {
   }
 }
 
+function getNotificationColor(type: string) {
+  switch (type) {
+    case "payment":
+    case "verification":
+      return "var(--leaf)";
+
+    case "moderation":
+      return "var(--clay)";
+
+    case "appeal":
+      return "var(--gold)";
+
+    default:
+      return "var(--indigo)";
+  }
+}
+
 function formatNotificationTime(value: string) {
   const date = new Date(value);
-
   const now = new Date();
 
   const difference = now.getTime() - date.getTime();
