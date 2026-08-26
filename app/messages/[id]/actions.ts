@@ -16,6 +16,16 @@ async function requireConversation(conversationId: string) {
     redirect(`/login?redirect=/messages/${conversationId}`);
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from("users")
+    .select("id, account_status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    throw new Error("Could not load your Teraa account.");
+  }
+
   const { data: conversation, error } = await supabase
     .from("conversations")
     .select("id, buyer_id, seller_id")
@@ -34,11 +44,16 @@ async function requireConversation(conversationId: string) {
     supabase,
     conversation,
     user,
+    profile,
   };
 }
 
 export async function sendMessage(conversationId: string, formData: FormData) {
-  const { supabase, user } = await requireConversation(conversationId);
+  const { supabase, user, profile } = await requireConversation(conversationId);
+
+  if (profile.account_status !== "active") {
+    redirect("/account/status");
+  }
 
   const content = String(formData.get("content") ?? "").trim();
 
@@ -62,6 +77,7 @@ export async function sendMessage(conversationId: string, formData: FormData) {
 
   revalidatePath(`/messages/${conversationId}`);
   revalidatePath("/messages");
+  revalidatePath("/notifications");
 }
 
 export async function markConversationRead(conversationId: string) {

@@ -1,72 +1,169 @@
 "use server";
 
 import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 import { COMMISSION_RATE } from "@/lib/constants";
 
 export async function createOrder(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  const productId = formData.get("productId") as string;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Buyers must be signed in to complete an order. The checkout page
-  // itself already redirects unauthenticated visitors before they see
-  // the form, this is the second, non-bypassable layer: even a direct
-  // POST to this action without a session gets sent to log in first.
+  const productId = String(formData.get("productId") ?? "");
+
   if (!user) {
     redirect(`/login?redirect=/products/${productId}/checkout`);
   }
 
+  /*
+   * Check buyer account moderation status.
+   *
+   * Restricted / suspended / banned users
+   * may browse and view their history,
+   * but cannot create new marketplace orders.
+   */
+  const { data: buyerProfile, error: buyerProfileError } = await supabase
+    .from("users")
+    .select("id, account_status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (buyerProfileError || !buyerProfile) {
+    throw new Error("Could not load your Teraa account.");
+  }
+
+  if (buyerProfile.account_status !== "active") {
+    redirect("/account/status");
+  }
+
   const quantity = Number(formData.get("quantity") ?? 1);
-  const paymentMethodValue = formData.get("paymentMethod") as string;
-  const deliveryCity = formData.get("deliveryCity") as string;
-  const deliveryNotes = formData.get("deliveryNotes") as string;
+  const paymentMethodValue = String(formData.get("paymentMethod") ?? "");
+  const deliveryCity = String(formData.get("deliveryCity") ?? "").trim();
+  const deliveryNotes = String(formData.get("deliveryNotes") ?? "").trim();
+
+  if (!productId) {
+    throw new Error("Product is missing.");
+  }
+
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    redirect(`/products/${productId}/checkout?error=invalid_quantity`);
+  }
 
   if (!paymentMethodValue) {
     redirect(`/products/${productId}/checkout?error=missing_payment`);
   }
 
-  // The form submits either "cod" or a real seller_payment_methods.id.
   const isCod = paymentMethodValue === "cod";
+
   let sellerPaymentMethodId: string | null = null;
 
-  // Re-fetch the product server-side, never trust a client-submitted price.
+  /*
+   * Always re-fetch product server-side.
+   * Never trust submitted price or seller data.
+   */
   const { data: product, error: productError } = await supabase
     .from("products")
-    .select("id, price, stock_quantity, status, seller_id")
+    .select(
+      `
+      id,
+      price,
+      stock_quantity,
+      status,
+      seller_id
+      `,
+    )
     .eq("id", productId)
-    .single();
+    .maybeSingle();
 
   if (productError || !product) {
     redirect(`/products/${productId}?error=not_found`);
+  }
+
+  /*
+   * Do not allow a seller to buy their own product.
+   */
+  if (product.seller_id === user.id) {
+    redirect(`/seller/dashboard/products/${product.id}`);
   }
 
   if (product.status !== "active" || product.stock_quantity < quantity) {
     redirect(`/products/${productId}?error=out_of_stock`);
   }
 
+  /*
+   * Seller marketplace status.
+   */
+  const { data: seller, error: sellerError } = await supabase
+    .from("sellers")
+    .select(
+      `
+      id,
+      verification_status,
+      account_status
+      `,
+    )
+    .eq("id", product.seller_id)
+    .maybeSingle();
+
+  if (sellerError || !seller) {
+    throw new Error("Seller account could not be found.");
+  }
+
+  if (
+    seller.account_status !== "active" ||
+    seller.verification_status !== "approved"
+  ) {
+    redirect(`/products/${productId}?error=seller_unavailable`);
+  }
+
+  /*
+   * General user moderation status for seller.
+   */
+  const { data: sellerUser, error: sellerUserError } = await supabase
+    .from("users")
+    .select("id, account_status")
+    .eq("id", product.seller_id)
+    .maybeSingle();
+
+  if (sellerUserError || !sellerUser) {
+    throw new Error("Seller account could not be found.");
+  }
+
+  if (sellerUser.account_status !== "active") {
+    redirect(`/products/${productId}?error=seller_unavailable`);
+  }
+
   if (!deliveryCity) {
     redirect(`/products/${productId}/checkout?error=missing_city`);
   }
 
+  /*
+   * If digital payment was chosen,
+   * verify the payment method really belongs
+   * to this seller and is currently active.
+   */
   if (!isCod) {
-    // Confirm the chosen payment method actually belongs to this seller
-    // and is active, never trust the submitted id blindly.
-    const { data: method } = await supabase
+    const { data: method, error: methodError } = await supabase
       .from("seller_payment_methods")
       .select("id")
       .eq("id", paymentMethodValue)
       .eq("seller_id", product.seller_id)
       .eq("is_active", true)
-      .single();
+      .maybeSingle();
 
-    if (!method) {
+    if (methodError || !method) {
       redirect(`/products/${productId}/checkout?error=missing_payment`);
     }
-    sellerPaymentMethodId = method!.id;
+
+    sellerPaymentMethodId = method.id;
   }
 
+  /*
+   * Create order.
+   */
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert({
@@ -82,31 +179,56 @@ export async function createOrder(formData: FormData) {
     .single();
 
   if (orderError || !order) {
+    console.error("Order creation failed:", orderError);
+
     redirect(`/products/${productId}/checkout?error=order_failed`);
   }
 
-  await supabase.from("order_items").insert({
-    order_id: order!.id,
+  /*
+   * Save purchase snapshot.
+   */
+  const { error: orderItemError } = await supabase.from("order_items").insert({
+    order_id: order.id,
     product_id: product.id,
     quantity,
     price_at_purchase: product.price,
   });
 
+  if (orderItemError) {
+    console.error("Order item creation failed:", orderItemError);
+
+    throw new Error(
+      "The order was created but the product could not be attached to it.",
+    );
+  }
+
+  /*
+   * Commission record.
+   */
   const commissionAmount = Number(product.price) * quantity * COMMISSION_RATE;
-  await supabase.from("commissions").insert({
-    order_id: order!.id,
+
+  const { error: commissionError } = await supabase.from("commissions").insert({
+    order_id: order.id,
     commission_rate: COMMISSION_RATE * 100,
     commission_amount: commissionAmount,
     seller_payout_status: "pending",
   });
 
-  // Reduce stock, and flip status to out_of_stock once it hits zero so the
-  // item stops appearing in the public feed and search results (which
-  // filter on status = 'active'). Not a fully atomic decrement, acceptable
-  // at v1 volume, revisit with a Postgres function + row lock once
-  // concurrent orders on the same low-stock item become common.
+  if (commissionError) {
+    console.error("Commission creation failed:", commissionError);
+  }
+
+  /*
+   * Reduce stock.
+   *
+   * Still not fully atomic at high concurrency.
+   * For early Teraa volume this is workable,
+   * but eventually this should move into one
+   * Postgres transaction/RPC with row locking.
+   */
   const remainingStock = product.stock_quantity - quantity;
-  await supabase
+
+  const { error: stockError } = await supabase
     .from("products")
     .update({
       stock_quantity: remainingStock,
@@ -114,5 +236,9 @@ export async function createOrder(formData: FormData) {
     })
     .eq("id", product.id);
 
-  redirect(`/orders/${order!.id}`);
+  if (stockError) {
+    console.error("Stock update failed:", stockError);
+  }
+
+  redirect(`/orders/${order.id}`);
 }

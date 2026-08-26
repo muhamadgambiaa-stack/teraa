@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 import type { OrderStatus } from "@/types/database";
 
@@ -16,19 +17,85 @@ async function requireSellerOwnsOrder(orderId: string) {
     redirect("/login");
   }
 
-  const { data: order } = await supabase
-    .from("orders")
-    .select("id, seller_id, status")
-    .eq("id", orderId)
-    .single();
+  /*
+   * General marketplace account moderation.
+   */
+  const { data: profile, error: profileError } = await supabase
+    .from("users")
+    .select(
+      `
+      id,
+      account_status
+      `,
+    )
+    .eq("id", user.id)
+    .maybeSingle();
 
-  if (!order || order.seller_id !== user.id) {
+  if (profileError || !profile) {
+    throw new Error("Could not load your Teraa account.");
+  }
+
+  if (profile.account_status !== "active") {
+    redirect("/account/status");
+  }
+
+  /*
+   * Seller-specific moderation and verification.
+   */
+  const { data: seller, error: sellerError } = await supabase
+    .from("sellers")
+    .select(
+      `
+      id,
+      verification_status,
+      account_status
+      `,
+    )
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (sellerError || !seller) {
+    throw new Error("Seller account not found.");
+  }
+
+  if (seller.account_status !== "active") {
+    throw new Error("Your seller account is not currently active.");
+  }
+
+  if (seller.verification_status !== "approved") {
+    throw new Error("Your seller account is not verified.");
+  }
+
+  /*
+   * Verify ownership of the order.
+   */
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .select(
+      `
+      id,
+      seller_id,
+      buyer_id,
+      status
+      `,
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (orderError || !order) {
+    throw new Error("Order not found.");
+  }
+
+  if (order.seller_id !== user.id) {
     throw new Error("Not authorized to update this order.");
   }
 
   return {
     supabase,
     order,
+    seller,
+    profile,
+    user,
   };
 }
 
@@ -65,15 +132,20 @@ export async function updateOrderStatus(
     .update({
       status: newStatus,
     })
-    .eq("id", orderId);
+    .eq("id", orderId)
+    .eq("seller_id", order.seller_id);
 
   if (error) {
-    throw new Error("Couldn't update order.");
+    throw new Error(error.message || "Couldn't update order.");
   }
 
   revalidatePath("/seller/dashboard/orders");
 
   revalidatePath(`/orders/${orderId}`);
+
+  revalidatePath("/seller/dashboard");
+
+  revalidatePath("/notifications");
 }
 
 export async function cancelSellerOrder(orderId: string) {
@@ -84,12 +156,12 @@ export async function cancelSellerOrder(orderId: string) {
   }
 
   /*
-   * The database function:
+   * cancel_order() should:
    *
-   * - changes order to cancelled
-   * - restores inventory
-   * - reactivates products that were out of stock
-   * - prevents double stock restoration
+   * - change the order to cancelled
+   * - restore inventory
+   * - reactivate out-of-stock products
+   * - prevent double inventory restoration
    */
   const { error } = await supabase.rpc("cancel_order", {
     p_order_id: orderId,
@@ -108,6 +180,6 @@ export async function cancelSellerOrder(orderId: string) {
   revalidatePath("/seller/dashboard");
 
   revalidatePath("/");
-
   revalidatePath("/search");
+  revalidatePath("/notifications");
 }

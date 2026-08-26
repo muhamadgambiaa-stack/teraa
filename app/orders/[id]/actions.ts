@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 
-export async function cancelOrder(orderId: string) {
+async function requireActiveBuyer() {
   const supabase = await createClient();
 
   const {
@@ -15,11 +16,45 @@ export async function cancelOrder(orderId: string) {
     redirect("/login");
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from("users")
+    .select(
+      `
+      id,
+      account_status
+      `,
+    )
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    throw new Error("Could not load your Teraa account.");
+  }
+
+  if (profile.account_status !== "active") {
+    redirect("/account/status");
+  }
+
+  return {
+    supabase,
+    user,
+  };
+}
+
+export async function cancelOrder(orderId: string) {
+  const { supabase, user } = await requireActiveBuyer();
+
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select("id, buyer_id, status")
+    .select(
+      `
+      id,
+      buyer_id,
+      status
+      `,
+    )
     .eq("id", orderId)
-    .single();
+    .maybeSingle();
 
   if (orderError || !order) {
     throw new Error("Order not found.");
@@ -49,37 +84,35 @@ export async function cancelOrder(orderId: string) {
   revalidatePath("/search");
   revalidatePath("/seller/dashboard");
   revalidatePath("/seller/dashboard/orders");
+  revalidatePath("/notifications");
 }
 
 export async function markOrderReceived(orderId: string) {
-  const supabase = await createClient();
+  const { supabase, user } = await requireActiveBuyer();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .select(
+      `
+      id,
+      buyer_id,
+      status
+      `,
+    )
+    .eq("id", orderId)
+    .maybeSingle();
 
-  if (!user) {
-    redirect("/login");
+  if (orderError || !order) {
+    throw new Error("Order not found.");
   }
 
-  const { data: order } = await supabase
-    .from("orders")
-    .select("id, buyer_id, status")
-    .eq("id", orderId)
-    .single();
-
-  if (!order || order.buyer_id !== user.id) {
+  if (order.buyer_id !== user.id) {
     throw new Error("Not authorized to update this order.");
   }
 
   /*
-   * IMPORTANT:
-   *
-   * Previously the app allowed a buyer to mark an order
-   * received while it was still "placed" or "confirmed".
-   *
-   * A buyer should only confirm receipt after the seller
-   * has actually shipped / marked delivery.
+   * Buyer should only confirm receipt after
+   * the seller has shipped / marked delivery.
    */
   if (!["shipped", "delivered"].includes(order.status)) {
     throw new Error("This order cannot be marked received yet.");
@@ -93,24 +126,17 @@ export async function markOrderReceived(orderId: string) {
     .eq("id", orderId);
 
   if (error) {
-    throw new Error("Couldn't complete this order.");
+    throw new Error(error.message || "Couldn't complete this order.");
   }
 
   revalidatePath(`/orders/${orderId}`);
   revalidatePath("/orders");
   revalidatePath("/seller/dashboard/orders");
+  revalidatePath("/notifications");
 }
 
 export async function submitReview(formData: FormData) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user } = await requireActiveBuyer();
 
   const orderId = String(formData.get("orderId") ?? "");
 
@@ -120,31 +146,68 @@ export async function submitReview(formData: FormData) {
 
   const comment = String(formData.get("comment") ?? "").trim();
 
-  if (!orderId || !sellerId || rating < 1 || rating > 5) {
+  if (
+    !orderId ||
+    !sellerId ||
+    !Number.isInteger(rating) ||
+    rating < 1 ||
+    rating > 5
+  ) {
     throw new Error("Invalid review.");
   }
 
+  if (comment.length > 1000) {
+    throw new Error("Review comment is too long.");
+  }
+
   /*
-   * Verify that:
+   * Verify:
    *
-   * - this user owns the order
-   * - the order is actually completed
-   *
-   * Don't rely only on the fact that the form was visible.
+   * - current user owns the order
+   * - seller matches the order
+   * - order is completed
    */
-  const { data: order } = await supabase
+  const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select("id, buyer_id, seller_id, status")
+    .select(
+      `
+      id,
+      buyer_id,
+      seller_id,
+      status
+      `,
+    )
     .eq("id", orderId)
-    .single();
+    .maybeSingle();
+
+  if (orderError || !order) {
+    throw new Error("Order not found.");
+  }
 
   if (
-    !order ||
     order.buyer_id !== user.id ||
     order.seller_id !== sellerId ||
     order.status !== "completed"
   ) {
     throw new Error("You cannot review this order.");
+  }
+
+  /*
+   * Prevent duplicate reviews for the
+   * same completed order.
+   */
+  const { data: existingReview, error: existingReviewError } = await supabase
+    .from("reviews")
+    .select("id")
+    .eq("order_id", orderId)
+    .maybeSingle();
+
+  if (existingReviewError) {
+    console.error("Could not check existing review:", existingReviewError);
+  }
+
+  if (existingReview) {
+    throw new Error("You already reviewed this order.");
   }
 
   const { error } = await supabase.from("reviews").insert({
@@ -160,4 +223,5 @@ export async function submitReview(formData: FormData) {
   }
 
   revalidatePath(`/orders/${orderId}`);
+  revalidatePath(`/profile/${sellerId}`);
 }

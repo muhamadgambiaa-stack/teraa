@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 
 async function requireOwnProduct(productId: string) {
@@ -13,6 +14,37 @@ async function requireOwnProduct(productId: string) {
 
   if (!user) {
     redirect("/login");
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("users")
+    .select(
+      `
+      id,
+      account_status
+      `,
+    )
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    throw new Error("Could not load your Teraa account.");
+  }
+
+  const { data: seller, error: sellerError } = await supabase
+    .from("sellers")
+    .select(
+      `
+      id,
+      verification_status,
+      account_status
+      `,
+    )
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (sellerError || !seller) {
+    throw new Error("Seller account could not be found.");
   }
 
   const { data: product, error } = await supabase
@@ -41,11 +73,65 @@ async function requireOwnProduct(productId: string) {
     supabase,
     product,
     user,
+    profile,
+    seller,
   };
 }
 
+function ensureSellerCanOperate({
+  profileStatus,
+  sellerStatus,
+  verificationStatus,
+}: {
+  profileStatus: string;
+  sellerStatus: string;
+  verificationStatus: string;
+}) {
+  if (profileStatus !== "active") {
+    redirect("/account/status");
+  }
+
+  if (sellerStatus !== "active") {
+    throw new Error("Your seller account is not currently active.");
+  }
+
+  if (verificationStatus !== "approved") {
+    throw new Error(
+      "Your seller account must be verified before managing live listings.",
+    );
+  }
+}
+
 export async function updateListing(productId: string, formData: FormData) {
-  const { supabase, product } = await requireOwnProduct(productId);
+  const { supabase, product, profile, seller } =
+    await requireOwnProduct(productId);
+
+  /*
+   * Allow a moderated seller to correct an
+   * admin-hidden listing so they can appeal it.
+   *
+   * Normal listings require a fully-active account.
+   */
+  if (product.status !== "admin_hidden") {
+    ensureSellerCanOperate({
+      profileStatus: profile.account_status,
+
+      sellerStatus: seller.account_status,
+
+      verificationStatus: seller.verification_status,
+    });
+  }
+
+  /*
+   * Banned accounts should not be able to modify
+   * anything, including moderated listings.
+   */
+  if (
+    profile.account_status === "banned" ||
+    seller.account_status === "banned"
+  ) {
+    redirect("/account/status");
+  }
 
   const title = String(formData.get("title") ?? "").trim();
 
@@ -85,6 +171,14 @@ export async function updateListing(productId: string, formData: FormData) {
 
   let nextStatus = product.status;
 
+  /*
+   * Important:
+   *
+   * admin_hidden listings stay admin_hidden.
+   * Seller cannot restore them by editing stock.
+   *
+   * Seller-hidden listings also stay hidden.
+   */
   if (product.status !== "admin_hidden" && product.status !== "hidden") {
     nextStatus = stockQuantity > 0 ? "active" : "out_of_stock";
   }
@@ -94,10 +188,15 @@ export async function updateListing(productId: string, formData: FormData) {
     .update({
       title,
       description,
+
       location_city: locationCity,
+
       condition,
+
       price,
+
       stock_quantity: stockQuantity,
+
       status: nextStatus,
     })
     .eq("id", productId);
@@ -107,8 +206,11 @@ export async function updateListing(productId: string, formData: FormData) {
   }
 
   revalidatePath(`/seller/dashboard/products/${productId}`);
+
   revalidatePath("/seller/dashboard");
+
   revalidatePath(`/products/${productId}`);
+
   revalidatePath("/");
   revalidatePath("/search");
 
@@ -116,7 +218,16 @@ export async function updateListing(productId: string, formData: FormData) {
 }
 
 export async function hideListing(productId: string) {
-  const { supabase, product } = await requireOwnProduct(productId);
+  const { supabase, product, profile, seller } =
+    await requireOwnProduct(productId);
+
+  ensureSellerCanOperate({
+    profileStatus: profile.account_status,
+
+    sellerStatus: seller.account_status,
+
+    verificationStatus: seller.verification_status,
+  });
 
   if (product.status === "admin_hidden") {
     throw new Error(
@@ -136,7 +247,9 @@ export async function hideListing(productId: string) {
   }
 
   revalidatePath(`/seller/dashboard/products/${productId}`);
+
   revalidatePath("/seller/dashboard");
+
   revalidatePath("/");
   revalidatePath("/search");
 
@@ -144,7 +257,16 @@ export async function hideListing(productId: string) {
 }
 
 export async function reactivateListing(productId: string) {
-  const { supabase, product } = await requireOwnProduct(productId);
+  const { supabase, product, profile, seller } =
+    await requireOwnProduct(productId);
+
+  ensureSellerCanOperate({
+    profileStatus: profile.account_status,
+
+    sellerStatus: seller.account_status,
+
+    verificationStatus: seller.verification_status,
+  });
 
   if (product.status === "admin_hidden") {
     throw new Error(
@@ -170,7 +292,9 @@ export async function reactivateListing(productId: string) {
   }
 
   revalidatePath(`/seller/dashboard/products/${productId}`);
+
   revalidatePath("/seller/dashboard");
+
   revalidatePath("/");
   revalidatePath("/search");
 
@@ -181,12 +305,26 @@ export async function requestListingReview(
   productId: string,
   formData: FormData,
 ) {
-  const { supabase, product, user } = await requireOwnProduct(productId);
+  const { supabase, product, user, profile, seller } =
+    await requireOwnProduct(productId);
 
   if (product.status !== "admin_hidden") {
     throw new Error(
       "Only listings removed by Teraa can be submitted for review.",
     );
+  }
+
+  /*
+   * Banned accounts cannot appeal.
+   *
+   * Restricted/suspended accounts may still appeal
+   * an admin-hidden listing so disputes can be resolved.
+   */
+  if (
+    profile.account_status === "banned" ||
+    seller.account_status === "banned"
+  ) {
+    redirect("/account/status");
   }
 
   const message = String(formData.get("message") ?? "").trim();
@@ -197,18 +335,8 @@ export async function requestListingReview(
     );
   }
 
-  const { data: seller, error: sellerError } = await supabase
-    .from("sellers")
-    .select("account_status")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (sellerError || !seller) {
-    throw new Error("Seller account could not be found.");
-  }
-
-  if (seller.account_status === "banned") {
-    throw new Error("Banned seller accounts cannot request listing reviews.");
+  if (message.length > 2000) {
+    throw new Error("Review request is too long.");
   }
 
   const { data: existingAppeal, error: appealLookupError } = await supabase
@@ -228,7 +356,9 @@ export async function requestListingReview(
 
   const { error } = await supabase.from("listing_appeals").insert({
     product_id: productId,
+
     seller_id: user.id,
+
     message,
   });
 
@@ -241,4 +371,6 @@ export async function requestListingReview(
   revalidatePath("/seller/dashboard");
 
   revalidatePath("/admin/appeals");
+
+  revalidatePath("/notifications");
 }
