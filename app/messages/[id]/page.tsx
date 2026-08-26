@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 
-import { markConversationRead, sendMessage } from "./actions";
+import { sendMessage } from "./actions";
 
 export default async function ConversationPage({
   params,
@@ -63,7 +63,7 @@ export default async function ConversationPage({
       ? conversation.seller_id
       : conversation.buyer_id;
 
-  const { data: otherUser } = await supabase
+  const { data: otherUser, error: otherUserError } = await supabase
     .from("users")
     .select(
       `
@@ -75,6 +75,10 @@ export default async function ConversationPage({
     )
     .eq("id", otherUserId)
     .maybeSingle();
+
+  if (otherUserError) {
+    console.error("Could not load conversation participant:", otherUserError);
+  }
 
   const { data: messages, error: messagesError } = await supabase
     .from("messages")
@@ -96,7 +100,24 @@ export default async function ConversationPage({
     console.error("Could not load conversation messages:", messagesError);
   }
 
-  await markConversationRead(conversation.id);
+  /*
+   * Mark messages from the other participant as read.
+   *
+   * We do this directly with Supabase here instead of
+   * calling a Server Action while the page is rendering.
+   */
+  const { error: readError } = await supabase
+    .from("messages")
+    .update({
+      read_at: new Date().toISOString(),
+    })
+    .eq("conversation_id", conversation.id)
+    .neq("sender_id", user.id)
+    .is("read_at", null);
+
+  if (readError) {
+    console.error("Could not mark conversation as read:", readError);
+  }
 
   const productRaw = (
     conversation as {
