@@ -25,6 +25,20 @@ type Seller = {
   total_sales: number | null;
 };
 
+type IconName =
+  | "orders"
+  | "heart"
+  | "message"
+  | "bell"
+  | "store"
+  | "tag"
+  | "sellerOrders"
+  | "settings"
+  | "admin"
+  | "users"
+  | "report"
+  | "appeal";
+
 export default function AccountPage() {
   const router = useRouter();
 
@@ -65,13 +79,22 @@ export default function AccountPage() {
 
       const { data: profileData, error: profileError } = await supabase
         .from("users")
-        .select("full_name, phone_number, city, role")
+        .select(
+          `
+          full_name,
+          phone_number,
+          city,
+          role
+          `,
+        )
         .eq("id", user.id)
         .single();
 
-      if (!active) return;
+      if (!active) {
+        return;
+      }
 
-      if (profileError) {
+      if (profileError || !profileData) {
         setError("Couldn't load your account.");
         setLoading(false);
         return;
@@ -89,10 +112,6 @@ export default function AccountPage() {
 
       setCity(userProfile.city ?? "");
 
-      /*
-       * Sellers have extra marketplace
-       * information.
-       */
       if (userProfile.role === "seller") {
         const { data: sellerData } = await supabase
           .from("sellers")
@@ -123,8 +142,8 @@ export default function AccountPage() {
     };
   }, [router]);
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSave(event: React.FormEvent) {
+    event.preventDefault();
 
     setSaving(true);
     setSaved(false);
@@ -145,7 +164,9 @@ export default function AccountPage() {
       .from("users")
       .update({
         full_name: fullName.trim(),
+
         phone_number: phone.trim(),
+
         city,
       })
       .eq("id", user.id);
@@ -162,7 +183,9 @@ export default function AccountPage() {
         ? {
             ...current,
             full_name: fullName.trim(),
+
             phone_number: phone.trim(),
+
             city,
           }
         : current,
@@ -189,7 +212,7 @@ export default function AccountPage() {
       <>
         <SiteHeader />
 
-        <main className="max-w-2xl mx-auto px-4 py-8">
+        <main className="max-w-2xl mx-auto px-4 py-8 pb-24">
           <p className="text-sm text-gray-500">Loading your account…</p>
         </main>
       </>
@@ -201,7 +224,7 @@ export default function AccountPage() {
       <>
         <SiteHeader />
 
-        <main className="max-w-2xl mx-auto px-4 py-8">
+        <main className="max-w-2xl mx-auto px-4 py-8 pb-24">
           <p className="text-sm text-red-600">
             Couldn&apos;t load your account.
           </p>
@@ -222,8 +245,8 @@ export default function AccountPage() {
     <>
       <SiteHeader />
 
-      <main className="max-w-2xl mx-auto px-4 py-5">
-        {/* PROFILE HEADER */}
+      <main className="max-w-2xl mx-auto px-4 py-5 pb-24 sm:pb-6">
+        {/* PROFILE */}
 
         <section className="flex items-center gap-4 mb-6">
           <div
@@ -284,39 +307,39 @@ export default function AccountPage() {
           </div>
         </section>
 
-        {/* GENERAL ACTIVITY */}
+        {/* MY TERAA */}
 
         <AccountSection title="My Teraa">
           <AccountLink
             href="/orders"
-            icon="📦"
+            icon="orders"
             title="My orders"
             description="Track purchases and order history"
           />
 
           <AccountLink
             href="/favorites"
-            icon="♡"
+            icon="heart"
             title="Favorites"
             description="Products you've saved"
           />
 
           <AccountLink
             href="/messages"
-            icon="💬"
+            icon="message"
             title="Messages"
             description="Your marketplace conversations"
           />
 
           <AccountLink
             href="/notifications"
-            icon="🔔"
+            icon="bell"
             title="Notifications"
             description="Updates about your activity"
           />
         </AccountSection>
 
-        {/* SELLER SECTION */}
+        {/* SELLING */}
 
         {isSeller && (
           <AccountSection title="Selling">
@@ -366,76 +389,83 @@ export default function AccountPage() {
 
             <AccountLink
               href="/seller/dashboard"
-              icon="🏪"
+              icon="store"
               title="Seller dashboard"
               description="Manage your store and listings"
             />
 
             <AccountLink
               href="/seller/dashboard"
-              icon="🏷️"
+              icon="tag"
               title="My listings"
               description="View and manage your products"
             />
 
             <AccountLink
               href="/seller/dashboard/orders"
-              icon="📋"
+              icon="sellerOrders"
               title="Seller orders"
               description="Manage orders from buyers"
             />
 
             <AccountLink
               href="/seller/dashboard/settings"
-              icon="💳"
+              icon="settings"
               title="Seller settings"
               description="Business information and payment methods"
             />
           </AccountSection>
         )}
 
-        {/* ADMIN SECTION */}
+        {/* ADMIN */}
 
         {isAdmin && (
           <AccountSection title="Administration">
             <AccountLink
               href="/admin"
-              icon="⚙️"
+              icon="admin"
               title="Admin dashboard"
               description="Marketplace administration"
             />
 
             <AccountLink
               href="/admin/sellers"
-              icon="🏪"
+              icon="store"
               title="Seller management"
               description="Verification, restrictions and seller accounts"
             />
 
             <AccountLink
               href="/admin/listings"
-              icon="🏷️"
+              icon="tag"
               title="Listing moderation"
               description="Search and moderate marketplace listings"
             />
 
             <AccountLink
               href="/admin/reports"
-              icon="⚠️"
+              icon="report"
               title="Reports"
               description="Investigate marketplace reports"
             />
 
             <AccountLink
               href="/admin/appeals"
-              icon="↩️"
+              icon="appeal"
               title="Listing appeals"
               description="Review seller moderation appeals"
+            />
+
+            <AccountLink
+              href="/admin/users"
+              icon="users"
+              title="User management"
+              description="Restrict, suspend and manage user accounts"
             />
           </AccountSection>
         )}
 
-        {/* PROFILE SETTINGS */}
+        {/* ACCOUNT SETTINGS */}
 
         <AccountSection title="Account settings">
           <form onSubmit={handleSave} className="p-4 space-y-4">
@@ -464,7 +494,7 @@ export default function AccountPage() {
               <input
                 required
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={(event) => setFullName(event.target.value)}
                 className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
                 style={{
                   borderColor: "var(--sand)",
@@ -481,7 +511,7 @@ export default function AccountPage() {
                 type="tel"
                 required
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(event) => setPhone(event.target.value)}
                 className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
                 style={{
                   borderColor: "var(--sand)",
@@ -499,7 +529,7 @@ export default function AccountPage() {
               <select
                 required
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={(event) => setCity(event.target.value)}
                 className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none bg-white"
                 style={{
                   borderColor: "var(--sand)",
@@ -536,14 +566,14 @@ export default function AccountPage() {
                     color: "var(--leaf)",
                   }}
                 >
-                  Saved ✓
+                  Saved
                 </span>
               )}
             </div>
           </form>
         </AccountSection>
 
-        {/* LOG OUT */}
+        {/* LOGOUT */}
 
         <button
           type="button"
@@ -556,10 +586,6 @@ export default function AccountPage() {
         >
           Log out
         </button>
-
-        <p className="text-xs text-center text-gray-400 pb-3">
-          Teraa · Buy and sell safely
-        </p>
       </main>
     </>
   );
@@ -597,7 +623,7 @@ function AccountLink({
   description,
 }: {
   href: string;
-  icon: string;
+  icon: IconName;
   title: string;
   description: string;
 }) {
@@ -609,8 +635,14 @@ function AccountLink({
         borderColor: "var(--sand)",
       }}
     >
-      <div className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-lg">
-        {icon}
+      <div
+        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+        style={{
+          background: "#f6f6f3",
+          color: "var(--indigo)",
+        }}
+      >
+        <AccountIcon name={icon} />
       </div>
 
       <div className="flex-1 min-w-0">
@@ -619,8 +651,143 @@ function AccountLink({
         <p className="text-xs text-gray-500 mt-0.5">{description}</p>
       </div>
 
-      <span className="text-gray-400 text-lg">›</span>
+      <ChevronIcon />
     </Link>
+  );
+}
+
+function AccountIcon({ name }: { name: IconName }) {
+  const common = {
+    width: 18,
+    height: 18,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  switch (name) {
+    case "orders":
+      return (
+        <svg {...common}>
+          <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
+          <path d="m4 7.5 8 4.5 8-4.5" />
+          <path d="M12 12v9" />
+        </svg>
+      );
+
+    case "heart":
+      return (
+        <svg {...common}>
+          <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+        </svg>
+      );
+
+    case "message":
+      return (
+        <svg {...common}>
+          <path d="M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-4.5A2 2 0 0 1 2 15V7a2 2 0 0 1 2-2Z" />
+        </svg>
+      );
+
+    case "bell":
+      return (
+        <svg {...common}>
+          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" />
+          <path d="M10 21h4" />
+        </svg>
+      );
+
+    case "store":
+      return (
+        <svg {...common}>
+          <path d="M3 9 5 4h14l2 5" />
+          <path d="M5 13v7h14v-7" />
+          <path d="M9 20v-5h6v5" />
+          <path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" />
+        </svg>
+      );
+
+    case "tag":
+      return (
+        <svg {...common}>
+          <path d="M20 13 13 20 4 11V4h7l9 9Z" />
+          <circle cx="8.5" cy="8.5" r="1" />
+        </svg>
+      );
+
+    case "sellerOrders":
+      return (
+        <svg {...common}>
+          <path d="M6 3h12v18H6z" />
+          <path d="M9 7h6M9 11h6M9 15h4" />
+        </svg>
+      );
+
+    case "settings":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
+        </svg>
+      );
+
+    case "admin":
+      return (
+        <svg {...common}>
+          <path d="M12 3 5 6v5c0 4.8 2.8 8 7 10 4.2-2 7-5.2 7-10V6l-7-3Z" />
+          <path d="M9 12h6M12 9v6" />
+        </svg>
+      );
+
+    case "users":
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="8" r="3" />
+          <circle cx="17" cy="9" r="2" />
+          <path d="M3 20a6 6 0 0 1 12 0" />
+          <path d="M15 15a5 5 0 0 1 6 5" />
+        </svg>
+      );
+
+    case "report":
+      return (
+        <svg {...common}>
+          <path d="M12 3 2.8 20h18.4L12 3Z" />
+          <path d="M12 9v4" />
+          <path d="M12 17h.01" />
+        </svg>
+      );
+
+    case "appeal":
+      return (
+        <svg {...common}>
+          <path d="M9 7 4 12l5 5" />
+          <path d="M4 12h9a7 7 0 0 1 7 7" />
+        </svg>
+      );
+  }
+}
+
+function ChevronIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-gray-400 shrink-0"
+      aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
   );
 }
 
@@ -632,70 +799,53 @@ function SellerStatus({
   accountStatus: string | null;
 }) {
   if (accountStatus === "suspended") {
-    return (
-      <span
-        className="text-[10px] rounded-full px-2 py-1 font-semibold"
-        style={{
-          background: "#fdf0f0",
-          color: "var(--clay)",
-        }}
-      >
-        Suspended
-      </span>
-    );
+    return <StatusPill text="Suspended" type="danger" />;
   }
 
   if (accountStatus === "banned") {
-    return (
-      <span
-        className="text-[10px] rounded-full px-2 py-1 font-semibold"
-        style={{
-          background: "#fdf0f0",
-          color: "var(--clay)",
-        }}
-      >
-        Banned
-      </span>
-    );
+    return <StatusPill text="Banned" type="danger" />;
   }
 
   if (verification === "approved") {
-    return (
-      <span
-        className="text-[10px] rounded-full px-2 py-1 font-semibold"
-        style={{
-          background: "#e3f0e8",
-          color: "var(--leaf)",
-        }}
-      >
-        Verified
-      </span>
-    );
+    return <StatusPill text="Verified" type="success" />;
   }
 
   if (verification === "rejected") {
-    return (
-      <span
-        className="text-[10px] rounded-full px-2 py-1 font-semibold"
-        style={{
-          background: "#fdf0f0",
-          color: "var(--clay)",
-        }}
-      >
-        Verification rejected
-      </span>
-    );
+    return <StatusPill text="Verification rejected" type="danger" />;
   }
+
+  return <StatusPill text="Verification pending" type="warning" />;
+}
+
+function StatusPill({
+  text,
+  type,
+}: {
+  text: string;
+  type: "success" | "danger" | "warning";
+}) {
+  const style =
+    type === "success"
+      ? {
+          background: "#e3f0e8",
+          color: "var(--leaf)",
+        }
+      : type === "danger"
+        ? {
+            background: "#fdf0f0",
+            color: "var(--clay)",
+          }
+        : {
+            background: "#fbf3df",
+            color: "var(--gold)",
+          };
 
   return (
     <span
       className="text-[10px] rounded-full px-2 py-1 font-semibold"
-      style={{
-        background: "#fbf3df",
-        color: "var(--gold)",
-      }}
+      style={style}
     >
-      Verification pending
+      {text}
     </span>
   );
 }
