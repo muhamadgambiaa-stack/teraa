@@ -79,11 +79,19 @@ export async function cancelOrder(orderId: string) {
   }
 
   revalidatePath(`/orders/${orderId}`);
+
   revalidatePath("/orders");
+
   revalidatePath("/");
+
   revalidatePath("/search");
+
   revalidatePath("/seller/dashboard");
+
   revalidatePath("/seller/dashboard/orders");
+
+  revalidatePath(`/seller/dashboard/orders/${orderId}`);
+
   revalidatePath("/notifications");
 }
 
@@ -96,7 +104,10 @@ export async function markOrderReceived(orderId: string) {
       `
       id,
       buyer_id,
-      status
+      seller_id,
+      status,
+      payment_method,
+      payment_status
       `,
     )
     .eq("id", orderId)
@@ -111,27 +122,60 @@ export async function markOrderReceived(orderId: string) {
   }
 
   /*
-   * Buyer should only confirm receipt after
-   * the seller has shipped / marked delivery.
+   * Buyer can confirm receipt after the
+   * order has been shipped or marked
+   * delivered by the seller.
    */
   if (!["shipped", "delivered"].includes(order.status)) {
     throw new Error("This order cannot be marked received yet.");
   }
 
+  /*
+   * TERAA COD V1
+   *
+   * Once the buyer confirms that the item
+   * was actually received, the marketplace
+   * considers:
+   *
+   * order = completed
+   * COD payment = paid
+   *
+   * Digital orders from older tests are
+   * completed without automatically
+   * claiming their payment was verified.
+   */
+  const updateData =
+    order.payment_method === "cod"
+      ? {
+          status: "completed",
+          payment_status: "paid",
+        }
+      : {
+          status: "completed",
+        };
+
   const { error } = await supabase
     .from("orders")
-    .update({
-      status: "completed",
-    })
-    .eq("id", orderId);
+    .update(updateData)
+    .eq("id", orderId)
+    .eq("buyer_id", user.id);
 
   if (error) {
+    console.error("Order completion failed:", error);
+
     throw new Error(error.message || "Couldn't complete this order.");
   }
 
   revalidatePath(`/orders/${orderId}`);
+
   revalidatePath("/orders");
+
   revalidatePath("/seller/dashboard/orders");
+
+  revalidatePath(`/seller/dashboard/orders/${orderId}`);
+
+  revalidatePath(`/profile/${order.seller_id}`);
+
   revalidatePath("/notifications");
 }
 
@@ -139,7 +183,9 @@ export async function submitReview(formData: FormData) {
   const { supabase, user } = await requireActiveBuyer();
 
   const orderId = String(formData.get("orderId") ?? "").trim();
+
   const sellerId = String(formData.get("sellerId") ?? "").trim();
+
   const productId = String(formData.get("productId") ?? "").trim();
 
   const rating = Number(formData.get("rating"));
@@ -162,11 +208,9 @@ export async function submitReview(formData: FormData) {
   }
 
   /*
-   * Verify:
-   *
-   * - current user owns the order
-   * - seller matches the order
-   * - order is completed
+   * Confirm this is the buyer's completed
+   * order and that it belongs to the
+   * expected seller.
    */
   const { data: order, error: orderError } = await supabase
     .from("orders")
@@ -194,17 +238,14 @@ export async function submitReview(formData: FormData) {
   }
 
   /*
-   * IMPORTANT SECURITY CHECK:
-   *
-   * Never trust productId from the browser.
-   *
-   * Verify that the product being reviewed
-   * actually belongs to this order.
+   * Confirm the product was actually part
+   * of this order.
    */
-  const { data: orderItem, error: orderItemError } = await supabase
+  const { data: orderItem, error: itemError } = await supabase
     .from("order_items")
     .select(
       `
+      order_id,
       product_id
       `,
     )
@@ -212,13 +253,13 @@ export async function submitReview(formData: FormData) {
     .eq("product_id", productId)
     .maybeSingle();
 
-  if (orderItemError || !orderItem) {
-    throw new Error("This product does not belong to this order.");
+  if (itemError || !orderItem) {
+    throw new Error("This product was not part of the order.");
   }
 
   /*
-   * Prevent duplicate reviews for the
-   * same product in the same order.
+   * Prevent duplicate product reviews for
+   * the same order.
    */
   const { data: existingReview, error: existingReviewError } = await supabase
     .from("reviews")
@@ -230,22 +271,24 @@ export async function submitReview(formData: FormData) {
   if (existingReviewError) {
     console.error("Could not check existing review:", existingReviewError);
 
-    throw new Error("Could not verify review status.");
+    throw new Error("Couldn't verify whether this order was already reviewed.");
   }
 
   if (existingReview) {
     throw new Error("You already reviewed this product.");
   }
 
-  /*
-   * Create the product review.
-   */
   const { error } = await supabase.from("reviews").insert({
     order_id: orderId,
+
     buyer_id: user.id,
+
     seller_id: sellerId,
+
     product_id: productId,
+
     rating,
+
     comment: comment || null,
   });
 
@@ -255,12 +298,9 @@ export async function submitReview(formData: FormData) {
     throw new Error(error.message || "Couldn't submit review.");
   }
 
-  /*
-   * Refresh every page affected by the review.
-   */
   revalidatePath(`/orders/${orderId}`);
+
   revalidatePath(`/products/${productId}`);
+
   revalidatePath(`/profile/${sellerId}`);
-  revalidatePath("/");
-  revalidatePath("/search");
 }
