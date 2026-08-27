@@ -5,7 +5,12 @@ import { StarRatingInput } from "@/components/StarRatingInput";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { cancelOrder, markOrderReceived, submitReview } from "./actions";
+import {
+  cancelOrder,
+  markOrderReceived,
+  submitReview,
+  updateReview,
+} from "./actions";
 
 export default async function OrderPage({
   params,
@@ -101,10 +106,12 @@ export default async function OrderPage({
         | {
             id: string;
             business_name: string;
+            verification_status?: string;
           }
         | {
             id: string;
             business_name: string;
+            verification_status?: string;
           }[];
     }
   ).sellers;
@@ -143,8 +150,8 @@ export default async function OrderPage({
   const canMarkReceived = ["shipped", "delivered"].includes(order.status);
 
   /*
-   * Teraa currently creates one product per order.
-   * This gives us the product that the buyer can review.
+   * Teraa currently creates one product
+   * per order.
    */
   const reviewItem = items[0] ?? null;
 
@@ -155,13 +162,15 @@ export default async function OrderPage({
     : reviewProductRaw;
 
   /*
-   * Existing review for this exact product/order.
+   * Existing review for this exact
+   * completed product/order.
    */
   let existingReview: {
     id: string;
     product_id: string | null;
     rating: number;
     comment: string | null;
+    updated_at: string | null;
   } | null = null;
 
   if (order.status === "completed" && reviewItem) {
@@ -172,7 +181,8 @@ export default async function OrderPage({
         id,
         product_id,
         rating,
-        comment
+        comment,
+        updated_at
         `,
       )
       .eq("order_id", order.id)
@@ -276,6 +286,7 @@ export default async function OrderPage({
             className="rounded-xl border p-4 mb-4"
             style={{
               borderColor: "var(--gold)",
+
               background: "#fbf3df",
             }}
           >
@@ -284,6 +295,7 @@ export default async function OrderPage({
                 className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                 style={{
                   background: "white",
+
                   color: "var(--gold)",
                 }}
               >
@@ -329,6 +341,7 @@ export default async function OrderPage({
                 className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                 style={{
                   background: "#f3f4f6",
+
                   color: "var(--indigo)",
                 }}
               >
@@ -360,6 +373,7 @@ export default async function OrderPage({
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
               style={{
                 background: "#f3f4f6",
+
                 color: "var(--indigo)",
               }}
             >
@@ -387,6 +401,7 @@ export default async function OrderPage({
               className="w-full rounded-full py-2.5 text-sm font-semibold border"
               style={{
                 borderColor: "var(--clay)",
+
                 color: "var(--clay)",
               }}
             >
@@ -436,7 +451,7 @@ export default async function OrderPage({
           </div>
         )}
 
-        {/* PRODUCT REVIEW */}
+        {/* NEW PRODUCT REVIEW */}
 
         {order.status === "completed" &&
           seller &&
@@ -461,7 +476,13 @@ export default async function OrderPage({
               />
 
               <div className="mb-4">
-                <p className="text-sm font-semibold">Rate this product</p>
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className="text-lg">
+                    ⭐
+                  </span>
+
+                  <p className="text-sm font-semibold">Rate this product</p>
+                </div>
 
                 <p className="text-xs text-gray-500 mt-1">
                   How was <strong>{reviewProduct.title}</strong>? Was it as
@@ -484,6 +505,7 @@ export default async function OrderPage({
                   id="review-comment"
                   name="comment"
                   rows={3}
+                  maxLength={1000}
                   placeholder="Describe the product quality, condition, and whether it matched the listing."
                   className="w-full rounded-lg border px-3 py-2 text-sm outline-none resize-none"
                   style={{
@@ -513,23 +535,144 @@ export default async function OrderPage({
               borderColor: "var(--sand)",
             }}
           >
-            <p className="text-sm font-medium">Your product review</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className="text-base">
+                    ⭐
+                  </span>
 
-            <p className="text-xs text-gray-500 mt-1">{reviewProduct.title}</p>
+                  <p className="text-sm font-semibold">Your product review</p>
+                </div>
 
-            <div className="flex items-center gap-2 mt-2">
+                <p className="text-xs text-gray-500 mt-1">
+                  {reviewProduct.title}
+                </p>
+              </div>
+
+              {existingReview.updated_at && (
+                <span
+                  className="rounded-full px-2 py-1 text-[10px] font-medium shrink-0"
+                  style={{
+                    background: "#f3f4f6",
+
+                    color: "#6b7280",
+                  }}
+                >
+                  Edited
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 mt-3">
               <StaticStarRating rating={Number(existingReview.rating)} />
 
               <span className="text-xs text-gray-500">
-                {existingReview.rating}/5
+                {existingReview.rating}
+                /5
               </span>
             </div>
 
             {existingReview.comment && (
-              <p className="text-sm text-gray-600 mt-3">
+              <p className="text-sm text-gray-600 mt-3 leading-6">
                 {existingReview.comment}
               </p>
             )}
+
+            {/* EDIT REVIEW */}
+
+            <details
+              className="rounded-xl border mt-4 overflow-hidden"
+              style={{
+                borderColor: "var(--sand)",
+              }}
+            >
+              <summary
+                className="px-4 py-3 text-sm font-medium cursor-pointer list-none select-none"
+                style={{
+                  color: "var(--indigo)",
+                }}
+              >
+                ✏️ Edit review
+              </summary>
+
+              <form
+                action={updateReview}
+                className="border-t p-4"
+                style={{
+                  borderColor: "var(--sand)",
+                }}
+              >
+                <input
+                  type="hidden"
+                  name="reviewId"
+                  value={existingReview.id}
+                />
+
+                <div>
+                  <p className="text-xs font-medium mb-2">Your rating</p>
+
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 2, 3, 4, 5].map((rating) => (
+                      <label key={rating} className="cursor-pointer">
+                        <input
+                          type="radio"
+                          name="rating"
+                          value={rating}
+                          defaultChecked={existingReview.rating === rating}
+                          required
+                          className="sr-only peer"
+                        />
+
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full border px-3 py-2 text-xs transition peer-checked:font-bold"
+                          style={{
+                            borderColor: "var(--sand)",
+                          }}
+                        >
+                          ⭐ {rating}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label
+                    htmlFor="edit-review-comment"
+                    className="text-xs font-medium block mb-1.5"
+                  >
+                    Product review{" "}
+                    <span className="font-normal text-gray-400">
+                      (optional)
+                    </span>
+                  </label>
+
+                  <textarea
+                    id="edit-review-comment"
+                    name="comment"
+                    rows={3}
+                    maxLength={1000}
+                    defaultValue={existingReview.comment ?? ""}
+                    placeholder="Describe the product quality, condition, and whether it matched the listing."
+                    className="w-full rounded-lg border px-3 py-2 text-sm outline-none resize-none"
+                    style={{
+                      borderColor: "var(--sand)",
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="rounded-full px-5 py-2.5 text-xs font-semibold text-white mt-3"
+                  style={{
+                    background: "var(--indigo)",
+                  }}
+                >
+                  Save review changes
+                </button>
+              </form>
+            </details>
           </div>
         )}
 
