@@ -16,11 +16,7 @@ export async function messageSeller(productId: string) {
   }
 
   /*
-   * Check the buyer/user account first.
-   *
-   * Restricted, suspended and banned users
-   * may still browse Teraa, but cannot start
-   * new marketplace conversations.
+   * Buyer account must still be active.
    */
   const { data: profile, error: profileError } = await supabase
     .from("users")
@@ -28,7 +24,7 @@ export async function messageSeller(productId: string) {
       `
       id,
       account_status
-      `,
+    `,
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -42,7 +38,7 @@ export async function messageSeller(productId: string) {
   }
 
   /*
-   * Find the product and seller.
+   * Find the listing.
    */
   const { data: product, error: productError } = await supabase
     .from("products")
@@ -52,7 +48,7 @@ export async function messageSeller(productId: string) {
       seller_id,
       status,
       stock_quantity
-      `,
+    `,
     )
     .eq("id", productId)
     .maybeSingle();
@@ -62,75 +58,45 @@ export async function messageSeller(productId: string) {
   }
 
   /*
-   * Do not allow people to start
-   * a buyer conversation with themselves.
+   * Seller cannot message themselves as a buyer.
    */
   if (product.seller_id === user.id) {
     redirect(`/seller/dashboard/products/${productId}`);
   }
 
   /*
-   * Do not start conversations from
-   * listings removed by administration
-   * or manually hidden by the seller.
+   * Hidden/admin-hidden listings cannot start
+   * new marketplace conversations.
    */
   if (product.status === "admin_hidden" || product.status === "hidden") {
     throw new Error("This listing is currently unavailable.");
   }
 
   /*
-   * Make sure the seller account itself
-   * can still participate in the marketplace.
-   */
-  const { data: seller, error: sellerError } = await supabase
-    .from("sellers")
-    .select(
-      `
-      id,
-      verification_status,
-      account_status
-      `,
-    )
-    .eq("id", product.seller_id)
-    .maybeSingle();
-
-  if (sellerError || !seller) {
-    throw new Error("This seller is no longer available.");
-  }
-
-  if (seller.account_status !== "active") {
-    throw new Error("This seller account is currently unavailable.");
-  }
-
-  /*
-   * Also check the seller's general
-   * user account status.
+   * Check seller availability through the secure
+   * database helper.
    *
-   * Seller moderation and general user
-   * moderation are separate systems.
+   * This avoids exposing the seller's private users row
+   * to the buyer.
    */
-  const { data: sellerUser, error: sellerUserError } = await supabase
-    .from("users")
-    .select(
-      `
-      id,
-      account_status
-      `,
-    )
-    .eq("id", product.seller_id)
-    .maybeSingle();
+  const { data: sellerAvailable, error: sellerAvailabilityError } =
+    await supabase.rpc("marketplace_seller_is_available", {
+      p_seller_id: product.seller_id,
+    });
 
-  if (sellerUserError || !sellerUser) {
-    throw new Error("This seller account is unavailable.");
+  if (sellerAvailabilityError) {
+    console.error("Seller availability check failed:", sellerAvailabilityError);
+
+    throw new Error("Couldn't check whether this seller is available.");
   }
 
-  if (sellerUser.account_status !== "active") {
+  if (!sellerAvailable) {
     throw new Error("This seller account is currently unavailable.");
   }
 
   /*
-   * Reuse the existing conversation
-   * for this buyer + seller + product.
+   * Reuse the existing conversation for this
+   * buyer + seller + product.
    */
   const { data: existingConversation, error: lookupError } = await supabase
     .from("conversations")
@@ -149,22 +115,26 @@ export async function messageSeller(productId: string) {
   }
 
   /*
-   * Create a new conversation only when
-   * one does not already exist.
+   * Create the conversation.
+   *
+   * RLS independently checks that:
+   * - buyer_id is the authenticated user
+   * - seller is available
+   * - product belongs to that seller
    */
   const { data: conversation, error: conversationError } = await supabase
     .from("conversations")
     .insert({
       buyer_id: user.id,
-
       seller_id: product.seller_id,
-
       product_id: product.id,
     })
     .select("id")
     .single();
 
   if (conversationError || !conversation) {
+    console.error("Conversation creation failed:", conversationError);
+
     throw new Error(
       conversationError?.message || "Couldn't start conversation.",
     );
