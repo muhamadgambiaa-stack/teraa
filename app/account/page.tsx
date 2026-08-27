@@ -95,27 +95,65 @@ export default function AccountPage() {
 
       setProfile(userProfile);
       setEmail(user.email ?? null);
+
       setFullName(userProfile.full_name ?? "");
       setPhone(userProfile.phone_number ?? "");
       setCity(userProfile.city ?? "");
 
+      /*
+       * SELLER DATA
+       *
+       * We calculate completed sales directly from
+       * the orders table instead of relying on the
+       * old sellers.total_sales value.
+       *
+       * This keeps the Me page consistent with the
+       * seller's public profile.
+       */
       if (userProfile.role === "seller") {
-        const { data: sellerData } = await supabase
-          .from("sellers")
-          .select(
-            `
-            business_name,
-            verification_status,
-            account_status,
-            rating_avg,
-            total_sales
-          `,
-          )
-          .eq("id", user.id)
-          .maybeSingle();
+        const [
+          { data: sellerData, error: sellerError },
+          { count: completedSales, error: salesError },
+        ] = await Promise.all([
+          supabase
+            .from("sellers")
+            .select(
+              `
+              business_name,
+              verification_status,
+              account_status,
+              rating_avg
+            `,
+            )
+            .eq("id", user.id)
+            .maybeSingle(),
+
+          supabase
+            .from("orders")
+            .select("id", {
+              count: "exact",
+              head: true,
+            })
+            .eq("seller_id", user.id)
+            .eq("status", "completed"),
+        ]);
+
+        if (sellerError) {
+          console.error("Could not load seller account:", sellerError);
+        }
+
+        if (salesError) {
+          console.error("Could not load completed sales:", salesError);
+        }
 
         if (active && sellerData) {
-          setSeller(sellerData as Seller);
+          setSeller({
+            business_name: sellerData.business_name,
+            verification_status: sellerData.verification_status,
+            account_status: sellerData.account_status,
+            rating_avg: sellerData.rating_avg,
+            total_sales: completedSales ?? 0,
+          });
         }
       }
 
@@ -129,7 +167,7 @@ export default function AccountPage() {
     };
   }, [router]);
 
-  async function handleSave(event: React.FormEvent) {
+  async function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setSaving(true);
@@ -270,7 +308,7 @@ export default function AccountPage() {
                     color: "var(--leaf)",
                   }}
                 >
-                  Verified seller
+                  ✓ Verified seller
                 </span>
               )}
 
@@ -332,9 +370,16 @@ export default function AccountPage() {
                   borderColor: "var(--sand)",
                 }}
               >
+                {/* SELLER NAME + STATUS */}
+
                 <div className="flex justify-between gap-4">
-                  <div>
-                    <p className="font-medium text-sm">
+                  <div className="min-w-0">
+                    <p
+                      className="font-display font-semibold text-lg truncate"
+                      style={{
+                        color: "var(--ink)",
+                      }}
+                    >
                       {seller.business_name || firstName}
                     </p>
 
@@ -349,21 +394,59 @@ export default function AccountPage() {
                   />
                 </div>
 
-                <div className="flex gap-6 mt-4">
-                  <div>
-                    <p className="font-semibold text-sm">
-                      {Number(seller.rating_avg ?? 0).toFixed(1)}★
-                    </p>
+                {/* SELLER STATS */}
 
-                    <p className="text-[10px] text-gray-500">Rating</p>
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div
+                    className="rounded-xl border p-3"
+                    style={{
+                      borderColor: "var(--sand)",
+                      background: "#fbfaf7",
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base" aria-hidden="true">
+                        ⭐
+                      </span>
+
+                      <p
+                        className="font-bold text-base"
+                        style={{
+                          color: "var(--ink)",
+                        }}
+                      >
+                        {Number(seller.rating_avg ?? 0).toFixed(1)}
+                      </p>
+                    </div>
+
+                    <p className="text-[11px] text-gray-500 mt-1">Rating</p>
                   </div>
 
-                  <div>
-                    <p className="font-semibold text-sm">
-                      {seller.total_sales ?? 0}
-                    </p>
+                  <div
+                    className="rounded-xl border p-3"
+                    style={{
+                      borderColor: "var(--sand)",
+                      background: "#fbfaf7",
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base" aria-hidden="true">
+                        🛍️
+                      </span>
 
-                    <p className="text-[10px] text-gray-500">Sales</p>
+                      <p
+                        className="font-bold text-base"
+                        style={{
+                          color: "var(--ink)",
+                        }}
+                      >
+                        {seller.total_sales ?? 0}
+                      </p>
+                    </div>
+
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Completed sales
+                    </p>
                   </div>
                 </div>
               </div>
@@ -394,7 +477,7 @@ export default function AccountPage() {
               href="/seller/dashboard/settings"
               icon="settings"
               title="Seller settings"
-              description="Business information and payment methods"
+              description="Business information and shop settings"
             />
           </AccountSection>
         )}
@@ -501,7 +584,7 @@ export default function AccountPage() {
               />
 
               <p className="text-xs text-gray-500 mt-1">
-                Used for delivery and payment coordination.
+                Used for delivery coordination.
               </p>
             </div>
 
@@ -548,7 +631,7 @@ export default function AccountPage() {
                     color: "var(--leaf)",
                   }}
                 >
-                  Saved
+                  ✓ Saved
                 </span>
               )}
             </div>
@@ -748,6 +831,7 @@ function AccountIcon({ name }: { name: IconName }) {
       return (
         <svg {...common}>
           <circle cx="12" cy="12" r="3" />
+
           <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
         </svg>
       );
@@ -764,7 +848,9 @@ function AccountIcon({ name }: { name: IconName }) {
       return (
         <svg {...common}>
           <circle cx="9" cy="8" r="3" />
+
           <circle cx="17" cy="9" r="2" />
+
           <path d="M3 20a6 6 0 0 1 12 0" />
           <path d="M15 15a5 5 0 0 1 6 5" />
         </svg>
@@ -824,7 +910,7 @@ function SellerStatus({
   }
 
   if (verification === "approved") {
-    return <StatusPill text="Verified" type="success" />;
+    return <StatusPill text="✓ Verified" type="success" />;
   }
 
   if (verification === "rejected") {
@@ -859,7 +945,7 @@ function StatusPill({
 
   return (
     <span
-      className="text-[10px] rounded-full px-2 py-1 font-semibold"
+      className="text-[10px] rounded-full px-2.5 py-1 font-semibold shrink-0"
       style={style}
     >
       {text}
