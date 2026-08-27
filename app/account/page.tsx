@@ -43,23 +43,16 @@ export default function AccountPage() {
   const router = useRouter();
 
   const [profile, setProfile] = useState<Profile | null>(null);
-
   const [seller, setSeller] = useState<Seller | null>(null);
-
   const [email, setEmail] = useState<string | null>(null);
 
   const [fullName, setFullName] = useState("");
-
   const [phone, setPhone] = useState("");
-
   const [city, setCity] = useState("");
 
   const [loading, setLoading] = useState(true);
-
   const [saving, setSaving] = useState(false);
-
   const [saved, setSaved] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -85,14 +78,12 @@ export default function AccountPage() {
           phone_number,
           city,
           role
-          `,
+        `,
         )
         .eq("id", user.id)
         .single();
 
-      if (!active) {
-        return;
-      }
+      if (!active) return;
 
       if (profileError || !profileData) {
         setError("Couldn't load your account.");
@@ -103,13 +94,9 @@ export default function AccountPage() {
       const userProfile = profileData as Profile;
 
       setProfile(userProfile);
-
       setEmail(user.email ?? null);
-
       setFullName(userProfile.full_name ?? "");
-
       setPhone(userProfile.phone_number ?? "");
-
       setCity(userProfile.city ?? "");
 
       if (userProfile.role === "seller") {
@@ -122,7 +109,7 @@ export default function AccountPage() {
             account_status,
             rating_avg,
             total_sales
-            `,
+          `,
           )
           .eq("id", user.id)
           .maybeSingle();
@@ -164,9 +151,7 @@ export default function AccountPage() {
       .from("users")
       .update({
         full_name: fullName.trim(),
-
         phone_number: phone.trim(),
-
         city,
       })
       .eq("id", user.id);
@@ -183,9 +168,7 @@ export default function AccountPage() {
         ? {
             ...current,
             full_name: fullName.trim(),
-
             phone_number: phone.trim(),
-
             city,
           }
         : current,
@@ -238,14 +221,13 @@ export default function AccountPage() {
   const initial = firstName.charAt(0).toUpperCase() || "T";
 
   const isSeller = profile.role === "seller";
-
   const isAdmin = profile.role === "admin";
 
   return (
     <>
       <SiteHeader />
 
-      <main className="max-w-2xl mx-auto px-4 py-5 pb-24 sm:pb-6">
+      <main className="max-w-2xl mx-auto px-4 py-5 pb-28 sm:pb-8">
         {/* PROFILE */}
 
         <section className="flex items-center gap-4 mb-6">
@@ -578,7 +560,7 @@ export default function AccountPage() {
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full rounded-xl border py-3 text-sm font-medium mb-5"
+          className="w-full rounded-xl border py-3 text-sm font-medium mb-6"
           style={{
             borderColor: "var(--clay)",
             color: "var(--clay)",
@@ -586,6 +568,41 @@ export default function AccountPage() {
         >
           Log out
         </button>
+
+        {/* LEGAL FOOTER */}
+
+        <footer
+          className="border-t pt-5 pb-3 text-center"
+          style={{
+            borderColor: "var(--sand)",
+          }}
+        >
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2 text-xs text-gray-500">
+            <Link href="/terms" className="hover:underline">
+              Terms
+            </Link>
+
+            <span className="text-gray-300">·</span>
+
+            <Link href="/privacy" className="hover:underline">
+              Privacy
+            </Link>
+
+            <span className="text-gray-300">·</span>
+
+            <Link href="/marketplace-rules" className="hover:underline">
+              Marketplace Rules
+            </Link>
+
+            <span className="text-gray-300">·</span>
+
+            <Link href="/safety" className="hover:underline">
+              Safety
+            </Link>
+          </div>
+
+          <p className="text-[11px] text-gray-400 mt-3">© 2026 Teraa</p>
+        </footer>
       </main>
     </>
   );
