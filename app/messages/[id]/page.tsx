@@ -9,12 +9,9 @@ import { sendMessage } from "./actions";
 export default async function ConversationPage({
   params,
 }: {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-
   const supabase = await createClient();
 
   const {
@@ -33,7 +30,6 @@ export default async function ConversationPage({
       buyer_id,
       seller_id,
       product_id,
-
       products(
         id,
         title,
@@ -45,7 +41,7 @@ export default async function ConversationPage({
           sort_order
         )
       )
-      `,
+    `,
     )
     .eq("id", id)
     .maybeSingle();
@@ -71,7 +67,7 @@ export default async function ConversationPage({
       full_name,
       city,
       profile_photo_url
-      `,
+    `,
     )
     .eq("id", otherUserId)
     .maybeSingle();
@@ -89,7 +85,7 @@ export default async function ConversationPage({
       content,
       created_at,
       read_at
-      `,
+    `,
     )
     .eq("conversation_id", conversation.id)
     .order("created_at", {
@@ -100,12 +96,6 @@ export default async function ConversationPage({
     console.error("Could not load conversation messages:", messagesError);
   }
 
-  /*
-   * Mark messages from the other participant as read.
-   *
-   * We do this directly with Supabase here instead of
-   * calling a Server Action while the page is rendering.
-   */
   const { error: readError } = await supabase
     .from("messages")
     .update({
@@ -157,7 +147,6 @@ export default async function ConversationPage({
     null;
 
   const displayName = otherUser?.full_name ?? "Teraa user";
-
   const initial = displayName.charAt(0).toUpperCase() || "T";
 
   const currentUserIsBuyer = conversation.buyer_id === user.id;
@@ -166,18 +155,27 @@ export default async function ConversationPage({
     <>
       <SiteHeader />
 
-      <main className="max-w-2xl mx-auto px-0 sm:px-4 py-0 sm:py-5">
-        {/* CHAT HEADER */}
+      <main className="max-w-2xl mx-auto px-0 sm:px-4 sm:py-5">
+        {/* CONVERSATION HEADER */}
 
-        <section
-          className="sticky top-[113px] sm:top-[73px] z-30 bg-white border-b px-4 py-3"
+        <div
+          className="bg-white border-b"
           style={{
             borderColor: "var(--sand)",
           }}
         >
-          <div className="flex items-center gap-3">
-            <Link href="/messages" className="text-xl shrink-0">
-              ←
+          {/* PERSON */}
+
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Link
+              href="/messages"
+              aria-label="Back to messages"
+              className="w-9 h-9 flex items-center justify-center rounded-full shrink-0 text-2xl"
+              style={{
+                color: "var(--ink)",
+              }}
+            >
+              ‹
             </Link>
 
             <Link href={`/profile/${otherUserId}`} className="shrink-0">
@@ -186,14 +184,14 @@ export default async function ConversationPage({
                 <img
                   src={otherUser.profile_photo_url}
                   alt={displayName}
-                  className="w-10 h-10 rounded-full object-cover border"
+                  className="w-11 h-11 rounded-full object-cover border"
                   style={{
                     borderColor: "var(--sand)",
                   }}
                 />
               ) : (
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-lg"
                   style={{
                     background: "var(--indigo)",
                   }}
@@ -203,93 +201,106 @@ export default async function ConversationPage({
               )}
             </Link>
 
-            <div className="flex-1 min-w-0">
-              <Link
-                href={`/profile/${otherUserId}`}
-                className="font-semibold text-sm hover:underline block truncate"
+            <Link href={`/profile/${otherUserId}`} className="flex-1 min-w-0">
+              <p
+                className="font-semibold text-[15px] truncate"
+                style={{
+                  color: "var(--ink)",
+                }}
               >
                 {displayName}
-              </Link>
+              </p>
 
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-gray-500 mt-0.5 truncate">
                 {currentUserIsBuyer ? "Seller" : "Buyer"}
-
                 {otherUser?.city ? ` · ${otherUser.city}` : ""}
               </p>
-            </div>
+            </Link>
 
             <Link
               href={`/profile/${otherUserId}`}
-              className="text-xs underline text-gray-500 shrink-0"
+              className="text-xs font-medium shrink-0"
+              style={{
+                color: "var(--indigo)",
+              }}
             >
-              Profile
+              View profile
             </Link>
           </div>
-        </section>
 
-        {/* PRODUCT CONTEXT */}
+          {/* PRODUCT */}
 
-        {product && (
-          <Link
-            href={`/products/${product.id}`}
-            className="flex items-center gap-3 px-4 py-3 border-b bg-[#fffdf8] hover:bg-gray-50"
-            style={{
-              borderColor: "var(--sand)",
-            }}
-          >
-            {productPhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={productPhoto}
-                alt={product.title}
-                className="w-14 h-14 rounded-lg object-cover border shrink-0"
-                style={{
-                  borderColor: "var(--sand)",
-                }}
-              />
-            ) : (
-              <div
-                className="w-14 h-14 rounded-lg flex items-center justify-center text-[10px] text-gray-400 shrink-0"
-                style={{
-                  background: "var(--sand)",
-                }}
-              >
-                No photo
+          {product && (
+            <Link
+              href={`/products/${product.id}`}
+              className="flex items-center gap-3 mx-4 mb-3 rounded-xl border p-2.5"
+              style={{
+                borderColor: "var(--sand)",
+                background: "var(--cream, #fffdf8)",
+              }}
+            >
+              {productPhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={productPhoto}
+                  alt={product.title}
+                  className="w-11 h-11 rounded-lg object-cover shrink-0"
+                />
+              ) : (
+                <div
+                  className="w-11 h-11 rounded-lg flex items-center justify-center text-[9px] text-gray-400 shrink-0"
+                  style={{
+                    background: "var(--sand)",
+                  }}
+                >
+                  No photo
+                </div>
+              )}
+
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate">{product.title}</p>
+
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p
+                    className="text-xs font-semibold"
+                    style={{
+                      color: "var(--clay)",
+                    }}
+                  >
+                    GMD {Number(product.price).toLocaleString()}
+                  </p>
+
+                  <span className="text-gray-300">·</span>
+
+                  <p className="text-[11px] text-gray-500 capitalize">
+                    {product.status.replaceAll("_", " ")}
+                  </p>
+                </div>
               </div>
-            )}
 
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{product.title}</p>
-
-              <p
-                className="text-sm font-semibold mt-1"
-                style={{
-                  color: "var(--clay)",
-                }}
-              >
-                GMD {Number(product.price).toLocaleString()}
-              </p>
-
-              <p className="text-xs text-gray-500 mt-0.5 capitalize">
-                {product.status}
-              </p>
-            </div>
-
-            <span className="text-gray-400">›</span>
-          </Link>
-        )}
+              <span className="text-gray-400 text-lg">›</span>
+            </Link>
+          )}
+        </div>
 
         {/* MESSAGES */}
 
-        <section className="px-4 py-5 space-y-3 min-h-[45vh]">
+        <section className="px-4 py-5 space-y-3 min-h-[52vh]">
           {(messages ?? []).length === 0 && (
-            <div className="text-center py-10">
+            <div className="text-center py-14">
               <div className="text-3xl mb-3">💬</div>
 
-              <p className="font-medium text-sm">Start the conversation</p>
+              <p
+                className="font-medium text-sm"
+                style={{
+                  color: "var(--ink)",
+                }}
+              >
+                Start the conversation
+              </p>
 
               <p className="text-xs text-gray-500 mt-1">
-                Ask about the product, condition, delivery or payment.
+                Ask about the item, condition or delivery.
               </p>
             </div>
           )}
@@ -306,12 +317,7 @@ export default async function ConversationPage({
               <div key={message.id}>
                 {showDate && (
                   <div className="text-center my-4">
-                    <span
-                      className="inline-block rounded-full px-3 py-1 text-[10px] text-gray-500"
-                      style={{
-                        background: "#f3f4f6",
-                      }}
-                    >
+                    <span className="inline-block rounded-full px-3 py-1 text-[10px] text-gray-500 bg-gray-100">
                       {formatDateDivider(message.created_at)}
                     </span>
                   </div>
@@ -330,7 +336,7 @@ export default async function ConversationPage({
                       color: mine ? "white" : "var(--ink)",
                     }}
                   >
-                    <p className="text-sm whitespace-pre-wrap break-words">
+                    <p className="text-sm whitespace-pre-wrap wrap-break-word">
                       {message.content}
                     </p>
 
@@ -365,10 +371,10 @@ export default async function ConversationPage({
           })}
         </section>
 
-        {/* SEND MESSAGE */}
+        {/* MESSAGE COMPOSER */}
 
         <section
-          className="sticky bottom-[65px] sm:bottom-0 bg-white border-t px-3 sm:px-0 py-2 z-30"
+          className="sticky bottom-16.25 sm:bottom-0 bg-white border-t px-3 py-2 z-30"
           style={{
             borderColor: "var(--sand)",
           }}
@@ -386,12 +392,12 @@ export default async function ConversationPage({
                 maxLength={2000}
                 rows={1}
                 placeholder="Write a message..."
-                className="flex-1 resize-none outline-none text-sm px-2 py-2 max-h-32"
+                className="flex-1 resize-none outline-none text-sm px-2 py-2 max-h-32 bg-transparent"
               />
 
               <button
                 type="submit"
-                className="rounded-full px-4 py-2 text-sm text-white font-medium shrink-0"
+                className="rounded-full px-5 py-2 text-sm text-white font-medium shrink-0"
                 style={{
                   background: "var(--indigo)",
                 }}
@@ -408,7 +414,6 @@ export default async function ConversationPage({
 
 function sameDay(first: string, second: string) {
   const a = new Date(first);
-
   const b = new Date(second);
 
   return (
@@ -420,7 +425,6 @@ function sameDay(first: string, second: string) {
 
 function formatDateDivider(value: string) {
   const date = new Date(value);
-
   const today = new Date();
 
   const yesterday = new Date();
@@ -438,6 +442,7 @@ function formatDateDivider(value: string) {
   return date.toLocaleDateString([], {
     month: "short",
     day: "numeric",
+
     year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
   });
 }

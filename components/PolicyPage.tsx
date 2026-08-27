@@ -85,7 +85,7 @@ export function PolicyPage({
                       className="flex items-start gap-2 text-sm text-gray-600 leading-6"
                     >
                       <span
-                        className="mt-[9px] w-1.5 h-1.5 rounded-full shrink-0"
+                        className="mt-2.25 w-1.5 h-1.5 rounded-full shrink-0"
                         style={{
                           background: "var(--indigo)",
                         }}
@@ -100,39 +100,33 @@ export function PolicyPage({
           ))}
         </div>
 
-        <PolicyFooter />
+        <footer
+          className="mt-10 pt-6 border-t text-center"
+          style={{
+            borderColor: "var(--sand)",
+          }}
+        >
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-gray-500">
+            <Link href="/terms" className="hover:underline">
+              Terms
+            </Link>
+
+            <Link href="/privacy" className="hover:underline">
+              Privacy
+            </Link>
+
+            <Link href="/marketplace-rules" className="hover:underline">
+              Marketplace Rules
+            </Link>
+
+            <Link href="/safety" className="hover:underline">
+              Safety
+            </Link>
+          </div>
+
+          <p className="text-[11px] text-gray-400 mt-3">© 2026 Teraa</p>
+        </footer>
       </main>
     </>
-  );
-}
-
-function PolicyFooter() {
-  return (
-    <footer
-      className="mt-10 pt-6 border-t text-center"
-      style={{
-        borderColor: "var(--sand)",
-      }}
-    >
-      <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-gray-500">
-        <Link href="/terms" className="hover:underline">
-          Terms
-        </Link>
-
-        <Link href="/privacy" className="hover:underline">
-          Privacy
-        </Link>
-
-        <Link href="/marketplace-rules" className="hover:underline">
-          Marketplace Rules
-        </Link>
-
-        <Link href="/safety" className="hover:underline">
-          Safety
-        </Link>
-      </div>
-
-      <p className="text-[11px] text-gray-400 mt-3">© 2026 Teraa</p>
-    </footer>
   );
 }
