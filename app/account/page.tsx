@@ -100,16 +100,6 @@ export default function AccountPage() {
       setPhone(userProfile.phone_number ?? "");
       setCity(userProfile.city ?? "");
 
-      /*
-       * SELLER DATA
-       *
-       * We calculate completed sales directly from
-       * the orders table instead of relying on the
-       * old sellers.total_sales value.
-       *
-       * This keeps the Me page consistent with the
-       * seller's public profile.
-       */
       if (userProfile.role === "seller") {
         const [
           { data: sellerData, error: sellerError },
@@ -370,9 +360,7 @@ export default function AccountPage() {
                   borderColor: "var(--sand)",
                 }}
               >
-                {/* SELLER NAME + STATUS */}
-
-                <div className="flex justify-between gap-4">
+                <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p
                       className="font-display font-semibold text-lg truncate"
@@ -831,7 +819,6 @@ function AccountIcon({ name }: { name: IconName }) {
       return (
         <svg {...common}>
           <circle cx="12" cy="12" r="3" />
-
           <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
         </svg>
       );
@@ -848,9 +835,7 @@ function AccountIcon({ name }: { name: IconName }) {
       return (
         <svg {...common}>
           <circle cx="9" cy="8" r="3" />
-
           <circle cx="17" cy="9" r="2" />
-
           <path d="M3 20a6 6 0 0 1 12 0" />
           <path d="M15 15a5 5 0 0 1 6 5" />
         </svg>
@@ -945,7 +930,7 @@ function StatusPill({
 
   return (
     <span
-      className="text-[10px] rounded-full px-2.5 py-1 font-semibold shrink-0"
+      className="inline-flex w-fit items-center text-[10px] leading-none rounded-full px-2.5 py-1.5 font-semibold shrink-0 self-start"
       style={style}
     >
       {text}
