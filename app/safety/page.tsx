@@ -1,66 +1,92 @@
-import { SiteHeader } from "@/components/SiteHeader";
+import { PolicyPage } from "@/components/PolicyPage";
 
 export default function SafetyPage() {
   return (
-    <>
-      <SiteHeader />
-      <main className="max-w-2xl mx-auto px-4 py-10">
-        <h1 className="font-display text-2xl mb-6" style={{ color: "var(--ink)" }}>
-          How verification &amp; safety work on Teraa
-        </h1>
+    <PolicyPage
+      title="Safety on Teraa"
+      lastUpdated="27 August 2026"
+      intro="Buying and selling with other people always requires some care. These tips are here to help you use Teraa more safely."
+      sections={[
+        {
+          title: "Verified sellers",
+          paragraphs: [
+            "A verified seller has submitted identification or business information that was reviewed by Teraa.",
+            "Verification helps us confirm who is behind a seller account, but it does not guarantee the quality, condition or authenticity of every product they list.",
+          ],
+        },
 
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold mb-2 flex items-center gap-1">
-            <span style={{ color: "var(--leaf)" }}>✓</span> What the verified badge means
-          </h2>
-          <p className="text-sm text-gray-700">
-            A seller with a green checkmark has submitted a Gambian ID or business
-            registration, which was reviewed and approved by the Teraa team before
-            they could list products. It confirms the seller is a real, identifiable
-            person. It does not guarantee the quality or condition of any specific item.
-          </p>
-        </section>
+        {
+          title: "Cash on delivery",
+          paragraphs: [
+            "Cash on delivery is currently the active payment method on Teraa.",
+            "Online payments through mobile money or bank transfer are not currently available through Teraa checkout.",
+          ],
+          items: [
+            "Inspect the item before handing over cash whenever possible.",
+            "Make sure the product matches the listing description.",
+            "For electronics, test the basic functions before paying where practical.",
+            "Do not feel pressured to complete a purchase if the product is significantly different from what was advertised.",
+          ],
+        },
 
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold mb-2">How payments work</h2>
-          <ul className="text-sm text-gray-700 space-y-2 list-disc pl-5">
-            <li>
-              <strong>Bank transfer or mobile money:</strong> you send payment directly
-              to the seller&apos;s bank or mobile money account. Teraa does not hold or
-              process this payment, it&apos;s a direct transfer between you and the seller.
-            </li>
-            <li>
-              <strong>Cash on delivery:</strong> you pay in person when the item is
-              handed over. Always inspect the item before paying.
-            </li>
-          </ul>
-          <p className="text-sm text-gray-700 mt-3">
-            Teraa does not currently offer escrow or buyer protection refunds. Treat
-            transactions the way you would meeting someone from a classified ad,
-            verify what you&apos;re getting before you pay.
-          </p>
-        </section>
+        {
+          title: "Meeting a buyer or seller",
+          items: [
+            "Meet in a busy, public and well-lit place.",
+            "Avoid isolated locations when meeting someone you do not know.",
+            "Tell someone where you are going for higher-value transactions.",
+            "Consider bringing another person with you for expensive purchases.",
+            "Do not carry more cash than you need for the transaction.",
+          ],
+        },
 
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold mb-2">Staying safe</h2>
-          <ul className="text-sm text-gray-700 space-y-1.5 list-disc pl-5">
-            <li>Meet in a public, well-lit place for in-person exchanges</li>
-            <li>Inspect items before paying, especially for cash on delivery</li>
-            <li>Be cautious of prices that seem far below market value</li>
-            <li>Keep payment confirmations and chat records until the sale is complete</li>
-            <li>Report suspicious listings or sellers using the report link on any product page</li>
-          </ul>
-        </section>
+        {
+          title: "Watch for warning signs",
+          items: [
+            "A price that is unusually low compared with the normal market price.",
+            "A seller refusing to let you reasonably inspect the item.",
+            "Someone pressuring you to complete the transaction immediately.",
+            "Photos or descriptions that do not match what you are shown.",
+            "Someone asking you to ignore the normal Teraa order process.",
+            "Requests for passwords, email verification codes or other sensitive account information.",
+          ],
+        },
 
-        <section>
-          <h2 className="text-sm font-semibold mb-2">Reporting a problem</h2>
-          <p className="text-sm text-gray-700">
-            Use the &ldquo;Report this listing&rdquo; link on any product page, or contact
-            us directly. Reports are reviewed by the Teraa team, and sellers with
-            verified violations can be suspended.
-          </p>
-        </section>
-      </main>
-    </>
+        {
+          title: "Protect your account",
+          items: [
+            "Never share your Teraa password.",
+            "Never share email verification codes with another person.",
+            "Use an email account that only you control.",
+            "Log out when using a device that other people can access.",
+            "Report suspected account misuse as soon as possible.",
+          ],
+        },
+
+        {
+          title: "Reporting a listing",
+          paragraphs: [
+            "If a listing looks fraudulent, prohibited or misleading, use the Report this listing option on the product page.",
+            "Teraa administrators can review reports, remove listings and restrict accounts when appropriate.",
+          ],
+        },
+
+        {
+          title: "If something feels wrong",
+          paragraphs: [
+            "You are not required to complete a transaction simply because you placed an order.",
+            "If the meeting feels unsafe or the item is materially different from the listing, prioritize your safety and do not continue with the transaction.",
+          ],
+        },
+
+        {
+          title: "What Teraa does not currently provide",
+          paragraphs: [
+            "Teraa does not currently hold customer payments, provide escrow or operate a buyer-protection refund system.",
+            "For cash on delivery orders, the buyer and seller complete the exchange directly. Buyers should inspect the item before paying whenever possible.",
+          ],
+        },
+      ]}
+    />
   );
 }
