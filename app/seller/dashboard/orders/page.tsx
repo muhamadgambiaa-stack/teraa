@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SellerNav } from "@/components/SellerNav";
@@ -90,7 +92,12 @@ export default async function SellerOrdersPage() {
 
   const { data: seller } = await supabase
     .from("sellers")
-    .select("id, verification_status")
+    .select(
+      `
+      id,
+      verification_status
+      `,
+    )
     .eq("id", user.id)
     .single();
 
@@ -111,9 +118,14 @@ export default async function SellerOrdersPage() {
       created_at,
 
       order_items(
+        product_id,
         quantity,
         price_at_purchase,
-        products(title)
+
+        products(
+          id,
+          title
+        )
       ),
 
       users:buyer_id(
@@ -135,7 +147,7 @@ export default async function SellerOrdersPage() {
     <>
       <SiteHeader />
 
-      <main className="max-w-3xl mx-auto px-4 py-6">
+      <main className="max-w-3xl mx-auto px-4 py-6 pb-24 sm:pb-8">
         <h1
           className="font-display text-2xl mb-6"
           style={{
@@ -184,14 +196,17 @@ export default async function SellerOrdersPage() {
               (
                 order as {
                   order_items?: {
+                    product_id: string;
                     quantity: number;
                     price_at_purchase: number;
 
                     products?:
                       | {
+                          id: string;
                           title: string;
                         }
                       | {
+                          id: string;
                           title: string;
                         }[];
                   }[];
@@ -236,7 +251,7 @@ export default async function SellerOrdersPage() {
 
             const status = order.status as OrderStatus;
 
-            const style = STATUS_STYLES[status];
+            const style = STATUS_STYLES[status] ?? STATUS_STYLES.placed;
 
             const action = NEXT_ACTION[status];
 
@@ -267,14 +282,16 @@ export default async function SellerOrdersPage() {
                   </span>
                 </div>
 
-                {items.map((item, index) => {
-                  const title = Array.isArray(item.products)
-                    ? item.products[0]?.title
-                    : item.products?.title;
+                {items.map((item) => {
+                  const rawProduct = item.products;
+
+                  const product = Array.isArray(rawProduct)
+                    ? rawProduct[0]
+                    : rawProduct;
 
                   return (
-                    <p key={index} className="text-sm">
-                      {item.quantity} × {title}
+                    <p key={item.product_id} className="text-sm">
+                      {item.quantity} × {product?.title ?? "Product"}
                     </p>
                   );
                 })}
@@ -310,7 +327,19 @@ export default async function SellerOrdersPage() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2 mt-3">
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <Link
+                    href={`/seller/dashboard/orders/${order.id}`}
+                    className="rounded-full px-4 py-1.5 text-xs font-medium border inline-flex items-center gap-1.5"
+                    style={{
+                      borderColor: "var(--indigo)",
+                      color: "var(--indigo)",
+                    }}
+                  >
+                    View order
+                    <ArrowRightIcon />
+                  </Link>
+
                   {action && (
                     <form
                       action={updateOrderStatus.bind(
@@ -352,5 +381,24 @@ export default async function SellerOrdersPage() {
         </div>
       </main>
     </>
+  );
+}
+
+function ArrowRightIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </svg>
   );
 }
