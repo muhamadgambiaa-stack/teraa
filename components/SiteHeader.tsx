@@ -9,7 +9,6 @@ import { HeaderAuthActions } from "./HeaderAuthActions";
 export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
   const pathname = usePathname();
 
-  // Search should only appear on the homepage.
   const showSearch = pathname === "/";
 
   return (
@@ -44,10 +43,14 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
 
       {/* MOBILE HEADER */}
       <div className="sm:hidden">
-        <div className={showSearch ? "px-4 pt-4 pb-3" : "px-4 py-4"}>
+        <div
+          className={
+            showSearch ? "px-4 pt-3 pb-2.5" : "h-14 px-4 flex items-center"
+          }
+        >
           <Link
             href="/"
-            className="font-display text-3xl font-bold"
+            className="font-display text-xl font-bold leading-none"
             style={{
               color: "var(--indigo)",
             }}
@@ -57,7 +60,7 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
         </div>
 
         {showSearch && (
-          <div className="px-4 pb-4">
+          <div className="px-4 pb-3">
             <SearchBar initialQuery={searchQuery} />
           </div>
         )}
