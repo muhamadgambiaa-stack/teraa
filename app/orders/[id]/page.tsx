@@ -149,10 +149,6 @@ export default async function OrderPage({
 
   const canMarkReceived = ["shipped", "delivered"].includes(order.status);
 
-  /*
-   * Teraa currently creates one product
-   * per order.
-   */
   const reviewItem = items[0] ?? null;
 
   const reviewProductRaw = reviewItem?.products;
@@ -161,10 +157,6 @@ export default async function OrderPage({
     ? reviewProductRaw[0]
     : reviewProductRaw;
 
-  /*
-   * Existing review for this exact
-   * completed product/order.
-   */
   let existingReview: {
     id: string;
     product_id: string | null;
@@ -286,7 +278,6 @@ export default async function OrderPage({
             className="rounded-xl border p-4 mb-4"
             style={{
               borderColor: "var(--gold)",
-
               background: "#fbf3df",
             }}
           >
@@ -295,7 +286,6 @@ export default async function OrderPage({
                 className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                 style={{
                   background: "white",
-
                   color: "var(--gold)",
                 }}
               >
@@ -341,7 +331,6 @@ export default async function OrderPage({
                 className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                 style={{
                   background: "#f3f4f6",
-
                   color: "var(--indigo)",
                 }}
               >
@@ -373,7 +362,6 @@ export default async function OrderPage({
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
               style={{
                 background: "#f3f4f6",
-
                 color: "var(--indigo)",
               }}
             >
@@ -401,7 +389,6 @@ export default async function OrderPage({
               className="w-full rounded-full py-2.5 text-sm font-semibold border"
               style={{
                 borderColor: "var(--clay)",
-
                 color: "var(--clay)",
               }}
             >
@@ -476,13 +463,7 @@ export default async function OrderPage({
               />
 
               <div className="mb-4">
-                <div className="flex items-center gap-2">
-                  <span aria-hidden="true" className="text-lg">
-                    ⭐
-                  </span>
-
-                  <p className="text-sm font-semibold">Rate this product</p>
-                </div>
+                <p className="text-sm font-semibold">Rate this product</p>
 
                 <p className="text-xs text-gray-500 mt-1">
                   How was <strong>{reviewProduct.title}</strong>? Was it as
@@ -537,13 +518,7 @@ export default async function OrderPage({
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2">
-                  <span aria-hidden="true" className="text-base">
-                    ⭐
-                  </span>
-
-                  <p className="text-sm font-semibold">Your product review</p>
-                </div>
+                <p className="text-sm font-semibold">Your product review</p>
 
                 <p className="text-xs text-gray-500 mt-1">
                   {reviewProduct.title}
@@ -555,7 +530,6 @@ export default async function OrderPage({
                   className="rounded-full px-2 py-1 text-[10px] font-medium shrink-0"
                   style={{
                     background: "#f3f4f6",
-
                     color: "#6b7280",
                   }}
                 >
@@ -568,8 +542,7 @@ export default async function OrderPage({
               <StaticStarRating rating={Number(existingReview.rating)} />
 
               <span className="text-xs text-gray-500">
-                {existingReview.rating}
-                /5
+                {existingReview.rating}/5
               </span>
             </div>
 
@@ -588,12 +561,13 @@ export default async function OrderPage({
               }}
             >
               <summary
-                className="px-4 py-3 text-sm font-medium cursor-pointer list-none select-none"
+                className="px-4 py-3 text-sm font-medium cursor-pointer list-none select-none flex items-center gap-2"
                 style={{
                   color: "var(--indigo)",
                 }}
               >
-                ✏️ Edit review
+                <EditIcon />
+                Edit review
               </summary>
 
               <form
@@ -612,29 +586,10 @@ export default async function OrderPage({
                 <div>
                   <p className="text-xs font-medium mb-2">Your rating</p>
 
-                  <div className="flex flex-wrap gap-2">
-                    {[1, 2, 3, 4, 5].map((rating) => (
-                      <label key={rating} className="cursor-pointer">
-                        <input
-                          type="radio"
-                          name="rating"
-                          value={rating}
-                          defaultChecked={existingReview.rating === rating}
-                          required
-                          className="sr-only peer"
-                        />
-
-                        <span
-                          className="inline-flex items-center gap-1 rounded-full border px-3 py-2 text-xs transition peer-checked:font-bold"
-                          style={{
-                            borderColor: "var(--sand)",
-                          }}
-                        >
-                          ⭐ {rating}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+                  <StarRatingInput
+                    name="rating"
+                    defaultValue={Number(existingReview.rating)}
+                  />
                 </div>
 
                 <div className="mt-4">
@@ -742,6 +697,25 @@ function StaticStarRating({ rating }: { rating: number }) {
         </svg>
       ))}
     </div>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
   );
 }
 
