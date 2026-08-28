@@ -22,6 +22,13 @@ type Category = {
   name: string;
 };
 
+type PublicSellerProfile = {
+  id: string;
+  public_role: "buyer" | "seller";
+  business_name: string | null;
+  verification_status: string | null;
+};
+
 async function getCategories(): Promise<Category[]> {
   try {
     const supabase = await createClient();
@@ -52,11 +59,23 @@ async function searchProducts(params: SearchParams): Promise<{
   try {
     const supabase = await createClient();
 
+    /*
+     * --------------------------------------------------------
+     * PRODUCTS
+     * --------------------------------------------------------
+     *
+     * Do not join directly to public.sellers.
+     * Public seller information is loaded through
+     * get_public_profile().
+     * --------------------------------------------------------
+     */
+
     let query = supabase
       .from("products")
       .select(
         `
         id,
+        seller_id,
         title,
         price,
         status,
@@ -67,39 +86,62 @@ async function searchProducts(params: SearchParams): Promise<{
         product_photos(
           photo_url,
           is_cover
-        ),
-
-        sellers(
-          business_name,
-          verification_status
         )
         `,
       )
       .eq("status", "active");
 
+    /*
+     * SEARCH TEXT
+     */
+
     if (params.q?.trim()) {
       query = query.ilike("title", `%${params.q.trim()}%`);
     }
+
+    /*
+     * CITY
+     */
 
     if (params.city) {
       query = query.eq("location_city", params.city);
     }
 
+    /*
+     * CONDITION
+     */
+
     if (params.condition) {
       query = query.eq("condition", params.condition);
     }
+
+    /*
+     * CATEGORY
+     */
 
     if (params.category) {
       query = query.eq("category_id", params.category);
     }
 
+    /*
+     * MIN PRICE
+     */
+
     if (params.min && Number.isFinite(Number(params.min))) {
       query = query.gte("price", Number(params.min));
     }
 
+    /*
+     * MAX PRICE
+     */
+
     if (params.max && Number.isFinite(Number(params.max))) {
       query = query.lte("price", Number(params.max));
     }
+
+    /*
+     * SORT
+     */
 
     if (params.sort === "price_asc") {
       query = query.order("price", {
@@ -124,7 +166,76 @@ async function searchProducts(params: SearchParams): Promise<{
       };
     }
 
-    const products: ProductCardData[] = (data ?? []).map((product) => {
+    const rawProducts = data ?? [];
+
+    /*
+     * --------------------------------------------------------
+     * UNIQUE SELLERS
+     * --------------------------------------------------------
+     *
+     * One seller may have multiple products in the search
+     * results. Load each public seller profile only once.
+     * --------------------------------------------------------
+     */
+
+    const sellerIds = [
+      ...new Set(rawProducts.map((product) => product.seller_id)),
+    ];
+
+    /*
+     * --------------------------------------------------------
+     * PUBLIC SELLER DATA
+     * --------------------------------------------------------
+     */
+
+    const sellerEntries = await Promise.all(
+      sellerIds.map(async (sellerId) => {
+        const { data: profileData, error: profileError } = await supabase.rpc(
+          "get_public_profile",
+          {
+            p_user_id: sellerId,
+          },
+        );
+
+        if (profileError) {
+          console.error(
+            `Could not load public seller profile ${sellerId}:`,
+            profileError,
+          );
+
+          return [sellerId, null] as const;
+        }
+
+        const rawProfile = Array.isArray(profileData)
+          ? profileData[0]
+          : profileData;
+
+        const profile = rawProfile as PublicSellerProfile | null;
+
+        /*
+         * get_public_profile() only returns
+         * public_role = seller when the seller is
+         * approved and both accounts are active.
+         */
+        if (!profile || profile.public_role !== "seller") {
+          return [sellerId, null] as const;
+        }
+
+        return [sellerId, profile] as const;
+      }),
+    );
+
+    const sellerMap = new Map<string, PublicSellerProfile | null>(
+      sellerEntries,
+    );
+
+    /*
+     * --------------------------------------------------------
+     * PRODUCT CARDS
+     * --------------------------------------------------------
+     */
+
+    const products: ProductCardData[] = rawProducts.map((product) => {
       const photos =
         (
           product as {
@@ -140,30 +251,21 @@ async function searchProducts(params: SearchParams): Promise<{
         photos[0]?.photo_url ??
         null;
 
-      const sellerRaw = (
-        product as {
-          sellers?:
-            | {
-                business_name: string;
-                verification_status: string;
-              }
-            | {
-                business_name: string;
-                verification_status: string;
-              }[];
-        }
-      ).sellers;
-
-      const seller = Array.isArray(sellerRaw) ? sellerRaw[0] : sellerRaw;
+      const seller = sellerMap.get(product.seller_id) ?? null;
 
       return {
         id: product.id,
         title: product.title,
         price: product.price,
+
         condition: product.condition as ProductCondition,
+
         location_city: product.location_city,
+
         coverPhoto: cover,
+
         sellerName: seller?.business_name ?? null,
+
         sellerVerified: seller?.verification_status === "approved",
       };
     });
@@ -172,7 +274,9 @@ async function searchProducts(params: SearchParams): Promise<{
       products,
       error: null,
     };
-  } catch {
+  } catch (error) {
+    console.error("Could not search products:", error);
+
     return {
       products: [],
       error: "not_configured",
