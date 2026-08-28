@@ -12,6 +12,12 @@ import {
   updateOrderStatus,
 } from "../actions";
 
+/*
+ * ============================================================
+ * ORDER STATUS UI
+ * ============================================================
+ */
+
 const STATUS_STYLES: Record<
   OrderStatus,
   {
@@ -57,6 +63,12 @@ const STATUS_STYLES: Record<
   },
 };
 
+/*
+ * Seller takes the order only as far as delivered.
+ *
+ * Buyer confirms receipt and completes the order.
+ */
+
 const NEXT_ACTION: Partial<
   Record<
     OrderStatus,
@@ -82,10 +94,22 @@ const NEXT_ACTION: Partial<
   },
 };
 
+/*
+ * Buyer information intentionally exposed to
+ * the seller for this order.
+ *
+ * No phone number.
+ */
+
 type BuyerContact = {
   id: string;
   full_name: string;
   city: string | null;
+};
+
+type DeliveryIssue = {
+  status: string;
+  reported_at: string;
 };
 
 export default async function SellerOrderDetailPage({
@@ -108,8 +132,11 @@ export default async function SellerOrderDetailPage({
   }
 
   /*
+   * ==========================================================
    * SELLER
+   * ==========================================================
    */
+
   const { data: seller, error: sellerError } = await supabase
     .from("sellers")
     .select(
@@ -127,10 +154,16 @@ export default async function SellerOrderDetailPage({
   }
 
   /*
+   * ==========================================================
    * ORDER
+   * ==========================================================
    *
-   * No users:buyer_id() relation here.
+   * Do not directly join another user's users row.
+   *
+   * Buyer information is loaded later through
+   * get_order_buyer_for_seller().
    */
+
   const { data: order, error } = await supabase
     .from("orders")
     .select(
@@ -177,21 +210,25 @@ export default async function SellerOrderDetailPage({
   /*
    * Seller can only view their own order.
    */
+
   if (order.seller_id !== user.id) {
     notFound();
   }
 
   /*
-   * BUYER INFORMATION
+   * ==========================================================
+   * BUYER
+   * ==========================================================
    *
-   * Safe RPC returns only:
+   * This RPC only exposes:
    *
-   * - id
-   * - full_name
+   * - buyer ID
+   * - full name
    * - city
    *
-   * No phone number.
+   * Phone number is not requested or displayed.
    */
+
   const { data: buyerData, error: buyerError } = await supabase.rpc(
     "get_order_buyer_for_seller",
     {
@@ -208,38 +245,63 @@ export default async function SellerOrderDetailPage({
   const buyer = (buyerRaw as BuyerContact | null) ?? null;
 
   /*
-   * ORDER ITEMS
+   * ==========================================================
+   * DELIVERY ISSUE
+   * ==========================================================
+   *
+   * Sellers can only read delivery issues for their own orders
+   * through the existing RLS policy.
    */
+
+  let deliveryIssue: DeliveryIssue | null = null;
+
+  const { data: deliveryIssueData, error: deliveryIssueError } = await supabase
+    .from("order_delivery_issues")
+    .select(
+      `
+      status,
+      reported_at
+      `,
+    )
+    .eq("order_id", order.id)
+    .maybeSingle();
+
+  if (deliveryIssueError) {
+    console.error("Could not load delivery issue:", deliveryIssueError);
+  }
+
+  deliveryIssue = (deliveryIssueData as DeliveryIssue | null) ?? null;
+
+  /*
+   * ==========================================================
+   * ORDER ITEMS
+   * ==========================================================
+   */
+
   const items =
     (
       order as {
         order_items?: {
           product_id: string;
-
           quantity: number;
-
           price_at_purchase: number;
 
           products?:
             | {
                 id: string;
-
                 title: string;
 
                 product_photos?: {
                   photo_url: string;
-
                   is_cover: boolean;
                 }[];
               }
             | {
                 id: string;
-
                 title: string;
 
                 product_photos?: {
                   photo_url: string;
-
                   is_cover: boolean;
                 }[];
               }[];
@@ -248,21 +310,24 @@ export default async function SellerOrderDetailPage({
     ).order_items ?? [];
 
   /*
-   * LEGACY DIGITAL PAYMENT
+   * ==========================================================
+   * LEGACY DIGITAL PAYMENT DATA
+   * ==========================================================
    *
-   * Current Teraa checkout is COD-only.
+   * Current checkout is COD-only.
+   *
+   * This remains so older digital orders can still render.
    */
+
   const methodRaw = (
     order as {
       seller_payment_methods?:
         | {
             provider_name: string;
-
             method_type: string;
           }
         | {
             provider_name: string;
-
             method_type: string;
           }[];
     }
@@ -271,8 +336,11 @@ export default async function SellerOrderDetailPage({
   const method = Array.isArray(methodRaw) ? methodRaw[0] : methodRaw;
 
   /*
+   * ==========================================================
    * TOTAL
+   * ==========================================================
    */
+
   const total = items.reduce(
     (sum, item) => sum + item.quantity * Number(item.price_at_purchase),
     0,
@@ -325,7 +393,6 @@ export default async function SellerOrderDetailPage({
             className="rounded-full px-3 py-1 text-xs font-semibold"
             style={{
               background: style.bg,
-
               color: style.color,
             }}
           >
@@ -489,7 +556,6 @@ export default async function SellerOrderDetailPage({
               className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50"
               style={{
                 borderColor: "var(--indigo)",
-
                 color: "var(--indigo)",
               }}
             >
@@ -498,6 +564,67 @@ export default async function SellerOrderDetailPage({
             </button>
           </form>
         </section>
+
+        {/* DELIVERY ISSUE */}
+
+        {deliveryIssue?.status === "open" && (
+          <section
+            className="rounded-xl border p-4 mt-4"
+            style={{
+              borderColor: "var(--clay)",
+              background: "#fffaf7",
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                style={{
+                  background: "#f8eee9",
+                  color: "var(--clay)",
+                }}
+              >
+                <AlertIcon />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p
+                  className="text-sm font-semibold"
+                  style={{
+                    color: "var(--clay)",
+                  }}
+                >
+                  Buyer reported a delivery issue
+                </p>
+
+                <p className="text-sm text-gray-600 mt-1 leading-5">
+                  The buyer says they have not received this order. Contact the
+                  buyer and check the delivery before taking any further action.
+                </p>
+
+                <p className="text-xs text-gray-500 mt-2">
+                  The buyer must confirm receipt when the item arrives. You
+                  cannot mark this issue as resolved on their behalf.
+                </p>
+
+                <form
+                  action={messageBuyerFromOrder.bind(null, order.id)}
+                  className="mt-4"
+                >
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium text-white"
+                    style={{
+                      background: "var(--indigo)",
+                    }}
+                  >
+                    <MessageIcon />
+                    Message buyer
+                  </button>
+                </form>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* DELIVERY */}
 
@@ -549,7 +676,7 @@ export default async function SellerOrderDetailPage({
           )}
         </section>
 
-        {/* ORDER ACTIONS */}
+        {/* ACTIONS */}
 
         {(action || canCancel) && (
           <section
@@ -584,7 +711,6 @@ export default async function SellerOrderDetailPage({
                     className="rounded-full border px-5 py-2.5 text-sm font-medium"
                     style={{
                       borderColor: "var(--clay)",
-
                       color: "var(--clay)",
                     }}
                   >
@@ -603,7 +729,6 @@ export default async function SellerOrderDetailPage({
             className="rounded-xl border p-4 mt-5 text-sm"
             style={{
               borderColor: "var(--leaf)",
-
               background: "#e3f0e8",
             }}
           >
@@ -618,7 +743,6 @@ export default async function SellerOrderDetailPage({
             className="rounded-xl border p-4 mt-5 text-sm"
             style={{
               borderColor: "var(--sand)",
-
               background: "#f5f5f5",
             }}
           >
@@ -693,6 +817,28 @@ function MessageIcon() {
       aria-hidden="true"
     >
       <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 9v4" />
+
+      <path d="M12 17h.01" />
+
+      <path d="M10.3 3.8 2.4 17.5A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.5L13.7 3.8a2 2 0 0 0-3.4 0Z" />
     </svg>
   );
 }
