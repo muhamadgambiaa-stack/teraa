@@ -6,7 +6,11 @@ import { SiteHeader } from "@/components/SiteHeader";
 
 import type { OrderStatus } from "@/types/database";
 
-import { cancelSellerOrder, updateOrderStatus } from "../actions";
+import {
+  cancelSellerOrder,
+  messageBuyerFromOrder,
+  updateOrderStatus,
+} from "../actions";
 
 const STATUS_STYLES: Record<
   OrderStatus,
@@ -78,6 +82,12 @@ const NEXT_ACTION: Partial<
   },
 };
 
+type BuyerContact = {
+  id: string;
+  full_name: string;
+  city: string | null;
+};
+
 export default async function SellerOrderDetailPage({
   params,
 }: {
@@ -97,21 +107,30 @@ export default async function SellerOrderDetailPage({
     redirect(`/login?redirect=/seller/dashboard/orders/${id}`);
   }
 
-  const { data: seller } = await supabase
+  /*
+   * SELLER
+   */
+  const { data: seller, error: sellerError } = await supabase
     .from("sellers")
     .select(
       `
       id,
-      verification_status
+      verification_status,
+      account_status
       `,
     )
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!seller) {
+  if (sellerError || !seller) {
     redirect("/account");
   }
 
+  /*
+   * ORDER
+   *
+   * No users:buyer_id() relation here.
+   */
   const { data: order, error } = await supabase
     .from("orders")
     .select(
@@ -134,18 +153,12 @@ export default async function SellerOrderDetailPage({
         products(
           id,
           title,
+
           product_photos(
             photo_url,
             is_cover
           )
         )
-      ),
-
-      users:buyer_id(
-        id,
-        full_name,
-        phone_number,
-        city
       ),
 
       seller_payment_methods(
@@ -162,37 +175,71 @@ export default async function SellerOrderDetailPage({
   }
 
   /*
-   * Important:
-   * seller can only view their own order.
+   * Seller can only view their own order.
    */
   if (order.seller_id !== user.id) {
     notFound();
   }
 
+  /*
+   * BUYER INFORMATION
+   *
+   * Safe RPC returns only:
+   *
+   * - id
+   * - full_name
+   * - city
+   *
+   * No phone number.
+   */
+  const { data: buyerData, error: buyerError } = await supabase.rpc(
+    "get_order_buyer_for_seller",
+    {
+      p_order_id: order.id,
+    },
+  );
+
+  if (buyerError) {
+    console.error("Could not load order buyer:", buyerError);
+  }
+
+  const buyerRaw = Array.isArray(buyerData) ? buyerData[0] : buyerData;
+
+  const buyer = (buyerRaw as BuyerContact | null) ?? null;
+
+  /*
+   * ORDER ITEMS
+   */
   const items =
     (
       order as {
         order_items?: {
           product_id: string;
+
           quantity: number;
+
           price_at_purchase: number;
 
           products?:
             | {
                 id: string;
+
                 title: string;
 
                 product_photos?: {
                   photo_url: string;
+
                   is_cover: boolean;
                 }[];
               }
             | {
                 id: string;
+
                 title: string;
 
                 product_photos?: {
                   photo_url: string;
+
                   is_cover: boolean;
                 }[];
               }[];
@@ -200,35 +247,22 @@ export default async function SellerOrderDetailPage({
       }
     ).order_items ?? [];
 
-  const buyerRaw = (
-    order as {
-      users?:
-        | {
-            id: string;
-            full_name: string;
-            phone_number: string;
-            city: string | null;
-          }
-        | {
-            id: string;
-            full_name: string;
-            phone_number: string;
-            city: string | null;
-          }[];
-    }
-  ).users;
-
-  const buyer = Array.isArray(buyerRaw) ? buyerRaw[0] : buyerRaw;
-
+  /*
+   * LEGACY DIGITAL PAYMENT
+   *
+   * Current Teraa checkout is COD-only.
+   */
   const methodRaw = (
     order as {
       seller_payment_methods?:
         | {
             provider_name: string;
+
             method_type: string;
           }
         | {
             provider_name: string;
+
             method_type: string;
           }[];
     }
@@ -236,6 +270,9 @@ export default async function SellerOrderDetailPage({
 
   const method = Array.isArray(methodRaw) ? methodRaw[0] : methodRaw;
 
+  /*
+   * TOTAL
+   */
   const total = items.reduce(
     (sum, item) => sum + item.quantity * Number(item.price_at_purchase),
     0,
@@ -254,6 +291,8 @@ export default async function SellerOrderDetailPage({
       <SiteHeader />
 
       <main className="max-w-2xl mx-auto px-4 py-6 pb-24 sm:pb-8">
+        {/* BACK */}
+
         <Link
           href="/seller/dashboard/orders"
           className="inline-flex items-center gap-1 text-xs text-gray-500 hover:underline"
@@ -286,6 +325,7 @@ export default async function SellerOrderDetailPage({
             className="rounded-full px-3 py-1 text-xs font-semibold"
             style={{
               background: style.bg,
+
               color: style.color,
             }}
           >
@@ -293,7 +333,7 @@ export default async function SellerOrderDetailPage({
           </span>
         </div>
 
-        {/* ITEMS */}
+        {/* ORDER ITEMS */}
 
         <section
           className="rounded-xl border bg-white overflow-hidden"
@@ -396,38 +436,68 @@ export default async function SellerOrderDetailPage({
 
         {/* BUYER */}
 
-        {buyer && (
-          <section
-            className="rounded-xl border bg-white p-4 mt-4"
-            style={{
-              borderColor: "var(--sand)",
-            }}
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <UserIcon />
+        <section
+          className="rounded-xl border bg-white p-4 mt-4"
+          style={{
+            borderColor: "var(--sand)",
+          }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <UserIcon />
 
-              <h2 className="text-sm font-semibold">Buyer</h2>
+            <h2 className="text-sm font-semibold">Buyer</h2>
+          </div>
+
+          {buyer ? (
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{buyer.full_name}</p>
+
+                {buyer.city && (
+                  <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
+                    <SmallLocationIcon />
+
+                    <span>{buyer.city}</span>
+                  </div>
+                )}
+              </div>
+
+              <Link
+                href={`/profile/${buyer.id}`}
+                className="text-xs font-medium shrink-0 hover:underline"
+                style={{
+                  color: "var(--indigo)",
+                }}
+              >
+                View profile
+              </Link>
             </div>
+          ) : (
+            <p className="text-sm text-gray-500">
+              Buyer information is currently unavailable.
+            </p>
+          )}
 
-            <p className="text-sm font-medium">{buyer.full_name}</p>
+          {/* MESSAGE BUYER */}
 
-            <p className="text-sm text-gray-500 mt-1">{buyer.phone_number}</p>
-
-            {buyer.city && (
-              <p className="text-xs text-gray-500 mt-1">{buyer.city}</p>
-            )}
-
-            <Link
-              href={`/profile/${buyer.id}`}
-              className="inline-block text-xs mt-3 hover:underline"
+          <form
+            action={messageBuyerFromOrder.bind(null, order.id)}
+            className="mt-4"
+          >
+            <button
+              type="submit"
+              className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50"
               style={{
+                borderColor: "var(--indigo)",
+
                 color: "var(--indigo)",
               }}
             >
-              View buyer profile
-            </Link>
-          </section>
-        )}
+              <MessageIcon />
+              Message buyer
+            </button>
+          </form>
+        </section>
 
         {/* DELIVERY */}
 
@@ -479,7 +549,7 @@ export default async function SellerOrderDetailPage({
           )}
         </section>
 
-        {/* ACTIONS */}
+        {/* ORDER ACTIONS */}
 
         {(action || canCancel) && (
           <section
@@ -514,6 +584,7 @@ export default async function SellerOrderDetailPage({
                     className="rounded-full border px-5 py-2.5 text-sm font-medium"
                     style={{
                       borderColor: "var(--clay)",
+
                       color: "var(--clay)",
                     }}
                   >
@@ -525,11 +596,14 @@ export default async function SellerOrderDetailPage({
           </section>
         )}
 
+        {/* COMPLETED */}
+
         {status === "completed" && (
           <div
             className="rounded-xl border p-4 mt-5 text-sm"
             style={{
               borderColor: "var(--leaf)",
+
               background: "#e3f0e8",
             }}
           >
@@ -537,11 +611,14 @@ export default async function SellerOrderDetailPage({
           </div>
         )}
 
+        {/* CANCELLED */}
+
         {status === "cancelled" && (
           <div
             className="rounded-xl border p-4 mt-5 text-sm"
             style={{
               borderColor: "var(--sand)",
+
               background: "#f5f5f5",
             }}
           >
@@ -552,6 +629,12 @@ export default async function SellerOrderDetailPage({
     </>
   );
 }
+
+/*
+ * ============================================================
+ * ICONS
+ * ============================================================
+ */
 
 function ArrowLeftIcon() {
   return (
@@ -567,6 +650,7 @@ function ArrowLeftIcon() {
       aria-hidden="true"
     >
       <path d="M19 12H5" />
+
       <path d="m12 19-7-7 7-7" />
     </svg>
   );
@@ -591,6 +675,45 @@ function UserIcon() {
       <circle cx="12" cy="8" r="4" />
 
       <path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
+  );
+}
+
+function MessageIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+    </svg>
+  );
+}
+
+function SmallLocationIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="shrink-0"
+      aria-hidden="true"
+    >
+      <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+
+      <circle cx="12" cy="10" r="2.5" />
     </svg>
   );
 }

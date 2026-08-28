@@ -1,22 +1,13 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SellerNav } from "@/components/SellerNav";
+
+import { cancelSellerOrder, updateOrderStatus } from "./actions";
 
 import type { OrderStatus } from "@/types/database";
-
-import {
-  cancelSellerOrder,
-  messageBuyerFromOrder,
-  updateOrderStatus,
-} from "../actions";
-
-/*
- * ============================================================
- * ORDER STATUS UI
- * ============================================================
- */
 
 const STATUS_STYLES: Record<
   OrderStatus,
@@ -57,17 +48,11 @@ const STATUS_STYLES: Record<
   },
 
   cancelled: {
-    bg: "#eeeeee",
-    color: "#666",
+    bg: "#eee",
+    color: "#888",
     label: "Cancelled",
   },
 };
-
-/*
- * Seller takes the order only as far as delivered.
- *
- * Buyer confirms receipt and completes the order.
- */
 
 const NEXT_ACTION: Partial<
   Record<
@@ -94,28 +79,7 @@ const NEXT_ACTION: Partial<
   },
 };
 
-/*
- * Buyer information intentionally exposed to
- * the seller for this order.
- *
- * No phone number.
- */
-
-type BuyerContact = {
-  id: string;
-  full_name: string;
-  city: string | null;
-};
-
-export default async function SellerOrderDetailPage({
-  params,
-}: {
-  params: Promise<{
-    id: string;
-  }>;
-}) {
-  const { id } = await params;
-
+export default async function SellerOrdersPage() {
   const supabase = await createClient();
 
   const {
@@ -123,49 +87,29 @@ export default async function SellerOrderDetailPage({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(`/login?redirect=/seller/dashboard/orders/${id}`);
+    redirect("/login");
   }
 
-  /*
-   * ==========================================================
-   * SELLER
-   * ==========================================================
-   */
-
-  const { data: seller, error: sellerError } = await supabase
+  const { data: seller } = await supabase
     .from("sellers")
     .select(
       `
       id,
-      verification_status,
-      account_status
+      verification_status
       `,
     )
     .eq("id", user.id)
-    .maybeSingle();
+    .single();
 
-  if (sellerError || !seller) {
+  if (!seller) {
     redirect("/account");
   }
 
-  /*
-   * ==========================================================
-   * ORDER
-   * ==========================================================
-   *
-   * Do not directly join another user's users row.
-   *
-   * Buyer information is loaded later through
-   * get_order_buyer_for_seller().
-   */
-
-  const { data: order, error } = await supabase
+  const { data: orders, error } = await supabase
     .from("orders")
     .select(
       `
       id,
-      buyer_id,
-      seller_id,
       status,
       payment_method,
       payment_status,
@@ -180,497 +124,271 @@ export default async function SellerOrderDetailPage({
 
         products(
           id,
-          title,
-
-          product_photos(
-            photo_url,
-            is_cover
-          )
+          title
         )
       ),
 
+      users:buyer_id(
+        full_name,
+        phone_number
+      ),
+
       seller_payment_methods(
-        provider_name,
-        method_type
+        provider_name
       )
       `,
     )
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error || !order) {
-    notFound();
-  }
-
-  /*
-   * Seller can only view their own order.
-   */
-
-  if (order.seller_id !== user.id) {
-    notFound();
-  }
-
-  /*
-   * ==========================================================
-   * BUYER
-   * ==========================================================
-   *
-   * This RPC only exposes:
-   *
-   * - buyer ID
-   * - full name
-   * - city
-   *
-   * Phone number is not requested or displayed.
-   */
-
-  const { data: buyerData, error: buyerError } = await supabase.rpc(
-    "get_order_buyer_for_seller",
-    {
-      p_order_id: order.id,
-    },
-  );
-
-  if (buyerError) {
-    console.error("Could not load order buyer:", buyerError);
-  }
-
-  const buyerRaw = Array.isArray(buyerData) ? buyerData[0] : buyerData;
-
-  const buyer = (buyerRaw as BuyerContact | null) ?? null;
-
-  /*
-   * ==========================================================
-   * ORDER ITEMS
-   * ==========================================================
-   */
-
-  const items =
-    (
-      order as {
-        order_items?: {
-          product_id: string;
-          quantity: number;
-          price_at_purchase: number;
-
-          products?:
-            | {
-                id: string;
-                title: string;
-
-                product_photos?: {
-                  photo_url: string;
-                  is_cover: boolean;
-                }[];
-              }
-            | {
-                id: string;
-                title: string;
-
-                product_photos?: {
-                  photo_url: string;
-                  is_cover: boolean;
-                }[];
-              }[];
-        }[];
-      }
-    ).order_items ?? [];
-
-  /*
-   * ==========================================================
-   * LEGACY DIGITAL PAYMENT DATA
-   * ==========================================================
-   *
-   * Current checkout is COD-only.
-   *
-   * This remains so older digital orders can still render.
-   */
-
-  const methodRaw = (
-    order as {
-      seller_payment_methods?:
-        | {
-            provider_name: string;
-            method_type: string;
-          }
-        | {
-            provider_name: string;
-            method_type: string;
-          }[];
-    }
-  ).seller_payment_methods;
-
-  const method = Array.isArray(methodRaw) ? methodRaw[0] : methodRaw;
-
-  /*
-   * ==========================================================
-   * TOTAL
-   * ==========================================================
-   */
-
-  const total = items.reduce(
-    (sum, item) => sum + item.quantity * Number(item.price_at_purchase),
-    0,
-  );
-
-  const status = order.status as OrderStatus;
-
-  const style = STATUS_STYLES[status] ?? STATUS_STYLES.placed;
-
-  const action = NEXT_ACTION[status];
-
-  const canCancel = ["placed", "confirmed"].includes(status);
+    .eq("seller_id", seller.id)
+    .order("created_at", {
+      ascending: false,
+    });
 
   return (
     <>
       <SiteHeader />
 
-      <main className="max-w-2xl mx-auto px-4 py-6 pb-24 sm:pb-8">
-        {/* BACK */}
-
-        <Link
-          href="/seller/dashboard/orders"
-          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:underline"
-        >
-          <ArrowLeftIcon />
-          Back to orders
-        </Link>
-
-        {/* HEADER */}
-
-        <div className="flex items-start justify-between gap-4 mt-5 mb-6">
-          <div>
-            <p className="text-xs text-gray-500">Order</p>
-
-            <h1
-              className="font-display text-2xl mt-1"
-              style={{
-                color: "var(--ink)",
-              }}
-            >
-              #{order.id.slice(0, 8)}
-            </h1>
-
-            <p className="text-xs text-gray-400 mt-1">
-              {new Date(order.created_at).toLocaleString()}
-            </p>
-          </div>
-
-          <span
-            className="rounded-full px-3 py-1 text-xs font-semibold"
-            style={{
-              background: style.bg,
-              color: style.color,
-            }}
-          >
-            {style.label}
-          </span>
-        </div>
-
-        {/* ORDER ITEMS */}
-
-        <section
-          className="rounded-xl border bg-white overflow-hidden"
+      <main className="max-w-3xl mx-auto px-4 py-6 pb-24 sm:pb-8">
+        <h1
+          className="font-display text-2xl mb-6"
           style={{
-            borderColor: "var(--sand)",
+            color: "var(--ink)",
           }}
         >
+          Orders
+        </h1>
+
+        <SellerNav active="orders" />
+
+        {seller.verification_status !== "approved" && (
+          <p className="text-sm text-gray-500">
+            Orders will appear here once you&apos;re verified.
+          </p>
+        )}
+
+        {error && (
           <div
-            className="px-4 py-3 border-b"
+            className="rounded-xl border p-6 text-sm"
             style={{
-              borderColor: "var(--sand)",
+              borderColor: "#e0a0a0",
+              background: "#fdf0f0",
             }}
           >
-            <h2 className="text-sm font-semibold">Order items</h2>
+            Couldn&apos;t load your orders.
           </div>
+        )}
 
-          <div className="p-4 space-y-4">
-            {items.map((item) => {
-              const rawProduct = item.products;
-
-              const product = Array.isArray(rawProduct)
-                ? rawProduct[0]
-                : rawProduct;
-
-              const photos = product?.product_photos ?? [];
-
-              const cover =
-                photos.find((photo) => photo.is_cover)?.photo_url ??
-                photos[0]?.photo_url ??
-                null;
-
-              return (
-                <div key={item.product_id} className="flex gap-3">
-                  <div
-                    className="w-16 h-16 rounded-lg overflow-hidden shrink-0"
-                    style={{
-                      background: "var(--sand)",
-                    }}
-                  >
-                    {cover ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={cover}
-                        alt={product?.title ?? ""}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        <ImageIcon />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <Link
-                      href={`/products/${item.product_id}`}
-                      className="text-sm font-medium hover:underline"
-                    >
-                      {product?.title ?? "Product"}
-                    </Link>
-
-                    <p className="text-xs text-gray-500 mt-1">
-                      Quantity: {item.quantity}
-                    </p>
-
-                    <p
-                      className="text-sm font-semibold mt-1"
-                      style={{
-                        color: "var(--clay)",
-                      }}
-                    >
-                      GMD{" "}
-                      {(
-                        item.quantity * Number(item.price_at_purchase)
-                      ).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-
+        {seller.verification_status === "approved" &&
+          !error &&
+          (!orders || orders.length === 0) && (
             <div
-              className="border-t pt-3 flex items-center justify-between text-sm font-bold"
+              className="rounded-xl border p-10 text-center text-sm text-gray-500"
               style={{
                 borderColor: "var(--sand)",
               }}
             >
-              <span>Total</span>
+              No orders yet.
+            </div>
+          )}
 
-              <span
+        <div className="space-y-3">
+          {(orders ?? []).map((order) => {
+            const items =
+              (
+                order as {
+                  order_items?: {
+                    product_id: string;
+                    quantity: number;
+                    price_at_purchase: number;
+
+                    products?:
+                      | {
+                          id: string;
+                          title: string;
+                        }
+                      | {
+                          id: string;
+                          title: string;
+                        }[];
+                  }[];
+                }
+              ).order_items ?? [];
+
+            const buyerRaw = (
+              order as {
+                users?:
+                  | {
+                      full_name: string;
+                      phone_number: string;
+                    }
+                  | {
+                      full_name: string;
+                      phone_number: string;
+                    }[];
+              }
+            ).users;
+
+            const buyer = Array.isArray(buyerRaw) ? buyerRaw[0] : buyerRaw;
+
+            const methodRaw = (
+              order as {
+                seller_payment_methods?:
+                  | {
+                      provider_name: string;
+                    }
+                  | {
+                      provider_name: string;
+                    }[];
+              }
+            ).seller_payment_methods;
+
+            const method = Array.isArray(methodRaw) ? methodRaw[0] : methodRaw;
+
+            const total = items.reduce(
+              (sum, item) =>
+                sum + item.quantity * Number(item.price_at_purchase),
+              0,
+            );
+
+            const status = order.status as OrderStatus;
+
+            const style = STATUS_STYLES[status] ?? STATUS_STYLES.placed;
+
+            const action = NEXT_ACTION[status];
+
+            const canCancel = ["placed", "confirmed"].includes(status);
+
+            return (
+              <div
+                key={order.id}
+                className="rounded-xl border p-4 bg-white"
                 style={{
-                  color: "var(--clay)",
+                  borderColor: "var(--sand)",
                 }}
               >
-                GMD {total.toLocaleString()}
-              </span>
-            </div>
-          </div>
-        </section>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <span className="text-xs text-gray-400">
+                    #{order.id.slice(0, 8)} ·{" "}
+                    {new Date(order.created_at).toLocaleDateString()}
+                  </span>
 
-        {/* BUYER */}
+                  <span
+                    className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold"
+                    style={{
+                      background: style.bg,
+                      color: style.color,
+                    }}
+                  >
+                    {style.label}
+                  </span>
+                </div>
 
-        <section
-          className="rounded-xl border bg-white p-4 mt-4"
-          style={{
-            borderColor: "var(--sand)",
-          }}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <UserIcon />
+                {items.map((item) => {
+                  const rawProduct = item.products;
 
-            <h2 className="text-sm font-semibold">Buyer</h2>
-          </div>
+                  const product = Array.isArray(rawProduct)
+                    ? rawProduct[0]
+                    : rawProduct;
 
-          {buyer ? (
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-sm font-medium">{buyer.full_name}</p>
+                  return (
+                    <p key={item.product_id} className="text-sm">
+                      {item.quantity} × {product?.title ?? "Product"}
+                    </p>
+                  );
+                })}
 
-                {buyer.city && (
-                  <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
-                    <SmallLocationIcon />
-
-                    <span>{buyer.city}</span>
-                  </div>
-                )}
-              </div>
-
-              <Link
-                href={`/profile/${buyer.id}`}
-                className="text-xs font-medium shrink-0 hover:underline"
-                style={{
-                  color: "var(--indigo)",
-                }}
-              >
-                View profile
-              </Link>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">
-              Buyer information is currently unavailable.
-            </p>
-          )}
-
-          {/* MESSAGE BUYER */}
-
-          <form
-            action={messageBuyerFromOrder.bind(null, order.id)}
-            className="mt-4"
-          >
-            <button
-              type="submit"
-              className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50"
-              style={{
-                borderColor: "var(--indigo)",
-                color: "var(--indigo)",
-              }}
-            >
-              <MessageIcon />
-              Message buyer
-            </button>
-          </form>
-        </section>
-
-        {/* DELIVERY */}
-
-        <section
-          className="rounded-xl border bg-white p-4 mt-4"
-          style={{
-            borderColor: "var(--sand)",
-          }}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <LocationIcon />
-
-            <h2 className="text-sm font-semibold">Delivery</h2>
-          </div>
-
-          <p className="text-sm">{order.delivery_city}</p>
-
-          {order.delivery_notes && (
-            <p className="text-sm text-gray-500 mt-2 whitespace-pre-wrap">
-              {order.delivery_notes}
-            </p>
-          )}
-        </section>
-
-        {/* PAYMENT */}
-
-        <section
-          className="rounded-xl border bg-white p-4 mt-4"
-          style={{
-            borderColor: "var(--sand)",
-          }}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <PaymentIcon />
-
-            <h2 className="text-sm font-semibold">Payment</h2>
-          </div>
-
-          <p className="text-sm">
-            {order.payment_method === "digital"
-              ? (method?.provider_name ?? "Digital payment")
-              : "Cash on delivery"}
-          </p>
-
-          {order.payment_method === "digital" && (
-            <p className="text-xs text-gray-500 mt-1 capitalize">
-              Payment status: {order.payment_status}
-            </p>
-          )}
-        </section>
-
-        {/* ACTIONS */}
-
-        {(action || canCancel) && (
-          <section
-            className="border-t mt-6 pt-5"
-            style={{
-              borderColor: "var(--sand)",
-            }}
-          >
-            <h2 className="text-sm font-semibold mb-3">Order actions</h2>
-
-            <div className="flex flex-wrap gap-2">
-              {action && (
-                <form
-                  action={updateOrderStatus.bind(null, order.id, action.next)}
+                <p
+                  className="text-sm font-bold mt-1"
+                  style={{
+                    color: "var(--clay)",
+                  }}
                 >
-                  <button
-                    type="submit"
-                    className="rounded-full px-5 py-2.5 text-white text-sm font-medium"
+                  GMD {total.toLocaleString()}
+                </p>
+
+                <div className="text-xs text-gray-500 mt-2 space-y-0.5">
+                  {buyer && (
+                    <p>
+                      {buyer.full_name} · {buyer.phone_number}
+                    </p>
+                  )}
+
+                  <p>
+                    Deliver to: {order.delivery_city}
+                    {order.delivery_notes ? `, ${order.delivery_notes}` : ""}
+                  </p>
+
+                  <p>
+                    Payment:{" "}
+                    {order.payment_method === "digital"
+                      ? (method?.provider_name ?? "Digital")
+                      : "Cash on delivery"}
+                    {order.payment_method === "digital" &&
+                      ` (${order.payment_status})`}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <Link
+                    href={`/seller/dashboard/orders/${order.id}`}
+                    className="rounded-full px-4 py-1.5 text-xs font-medium border inline-flex items-center gap-1.5"
                     style={{
-                      background: "var(--indigo)",
+                      borderColor: "var(--indigo)",
+                      color: "var(--indigo)",
                     }}
                   >
-                    {action.label}
-                  </button>
-                </form>
-              )}
+                    View order
+                    <ArrowRightIcon />
+                  </Link>
 
-              {canCancel && (
-                <form action={cancelSellerOrder.bind(null, order.id)}>
-                  <button
-                    type="submit"
-                    className="rounded-full border px-5 py-2.5 text-sm font-medium"
-                    style={{
-                      borderColor: "var(--clay)",
-                      color: "var(--clay)",
-                    }}
-                  >
-                    Cancel order
-                  </button>
-                </form>
-              )}
-            </div>
-          </section>
-        )}
+                  {action && (
+                    <form
+                      action={updateOrderStatus.bind(
+                        null,
+                        order.id,
+                        action.next,
+                      )}
+                    >
+                      <button
+                        type="submit"
+                        className="rounded-full px-4 py-1.5 text-xs font-medium text-white"
+                        style={{
+                          background: "var(--indigo)",
+                        }}
+                      >
+                        {action.label}
+                      </button>
+                    </form>
+                  )}
 
-        {/* COMPLETED */}
-
-        {status === "completed" && (
-          <div
-            className="rounded-xl border p-4 mt-5 text-sm"
-            style={{
-              borderColor: "var(--leaf)",
-              background: "#e3f0e8",
-            }}
-          >
-            This order has been completed.
-          </div>
-        )}
-
-        {/* CANCELLED */}
-
-        {status === "cancelled" && (
-          <div
-            className="rounded-xl border p-4 mt-5 text-sm"
-            style={{
-              borderColor: "var(--sand)",
-              background: "#f5f5f5",
-            }}
-          >
-            This order was cancelled.
-          </div>
-        )}
+                  {canCancel && (
+                    <form action={cancelSellerOrder.bind(null, order.id)}>
+                      <button
+                        type="submit"
+                        className="rounded-full px-4 py-1.5 text-xs font-medium border"
+                        style={{
+                          borderColor: "var(--clay)",
+                          color: "var(--clay)",
+                        }}
+                      >
+                        Cancel order
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </main>
     </>
   );
 }
 
-/*
- * ============================================================
- * ICONS
- * ============================================================
- */
-
-function ArrowLeftIcon() {
+function ArrowRightIcon() {
   return (
     <svg
-      width="14"
-      height="14"
+      width="13"
+      height="13"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -679,139 +397,8 @@ function ArrowLeftIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M19 12H5" />
-
-      <path d="m12 19-7-7 7-7" />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{
-        color: "var(--indigo)",
-      }}
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="8" r="4" />
-
-      <path d="M4 21a8 8 0 0 1 16 0" />
-    </svg>
-  );
-}
-
-function MessageIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
-    </svg>
-  );
-}
-
-function SmallLocationIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0"
-      aria-hidden="true"
-    >
-      <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
-
-      <circle cx="12" cy="10" r="2.5" />
-    </svg>
-  );
-}
-
-function LocationIcon() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{
-        color: "var(--indigo)",
-      }}
-      aria-hidden="true"
-    >
-      <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
-
-      <circle cx="12" cy="10" r="2.5" />
-    </svg>
-  );
-}
-
-function PaymentIcon() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{
-        color: "var(--indigo)",
-      }}
-      aria-hidden="true"
-    >
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-
-      <path d="M3 10h18" />
-    </svg>
-  );
-}
-
-function ImageIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-
-      <circle cx="8.5" cy="8.5" r="1.5" />
-
-      <path d="m21 15-5-5L5 21" />
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
     </svg>
   );
 }

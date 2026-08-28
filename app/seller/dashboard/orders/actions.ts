@@ -18,7 +18,7 @@ async function requireSellerOwnsOrder(orderId: string) {
   }
 
   /*
-   * General marketplace account moderation.
+   * General Teraa account status.
    */
   const { data: profile, error: profileError } = await supabase
     .from("users")
@@ -40,7 +40,7 @@ async function requireSellerOwnsOrder(orderId: string) {
   }
 
   /*
-   * Seller-specific moderation and verification.
+   * Seller account status.
    */
   const { data: seller, error: sellerError } = await supabase
     .from("sellers")
@@ -67,7 +67,7 @@ async function requireSellerOwnsOrder(orderId: string) {
   }
 
   /*
-   * Verify ownership of the order.
+   * Verify that this order belongs to the seller.
    */
   const { data: order, error: orderError } = await supabase
     .from("orders")
@@ -99,6 +99,55 @@ async function requireSellerOwnsOrder(orderId: string) {
   };
 }
 
+/*
+ * ============================================================
+ * MESSAGE BUYER
+ * ============================================================
+ *
+ * seller_open_order_conversation() must already exist in
+ * Supabase from the secure order messaging migration.
+ *
+ * It verifies that this seller genuinely owns an order
+ * involving this buyer before creating a conversation.
+ */
+export async function messageBuyerFromOrder(orderId: string) {
+  const { supabase } = await requireSellerOwnsOrder(orderId);
+
+  const { data: conversationId, error } = await supabase.rpc(
+    "seller_open_order_conversation",
+    {
+      p_order_id: orderId,
+    },
+  );
+
+  if (error) {
+    console.error("Could not open buyer conversation:", error);
+
+    throw new Error(
+      error.message || "Couldn't open a conversation with this buyer.",
+    );
+  }
+
+  if (!conversationId) {
+    throw new Error("Couldn't open a conversation with this buyer.");
+  }
+
+  redirect(`/messages/${conversationId}`);
+}
+
+/*
+ * ============================================================
+ * ALLOWED SELLER ORDER TRANSITIONS
+ * ============================================================
+ *
+ * Seller:
+ *
+ * placed -> confirmed
+ * confirmed -> shipped
+ * shipped -> delivered
+ *
+ * Buyer completes the order after receiving it.
+ */
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   placed: ["confirmed"],
 
@@ -106,13 +155,18 @@ const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
   shipped: ["delivered"],
 
-  delivered: ["completed"],
+  delivered: [],
 
   completed: [],
 
   cancelled: [],
 };
 
+/*
+ * ============================================================
+ * UPDATE ORDER STATUS
+ * ============================================================
+ */
 export async function updateOrderStatus(
   orderId: string,
   newStatus: OrderStatus,
@@ -136,18 +190,29 @@ export async function updateOrderStatus(
     .eq("seller_id", order.seller_id);
 
   if (error) {
+    console.error("Seller order update failed:", error);
+
     throw new Error(error.message || "Couldn't update order.");
   }
 
+  revalidatePath(`/seller/dashboard/orders/${orderId}`);
+
   revalidatePath("/seller/dashboard/orders");
+
+  revalidatePath("/seller/dashboard");
 
   revalidatePath(`/orders/${orderId}`);
 
-  revalidatePath("/seller/dashboard");
+  revalidatePath("/orders");
 
   revalidatePath("/notifications");
 }
 
+/*
+ * ============================================================
+ * CANCEL ORDER
+ * ============================================================
+ */
 export async function cancelSellerOrder(orderId: string) {
   const { supabase, order } = await requireSellerOwnsOrder(orderId);
 
@@ -155,14 +220,6 @@ export async function cancelSellerOrder(orderId: string) {
     throw new Error("This order can no longer be cancelled.");
   }
 
-  /*
-   * cancel_order() should:
-   *
-   * - change the order to cancelled
-   * - restore inventory
-   * - reactivate out-of-stock products
-   * - prevent double inventory restoration
-   */
   const { error } = await supabase.rpc("cancel_order", {
     p_order_id: orderId,
   });
@@ -173,13 +230,19 @@ export async function cancelSellerOrder(orderId: string) {
     throw new Error(error.message || "Couldn't cancel order.");
   }
 
-  revalidatePath("/seller/dashboard/orders");
+  revalidatePath(`/seller/dashboard/orders/${orderId}`);
 
-  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/seller/dashboard/orders");
 
   revalidatePath("/seller/dashboard");
 
+  revalidatePath(`/orders/${orderId}`);
+
+  revalidatePath("/orders");
+
   revalidatePath("/");
+
   revalidatePath("/search");
+
   revalidatePath("/notifications");
 }
