@@ -4,6 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { SiteHeader } from "@/components/SiteHeader";
 
+type PublicSellerProfile = {
+  id: string;
+  public_role: "buyer" | "seller";
+  business_name: string | null;
+  verification_status: string | null;
+};
+
 async function getProducts(): Promise<{
   products: ProductCardData[];
   error: string | null;
@@ -11,23 +18,37 @@ async function getProducts(): Promise<{
   try {
     const supabase = await createClient();
 
+    /*
+     * --------------------------------------------------------
+     * PRODUCTS
+     * --------------------------------------------------------
+     *
+     * Do not join directly to public.sellers here.
+     *
+     * The sellers table contains private seller information
+     * and its RLS intentionally prevents normal users from
+     * reading another seller's row.
+     *
+     * Public seller information is loaded separately through
+     * get_public_profile().
+     * --------------------------------------------------------
+     */
+
     const { data, error } = await supabase
       .from("products")
       .select(
         `
         id,
+        seller_id,
         title,
         price,
         status,
         condition,
         location_city,
+
         product_photos(
           photo_url,
           is_cover
-        ),
-        sellers(
-          business_name,
-          verification_status
         )
         `,
       )
@@ -44,7 +65,82 @@ async function getProducts(): Promise<{
       };
     }
 
-    const products: ProductCardData[] = (data ?? []).map((product) => {
+    const rawProducts = data ?? [];
+
+    /*
+     * --------------------------------------------------------
+     * UNIQUE SELLERS
+     * --------------------------------------------------------
+     *
+     * If one seller has several listings we only need to load
+     * their public profile once.
+     * --------------------------------------------------------
+     */
+
+    const sellerIds = [
+      ...new Set(
+        rawProducts.map((product) => product.seller_id).filter(Boolean),
+      ),
+    ];
+
+    /*
+     * --------------------------------------------------------
+     * PUBLIC SELLER PROFILES
+     * --------------------------------------------------------
+     *
+     * get_public_profile() is SECURITY DEFINER and exposes only
+     * the public seller information that Teraa intentionally
+     * allows marketplace users to see.
+     * --------------------------------------------------------
+     */
+
+    const sellerEntries = await Promise.all(
+      sellerIds.map(async (sellerId) => {
+        const { data: profileData, error: profileError } = await supabase.rpc(
+          "get_public_profile",
+          {
+            p_user_id: sellerId,
+          },
+        );
+
+        if (profileError) {
+          console.error(
+            `Could not load public seller profile ${sellerId}:`,
+            profileError,
+          );
+
+          return [sellerId, null] as const;
+        }
+
+        const rawProfile = Array.isArray(profileData)
+          ? profileData[0]
+          : profileData;
+
+        const profile = rawProfile as PublicSellerProfile | null;
+
+        /*
+         * Only approved/active sellers come back from the RPC
+         * with public_role = seller.
+         */
+        if (!profile || profile.public_role !== "seller") {
+          return [sellerId, null] as const;
+        }
+
+        return [sellerId, profile] as const;
+      }),
+    );
+
+    const sellerMap = new Map<string, PublicSellerProfile | null>(
+      sellerEntries,
+    );
+
+    /*
+     * --------------------------------------------------------
+     * PRODUCT CARDS
+     * --------------------------------------------------------
+     */
+
+    const products: ProductCardData[] = rawProducts.map((product) => {
       const photos =
         (
           product as {
@@ -60,21 +156,7 @@ async function getProducts(): Promise<{
         photos[0]?.photo_url ??
         null;
 
-      const sellerRaw = (
-        product as {
-          sellers?:
-            | {
-                business_name: string;
-                verification_status: string;
-              }
-            | {
-                business_name: string;
-                verification_status: string;
-              }[];
-        }
-      ).sellers;
-
-      const seller = Array.isArray(sellerRaw) ? sellerRaw[0] : sellerRaw;
+      const seller = sellerMap.get(product.seller_id) ?? null;
 
       return {
         id: product.id,
@@ -83,7 +165,9 @@ async function getProducts(): Promise<{
         condition: product.condition,
         location_city: product.location_city,
         coverPhoto: cover,
+
         sellerName: seller?.business_name ?? null,
+
         sellerVerified: seller?.verification_status === "approved",
       };
     });
@@ -92,7 +176,9 @@ async function getProducts(): Promise<{
       products,
       error: null,
     };
-  } catch {
+  } catch (error) {
+    console.error("Could not load homepage listings:", error);
+
     return {
       products: [],
       error: "not_configured",
