@@ -39,6 +39,10 @@ function parseKeywords(value: string) {
   ];
 }
 
+/* ============================================================
+   CREATE ANSWER
+============================================================ */
+
 export async function createSupportAnswer(formData: FormData) {
   const { supabase } = await requireAdmin();
 
@@ -81,12 +85,20 @@ export async function createSupportAnswer(formData: FormData) {
     throw new Error(error.message || "Could not create support answer.");
   }
 
+  if (!id) {
+    throw new Error("Support answer was not created.");
+  }
+
   revalidatePath("/admin/support/answers");
 
   revalidatePath("/account/support/new");
 
   redirect(`/admin/support/answers/${id}`);
 }
+
+/* ============================================================
+   UPDATE ANSWER
+============================================================ */
 
 export async function updateSupportAnswer(id: string, formData: FormData) {
   const { supabase } = await requireAdmin();
@@ -135,6 +147,10 @@ export async function updateSupportAnswer(id: string, formData: FormData) {
   revalidatePath("/account/support/new");
 }
 
+/* ============================================================
+   ENABLE / DISABLE ANSWER
+============================================================ */
+
 export async function setSupportAnswerActive(id: string, active: boolean) {
   const { supabase } = await requireAdmin();
 
@@ -144,6 +160,8 @@ export async function setSupportAnswerActive(id: string, active: boolean) {
   });
 
   if (error) {
+    console.error("Could not change support answer status:", error);
+
     throw new Error(error.message || "Could not update support answer.");
   }
 

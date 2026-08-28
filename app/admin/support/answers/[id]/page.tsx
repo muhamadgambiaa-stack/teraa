@@ -17,6 +17,10 @@ export default async function EditSupportAnswerPage({
 
   const supabase = await createClient();
 
+  /* ============================================================
+     AUTH
+  ============================================================ */
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -25,33 +29,50 @@ export default async function EditSupportAnswerPage({
     redirect("/login");
   }
 
-  const { data: isAdmin } = await supabase.rpc("current_user_is_admin");
+  const { data: isAdmin, error: adminError } = await supabase.rpc(
+    "current_user_is_admin",
+  );
 
-  if (!isAdmin) {
+  if (adminError || !isAdmin) {
     redirect("/");
   }
+
+  /* ============================================================
+     LOAD ANSWER
+  ============================================================ */
 
   const { data: answer, error } = await supabase
     .from("support_answers")
     .select(
       `
-      id,
-      slug,
-      category,
-      keywords,
-      answer,
-      requires_human,
-      priority,
-      active,
-      updated_at
+        id,
+        slug,
+        category,
+        question,
+        keywords,
+        answer,
+        requires_human,
+        priority,
+        show_in_menu,
+        menu_order,
+        active,
+        updated_at
       `,
     )
     .eq("id", id)
     .maybeSingle();
 
-  if (error || !answer) {
+  if (error) {
+    console.error("Could not load support answer:", error);
+  }
+
+  if (!answer) {
     notFound();
   }
+
+  /* ============================================================
+     PAGE
+  ============================================================ */
 
   return (
     <>
@@ -65,8 +86,10 @@ export default async function EditSupportAnswerPage({
           ← Support answers
         </Link>
 
+        {/* HEADER */}
+
         <div className="flex items-start justify-between gap-4 mt-5 mb-6">
-          <div>
+          <div className="min-w-0">
             <h1
               className="font-display text-2xl"
               style={{
@@ -77,12 +100,13 @@ export default async function EditSupportAnswerPage({
             </h1>
 
             <p className="text-sm text-gray-500 mt-1">
-              Update how Teraa Assistant handles this question.
+              Control the clickable question, automatic answer and human
+              escalation.
             </p>
           </div>
 
           <span
-            className="rounded-full px-2.5 py-1 text-xs font-semibold"
+            className="rounded-full px-2.5 py-1 text-xs font-semibold shrink-0"
             style={{
               background: answer.active ? "#e3f0e8" : "#eeeeee",
 
@@ -93,23 +117,62 @@ export default async function EditSupportAnswerPage({
           </span>
         </div>
 
+        {/* EDIT FORM */}
+
         <form
           action={updateSupportAnswer.bind(null, answer.id)}
           className="space-y-5"
         >
+          {/* QUESTION */}
+
           <div>
-            <label className="block text-sm font-medium mb-1.5">Slug</label>
+            <label className="block text-sm font-medium mb-1.5">
+              Question shown to users
+            </label>
 
             <input
-              name="slug"
-              required
-              defaultValue={answer.slug}
-              className="w-full rounded-xl border px-3 py-3 text-sm"
+              name="question"
+              type="text"
+              maxLength={200}
+              defaultValue={answer.question ?? ""}
+              placeholder="Example: Can I pay with Wave?"
+              className="w-full rounded-xl border bg-white px-3 py-3 text-sm outline-none"
               style={{
                 borderColor: "var(--sand)",
               }}
             />
+
+            <p className="text-xs text-gray-500 mt-1">
+              This is the question users see and click in Contact Support.
+            </p>
           </div>
+
+          {/* SHOW IN MENU */}
+
+          <label
+            className="flex items-start gap-3 rounded-xl border bg-white p-4 cursor-pointer"
+            style={{
+              borderColor: "var(--sand)",
+            }}
+          >
+            <input
+              name="showInMenu"
+              type="checkbox"
+              defaultChecked={answer.show_in_menu}
+              className="mt-1"
+            />
+
+            <div>
+              <p className="text-sm font-medium">Show in question menu</p>
+
+              <p className="text-xs text-gray-500 mt-1 leading-5">
+                Users will be able to click this question directly from Contact
+                Support.
+              </p>
+            </div>
+          </label>
+
+          {/* CATEGORY */}
 
           <div>
             <label className="block text-sm font-medium mb-1.5">Category</label>
@@ -118,28 +181,78 @@ export default async function EditSupportAnswerPage({
               name="category"
               required
               defaultValue={answer.category}
-              className="w-full rounded-xl border bg-white px-3 py-3 text-sm"
+              className="w-full rounded-xl border bg-white px-3 py-3 text-sm outline-none"
               style={{
                 borderColor: "var(--sand)",
               }}
             >
-              <option value="all">All</option>
+              <option value="all">General</option>
 
-              <option value="order">Order</option>
+              <option value="order">Orders</option>
 
               <option value="delivery">Delivery</option>
+
+              <option value="payment">Payments</option>
 
               <option value="seller_account">Seller account</option>
 
               <option value="account">Account</option>
 
-              <option value="payment">Payment</option>
-
-              <option value="report">Report</option>
+              <option value="report">Safety & reports</option>
 
               <option value="other">Other</option>
             </select>
           </div>
+
+          {/* MENU ORDER */}
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              Menu order
+            </label>
+
+            <input
+              name="menuOrder"
+              type="number"
+              required
+              min={0}
+              max={1000}
+              defaultValue={answer.menu_order}
+              className="w-full rounded-xl border bg-white px-3 py-3 text-sm outline-none"
+              style={{
+                borderColor: "var(--sand)",
+              }}
+            />
+
+            <p className="text-xs text-gray-500 mt-1">
+              Lower numbers appear first inside the category.
+            </p>
+          </div>
+
+          {/* SLUG */}
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Slug</label>
+
+            <input
+              name="slug"
+              type="text"
+              required
+              minLength={3}
+              maxLength={100}
+              defaultValue={answer.slug}
+              className="w-full rounded-xl border bg-white px-3 py-3 text-sm outline-none"
+              style={{
+                borderColor: "var(--sand)",
+              }}
+            />
+
+            <p className="text-xs text-gray-500 mt-1">
+              Lowercase letters, numbers and hyphens only.
+            </p>
+          </div>
+
+          {/* KEYWORDS */}
 
           <div>
             <label className="block text-sm font-medium mb-1.5">
@@ -151,14 +264,19 @@ export default async function EditSupportAnswerPage({
               required
               rows={10}
               defaultValue={(answer.keywords ?? []).join("\n")}
-              className="w-full rounded-xl border px-3 py-3 text-sm resize-y"
+              className="w-full rounded-xl border bg-white px-3 py-3 text-sm outline-none resize-y"
               style={{
                 borderColor: "var(--sand)",
               }}
             />
 
-            <p className="text-xs text-gray-500 mt-1">One phrase per line.</p>
+            <p className="text-xs text-gray-500 mt-1 leading-5">
+              Put one phrase on each line. These are used when users type their
+              own questions.
+            </p>
           </div>
+
+          {/* ANSWER */}
 
           <div>
             <label className="block text-sm font-medium mb-1.5">
@@ -171,15 +289,23 @@ export default async function EditSupportAnswerPage({
               rows={8}
               maxLength={4000}
               defaultValue={answer.answer}
-              className="w-full rounded-xl border px-3 py-3 text-sm resize-y"
+              className="w-full rounded-xl border bg-white px-3 py-3 text-sm outline-none resize-y"
               style={{
                 borderColor: "var(--sand)",
               }}
             />
+
+            <p className="text-xs text-gray-500 mt-1">
+              This is the approved response Teraa Assistant sends.
+            </p>
           </div>
 
+          {/* MATCH PRIORITY */}
+
           <div>
-            <label className="block text-sm font-medium mb-1.5">Priority</label>
+            <label className="block text-sm font-medium mb-1.5">
+              Matching priority
+            </label>
 
             <input
               name="priority"
@@ -188,15 +314,22 @@ export default async function EditSupportAnswerPage({
               min={0}
               max={1000}
               defaultValue={answer.priority}
-              className="w-full rounded-xl border px-3 py-3 text-sm"
+              className="w-full rounded-xl border bg-white px-3 py-3 text-sm outline-none"
               style={{
                 borderColor: "var(--sand)",
               }}
             />
+
+            <p className="text-xs text-gray-500 mt-1">
+              Higher priority answers win when typed questions match more than
+              one rule.
+            </p>
           </div>
 
+          {/* HUMAN SUPPORT */}
+
           <label
-            className="flex items-start gap-3 rounded-xl border p-4"
+            className="flex items-start gap-3 rounded-xl border bg-white p-4 cursor-pointer"
             style={{
               borderColor: "var(--sand)",
             }}
@@ -211,11 +344,14 @@ export default async function EditSupportAnswerPage({
             <div>
               <p className="text-sm font-medium">Escalate to human support</p>
 
-              <p className="text-xs text-gray-500 mt-1">
-                Notify a support agent after this automatic response.
+              <p className="text-xs text-gray-500 mt-1 leading-5">
+                Teraa Assistant sends the automatic answer, then the
+                conversation is placed in the human support queue.
               </p>
             </div>
           </label>
+
+          {/* SAVE */}
 
           <button
             type="submit"
@@ -228,6 +364,8 @@ export default async function EditSupportAnswerPage({
           </button>
         </form>
 
+        {/* ENABLE / DISABLE */}
+
         <div
           className="border-t mt-8 pt-6"
           style={{
@@ -236,8 +374,9 @@ export default async function EditSupportAnswerPage({
         >
           <p className="text-sm font-semibold">Answer status</p>
 
-          <p className="text-xs text-gray-500 mt-1 mb-4">
-            Disabled answers are ignored by Teraa Assistant but remain saved.
+          <p className="text-xs text-gray-500 mt-1 mb-4 leading-5">
+            Disabled answers disappear from the question menu and are ignored by
+            Teraa Assistant.
           </p>
 
           <form
