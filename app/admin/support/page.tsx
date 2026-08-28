@@ -25,6 +25,7 @@ export default async function AdminSupportPage() {
 
   const { data: threads, error } = await supabase
     .from("support_threads")
+    .neq("status", "resolved")
     .select(
       `
       id,
