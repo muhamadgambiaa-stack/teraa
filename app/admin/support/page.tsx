@@ -25,7 +25,6 @@ export default async function AdminSupportPage() {
 
   const { data: threads, error } = await supabase
     .from("support_threads")
-    .neq("status", "resolved")
     .select(
       `
       id,
@@ -38,6 +37,7 @@ export default async function AdminSupportPage() {
       last_message_at
       `,
     )
+    .neq("status", "resolved")
     .order("last_message_at", {
       ascending: false,
     })
