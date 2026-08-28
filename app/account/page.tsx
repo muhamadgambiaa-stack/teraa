@@ -30,6 +30,7 @@ type IconName =
   | "heart"
   | "message"
   | "bell"
+  | "support"
   | "store"
   | "tag"
   | "sellerOrders"
@@ -347,6 +348,13 @@ export default function AccountPage() {
             title="Notifications"
             description="Updates about your activity"
           />
+
+          <AccountLink
+            href="/account/support"
+            icon="support"
+            title="Contact support"
+            description="Get help with orders, delivery and your account"
+          />
         </AccountSection>
 
         {/* SELLING */}
@@ -479,6 +487,13 @@ export default function AccountPage() {
               icon="admin"
               title="Admin dashboard"
               description="Marketplace administration"
+            />
+
+            <AccountLink
+              href="/admin/support"
+              icon="support"
+              title="Support queue"
+              description="Respond to user support conversations"
             />
 
             <AccountLink
@@ -789,6 +804,16 @@ function AccountIcon({ name }: { name: IconName }) {
         </svg>
       );
 
+    case "support":
+      return (
+        <svg {...common}>
+          <path d="M4 13a8 8 0 0 1 16 0" />
+          <path d="M4 13v4a2 2 0 0 0 2 2h2v-6H4Z" />
+          <path d="M20 13v4a2 2 0 0 1-2 2h-2v-6h4Z" />
+          <path d="M16 19c0 2-2 3-4 3" />
+        </svg>
+      );
+
     case "store":
       return (
         <svg {...common}>
@@ -819,6 +844,7 @@ function AccountIcon({ name }: { name: IconName }) {
       return (
         <svg {...common}>
           <circle cx="12" cy="12" r="3" />
+
           <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
         </svg>
       );
@@ -835,7 +861,9 @@ function AccountIcon({ name }: { name: IconName }) {
       return (
         <svg {...common}>
           <circle cx="9" cy="8" r="3" />
+
           <circle cx="17" cy="9" r="2" />
+
           <path d="M3 20a6 6 0 0 1 12 0" />
           <path d="M15 15a5 5 0 0 1 6 5" />
         </svg>
