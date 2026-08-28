@@ -28,12 +28,7 @@ async function requireActiveUser() {
 
   const { data: profile, error } = await supabase
     .from("users")
-    .select(
-      `
-      id,
-      account_status
-      `,
-    )
+    .select("id, account_status")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -51,34 +46,80 @@ async function requireActiveUser() {
   };
 }
 
+/*
+ * ============================================================
+ * CLICKED APPROVED QUESTION
+ * ============================================================
+ */
+
+export async function createSupportThreadFromAnswer(
+  answerId: string,
+  _formData: FormData,
+) {
+  const { supabase } = await requireActiveUser();
+
+  const { data: threadId, error } = await supabase.rpc(
+    "create_support_thread_from_answer",
+    {
+      p_answer_id: answerId,
+    },
+  );
+
+  if (error) {
+    console.error("Could not open support answer:", error);
+
+    throw new Error(error.message || "Could not open this support question.");
+  }
+
+  if (!threadId) {
+    throw new Error("Could not create the support conversation.");
+  }
+
+  revalidatePath("/account/support");
+  revalidatePath("/admin/support");
+
+  redirect(`/account/support/${threadId}`);
+}
+
+/*
+ * ============================================================
+ * CUSTOM QUESTION
+ * ============================================================
+ */
+
 export async function createSupportThread(formData: FormData) {
   const { supabase } = await requireActiveUser();
 
-  const category = String(formData.get("category") ?? "").trim();
+  const rawCategory = String(formData.get("category") ?? "other").trim();
 
-  const subject = String(formData.get("subject") ?? "").trim();
+  const category = SUPPORT_CATEGORIES.includes(
+    rawCategory as (typeof SUPPORT_CATEGORIES)[number],
+  )
+    ? rawCategory
+    : "other";
 
   const message = String(formData.get("message") ?? "").trim();
+
+  const enteredSubject = String(formData.get("subject") ?? "").trim();
 
   const orderIdRaw = String(formData.get("orderId") ?? "").trim();
 
   const orderId = orderIdRaw.length > 0 ? orderIdRaw : null;
 
-  if (
-    !SUPPORT_CATEGORIES.includes(
-      category as (typeof SUPPORT_CATEGORIES)[number],
-    )
-  ) {
-    throw new Error("Choose a valid support category.");
+  if (message.length < 3) {
+    throw new Error(
+      "Please enter a little more information about your question.",
+    );
   }
 
-  if (subject.length < 3 || subject.length > 150) {
-    throw new Error("Subject must be between 3 and 150 characters.");
+  if (message.length > 4000) {
+    throw new Error("Your message is too long.");
   }
 
-  if (!message || message.length > 4000) {
-    throw new Error("Message must be between 1 and 4000 characters.");
-  }
+  const subject =
+    enteredSubject.length >= 3
+      ? enteredSubject.slice(0, 150)
+      : message.slice(0, 150);
 
   const { data: threadId, error } = await supabase.rpc(
     "create_support_thread",
@@ -93,15 +134,24 @@ export async function createSupportThread(formData: FormData) {
   if (error) {
     console.error("Support thread creation failed:", error);
 
-    throw new Error(error.message || "Couldn't create your support request.");
+    throw new Error(error.message || "Could not create your support request.");
   }
 
   if (!threadId) {
-    throw new Error("Couldn't create your support request.");
+    throw new Error("Could not create your support request.");
   }
+
+  revalidatePath("/account/support");
+  revalidatePath("/admin/support");
 
   redirect(`/account/support/${threadId}`);
 }
+
+/*
+ * ============================================================
+ * SEND MESSAGE
+ * ============================================================
+ */
 
 export async function sendSupportMessage(threadId: string, formData: FormData) {
   const { supabase } = await requireActiveUser();
@@ -120,13 +170,12 @@ export async function sendSupportMessage(threadId: string, formData: FormData) {
   if (error) {
     console.error("Support message failed:", error);
 
-    throw new Error(error.message || "Couldn't send your message.");
+    throw new Error(error.message || "Could not send your message.");
   }
 
   revalidatePath(`/account/support/${threadId}`);
 
   revalidatePath("/account/support");
-
   revalidatePath("/admin/support");
 
   revalidatePath(`/admin/support/${threadId}`);

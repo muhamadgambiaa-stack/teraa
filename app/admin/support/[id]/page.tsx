@@ -3,15 +3,10 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
-import { SupportAutoRefresh } from "@/components/support/SupportAutoRefresh";
 
-import {
-  claimSupportThread,
-  resolveSupportThread,
-  sendAdminSupportMessage,
-} from "../actions";
+import { setSupportAnswerActive, updateSupportAnswer } from "../actions";
 
-export default async function AdminSupportThreadPage({
+export default async function EditSupportAnswerPage({
   params,
 }: {
   params: Promise<{
@@ -30,460 +25,305 @@ export default async function AdminSupportThreadPage({
     redirect("/login");
   }
 
-  const { data: isAdmin, error: adminError } = await supabase.rpc(
-    "current_user_is_admin",
-  );
+  const { data: isAdmin } = await supabase.rpc("current_user_is_admin");
 
-  if (adminError || !isAdmin) {
+  if (!isAdmin) {
     redirect("/");
   }
 
-  const { data: thread, error: threadError } = await supabase
-    .from("support_threads")
+  const { data: answer, error } = await supabase
+    .from("support_answers")
     .select(
       `
       id,
-      user_id,
+      slug,
       category,
-      subject,
-      status,
-      order_id,
-      assigned_agent_id,
-      created_at,
-      resolved_at
+      question,
+      keywords,
+      answer,
+      requires_human,
+      priority,
+      show_in_menu,
+      menu_order,
+      active,
+      updated_at
       `,
     )
     .eq("id", id)
     .maybeSingle();
 
-  if (threadError || !thread) {
+  if (error || !answer) {
     notFound();
   }
-
-  const { data: messages, error: messagesError } = await supabase
-    .from("support_messages")
-    .select(
-      `
-      id,
-      sender_id,
-      sender_type,
-      message,
-      created_at
-      `,
-    )
-    .eq("thread_id", thread.id)
-    .order("created_at", {
-      ascending: true,
-    });
-
-  if (messagesError) {
-    console.error("Could not load support messages:", messagesError);
-  }
-
-  const { data: profileData, error: profileError } = await supabase.rpc(
-    "get_public_profile",
-    {
-      p_user_id: thread.user_id,
-    },
-  );
-
-  if (profileError) {
-    console.error("Could not load support customer:", profileError);
-  }
-
-  const rawProfile = Array.isArray(profileData) ? profileData[0] : profileData;
-
-  const customerName =
-    rawProfile?.full_name ?? rawProfile?.business_name ?? "Teraa user";
-
-  const canTakeConversation =
-    thread.status === "waiting_for_agent" || thread.status === "bot_handling";
 
   return (
     <>
       <SiteHeader />
 
-      <SupportAutoRefresh />
-
-      <main className="max-w-3xl mx-auto px-4 py-5 pb-32 sm:pb-8">
+      <main className="max-w-2xl mx-auto px-4 py-6 pb-24 sm:pb-8">
         <Link
-          href="/admin/support"
-          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:underline"
+          href="/admin/support/answers"
+          className="text-xs text-gray-500 hover:underline"
         >
-          <ArrowLeftIcon />
-          Support queue
+          ← Support answers
         </Link>
 
-        {/* HEADER */}
-
-        <div className="flex items-start justify-between gap-4 mt-5 mb-5">
-          <div className="min-w-0">
+        <div className="flex items-start justify-between gap-4 mt-5 mb-6">
+          <div>
             <h1
-              className="font-display text-xl"
+              className="font-display text-2xl"
               style={{
                 color: "var(--ink)",
               }}
             >
-              {thread.subject}
+              Edit Support Answer
             </h1>
 
-            <Link
-              href={`/profile/${thread.user_id}`}
-              className="text-sm mt-1 inline-block hover:underline"
-              style={{
-                color: "var(--indigo)",
-              }}
-            >
-              {customerName}
-            </Link>
-
-            <p className="text-xs text-gray-500 mt-1 capitalize">
-              {thread.category.replace("_", " ")}
+            <p className="text-sm text-gray-500 mt-1">
+              Control the clickable question, automatic answer and escalation.
             </p>
           </div>
 
-          <StatusBadge status={thread.status} />
+          <span
+            className="rounded-full px-2.5 py-1 text-xs font-semibold"
+            style={{
+              background: answer.active ? "#e3f0e8" : "#eeeeee",
+
+              color: answer.active ? "var(--leaf)" : "#666",
+            }}
+          >
+            {answer.active ? "Active" : "Disabled"}
+          </span>
         </div>
 
-        {/* BOT HANDLING */}
+        <form
+          action={updateSupportAnswer.bind(null, answer.id)}
+          className="space-y-5"
+        >
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              Question shown to users
+            </label>
 
-        {thread.status === "bot_handling" && (
-          <div
-            className="rounded-xl border p-4 mb-4"
-            style={{
-              borderColor: "var(--indigo)",
-              background: "#f7f8fb",
-            }}
-          >
-            <div className="flex items-start gap-3">
-              <BotIcon />
-
-              <div>
-                <p
-                  className="text-sm font-semibold"
-                  style={{
-                    color: "var(--indigo)",
-                  }}
-                >
-                  Teraa Assistant is handling this
-                </p>
-
-                <p className="text-xs text-gray-600 mt-1 leading-5">
-                  The automated support system has found answers for this
-                  conversation. No human action is currently required.
-                </p>
-
-                <p className="text-xs text-gray-500 mt-1">
-                  You can still take over the conversation if necessary.
-                </p>
-              </div>
-            </div>
+            <input
+              name="question"
+              maxLength={200}
+              defaultValue={answer.question ?? ""}
+              placeholder="Example: Can I pay with Wave?"
+              className="w-full rounded-xl border px-3 py-3 text-sm"
+              style={{
+                borderColor: "var(--sand)",
+              }}
+            />
           </div>
-        )}
 
-        {/* WAITING */}
-
-        {thread.status === "waiting_for_agent" && (
-          <div
-            className="rounded-xl border p-4 mb-4"
-            style={{
-              borderColor: "var(--gold)",
-              background: "#fbf3df",
-            }}
-          >
-            <p className="text-sm font-semibold">Human support required</p>
-
-            <p className="text-xs text-gray-600 mt-1">
-              The Teraa Assistant could not resolve this request or the user
-              asked to speak with a person.
-            </p>
-          </div>
-        )}
-
-        {/* ORDER */}
-
-        {thread.order_id && (
-          <div
-            className="rounded-xl border p-3 mb-4 text-sm"
+          <label
+            className="flex items-start gap-3 rounded-xl border p-4"
             style={{
               borderColor: "var(--sand)",
             }}
           >
-            <p className="text-xs text-gray-500">Related order</p>
+            <input
+              name="showInMenu"
+              type="checkbox"
+              defaultChecked={answer.show_in_menu}
+              className="mt-1"
+            />
 
-            <p className="font-medium mt-0.5">#{thread.order_id.slice(0, 8)}</p>
-          </div>
-        )}
+            <div>
+              <p className="text-sm font-medium">Show in question menu</p>
 
-        {/* ADMIN ACTIONS */}
+              <p className="text-xs text-gray-500 mt-1">
+                Users can click this question directly from Contact Support.
+              </p>
+            </div>
+          </label>
 
-        <div className="flex flex-wrap gap-2 mb-5">
-          {canTakeConversation && (
-            <form action={claimSupportThread.bind(null, thread.id)}>
-              <button
-                type="submit"
-                className="rounded-full px-4 py-2 text-sm font-medium text-white"
-                style={{
-                  background: "var(--indigo)",
-                }}
-              >
-                {thread.status === "bot_handling"
-                  ? "Take over conversation"
-                  : "Take conversation"}
-              </button>
-            </form>
-          )}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Category</label>
 
-          {thread.status !== "resolved" && (
-            <form action={resolveSupportThread.bind(null, thread.id)}>
-              <button
-                type="submit"
-                className="rounded-full border px-4 py-2 text-sm font-medium"
-                style={{
-                  borderColor: "var(--leaf)",
-                  color: "var(--leaf)",
-                }}
-              >
-                Mark resolved
-              </button>
-            </form>
-          )}
-        </div>
-
-        {/* MESSAGES */}
-
-        <section className="space-y-3 min-h-[45vh]">
-          {(messages ?? []).map((message) => {
-            const fromAgent = message.sender_type === "agent";
-
-            const fromBot = message.sender_type === "bot";
-
-            const fromCustomer = message.sender_type === "user";
-
-            const label = fromAgent
-              ? "Human support"
-              : fromBot
-                ? "Teraa Assistant"
-                : customerName;
-
-            return (
-              <div
-                key={message.id}
-                className={`flex ${
-                  fromAgent ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[84%] rounded-2xl px-4 py-3 ${
-                    fromBot ? "border" : ""
-                  }`}
-                  style={{
-                    background: fromAgent
-                      ? "var(--indigo)"
-                      : fromBot
-                        ? "#fbfaf7"
-                        : "#f3f4f6",
-
-                    color: fromAgent ? "white" : "var(--ink)",
-
-                    borderColor: fromBot ? "var(--sand)" : undefined,
-                  }}
-                >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    {fromBot && <BotSmallIcon />}
-
-                    {fromAgent && <HumanSmallIcon />}
-
-                    <p className="text-[10px] font-semibold opacity-70">
-                      {label}
-                    </p>
-                  </div>
-
-                  <p className="text-sm whitespace-pre-wrap break-words leading-5">
-                    {message.message}
-                  </p>
-
-                  <p className="text-[10px] mt-1.5 opacity-60">
-                    {new Date(message.created_at).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </section>
-
-        {/* COMPOSER */}
-
-        <form
-          action={sendAdminSupportMessage.bind(null, thread.id)}
-          className="sticky bottom-0 mt-5 border-t bg-white py-3"
-          style={{
-            borderColor: "var(--sand)",
-          }}
-        >
-          {thread.status === "bot_handling" && (
-            <p className="text-[11px] text-gray-500 mb-2">
-              Sending a reply will move this conversation from automated support
-              to human support.
-            </p>
-          )}
-
-          <div className="flex items-end gap-2">
-            <textarea
-              name="message"
+            <select
+              name="category"
               required
-              rows={1}
-              maxLength={4000}
-              placeholder="Reply as Teraa Support"
-              className="flex-1 rounded-2xl border px-4 py-3 text-sm outline-none resize-none"
+              defaultValue={answer.category}
+              className="w-full rounded-xl border bg-white px-3 py-3 text-sm"
+              style={{
+                borderColor: "var(--sand)",
+              }}
+            >
+              <option value="all">General</option>
+              <option value="order">Orders</option>
+              <option value="delivery">Delivery</option>
+              <option value="payment">Payments</option>
+              <option value="seller_account">Seller account</option>
+              <option value="account">Account</option>
+              <option value="report">Safety & reports</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              Menu order
+            </label>
+
+            <input
+              name="menuOrder"
+              type="number"
+              required
+              min={0}
+              max={1000}
+              defaultValue={answer.menu_order}
+              className="w-full rounded-xl border px-3 py-3 text-sm"
               style={{
                 borderColor: "var(--sand)",
               }}
             />
 
+            <p className="text-xs text-gray-500 mt-1">
+              Lower numbers appear first.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Slug</label>
+
+            <input
+              name="slug"
+              required
+              defaultValue={answer.slug}
+              className="w-full rounded-xl border px-3 py-3 text-sm"
+              style={{
+                borderColor: "var(--sand)",
+              }}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              Matching phrases
+            </label>
+
+            <textarea
+              name="keywords"
+              required
+              rows={10}
+              defaultValue={(answer.keywords ?? []).join("\n")}
+              className="w-full rounded-xl border px-3 py-3 text-sm resize-y"
+              style={{
+                borderColor: "var(--sand)",
+              }}
+            />
+
+            <p className="text-xs text-gray-500 mt-1">One phrase per line.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              Automatic answer
+            </label>
+
+            <textarea
+              name="answer"
+              required
+              rows={8}
+              maxLength={4000}
+              defaultValue={answer.answer}
+              className="w-full rounded-xl border px-3 py-3 text-sm resize-y"
+              style={{
+                borderColor: "var(--sand)",
+              }}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              Matching priority
+            </label>
+
+            <input
+              name="priority"
+              type="number"
+              required
+              min={0}
+              max={1000}
+              defaultValue={answer.priority}
+              className="w-full rounded-xl border px-3 py-3 text-sm"
+              style={{
+                borderColor: "var(--sand)",
+              }}
+            />
+          </div>
+
+          <label
+            className="flex items-start gap-3 rounded-xl border p-4"
+            style={{
+              borderColor: "var(--sand)",
+            }}
+          >
+            <input
+              name="requiresHuman"
+              type="checkbox"
+              defaultChecked={answer.requires_human}
+              className="mt-1"
+            />
+
+            <div>
+              <p className="text-sm font-medium">Escalate to human support</p>
+
+              <p className="text-xs text-gray-500 mt-1">
+                Notify human support after the automatic response.
+              </p>
+            </div>
+          </label>
+
+          <button
+            type="submit"
+            className="w-full rounded-full py-3 text-sm font-semibold text-white"
+            style={{
+              background: "var(--indigo)",
+            }}
+          >
+            Save changes
+          </button>
+        </form>
+
+        {/* STATUS */}
+
+        <div
+          className="border-t mt-8 pt-6"
+          style={{
+            borderColor: "var(--sand)",
+          }}
+        >
+          <p className="text-sm font-semibold">Answer status</p>
+
+          <p className="text-xs text-gray-500 mt-1 mb-4">
+            Disabled answers disappear from the question menu and are ignored by
+            Teraa Assistant.
+          </p>
+
+          <form
+            action={setSupportAnswerActive.bind(
+              null,
+              answer.id,
+              !answer.active,
+            )}
+          >
             <button
               type="submit"
-              className="rounded-full px-5 py-3 text-sm font-semibold text-white shrink-0"
+              className="rounded-full border px-5 py-2.5 text-sm font-medium"
               style={{
-                background: "var(--indigo)",
+                borderColor: answer.active ? "var(--clay)" : "var(--leaf)",
+
+                color: answer.active ? "var(--clay)" : "var(--leaf)",
               }}
             >
-              Send
+              {answer.active ? "Disable answer" : "Enable answer"}
             </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </main>
     </>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  let label = "Waiting";
-  let background = "#fbf3df";
-  let color = "var(--gold)";
-
-  if (status === "bot_handling") {
-    label = "Automated";
-    background = "#e6edf3";
-    color = "var(--indigo)";
-  }
-
-  if (status === "waiting_for_agent") {
-    label = "Needs support";
-    background = "#fbf3df";
-    color = "var(--gold)";
-  }
-
-  if (status === "agent_handling") {
-    label = "Human support";
-    background = "#e3f0e8";
-    color = "var(--leaf)";
-  }
-
-  if (status === "resolved") {
-    label = "Resolved";
-    background = "#eeeeee";
-    color = "#666";
-  }
-
-  return (
-    <span
-      className="rounded-full px-3 py-1 text-xs font-semibold shrink-0"
-      style={{
-        background,
-        color,
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
-function ArrowLeftIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M19 12H5" />
-      <path d="m12 19-7-7 7-7" />
-    </svg>
-  );
-}
-
-function BotIcon() {
-  return (
-    <div
-      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-      style={{
-        background: "#e6edf3",
-        color: "var(--indigo)",
-      }}
-    >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <rect x="4" y="7" width="16" height="12" rx="3" />
-        <path d="M12 3v4" />
-        <path d="M8 12h.01" />
-        <path d="M16 12h.01" />
-        <path d="M9 16h6" />
-      </svg>
-    </div>
-  );
-}
-
-function BotSmallIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="4" y="7" width="16" height="12" rx="3" />
-      <path d="M12 3v4" />
-      <path d="M8 12h.01" />
-      <path d="M16 12h.01" />
-    </svg>
-  );
-}
-
-function HumanSmallIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21a8 8 0 0 1 16 0" />
-    </svg>
   );
 }

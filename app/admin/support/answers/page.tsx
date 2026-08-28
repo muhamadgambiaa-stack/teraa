@@ -30,18 +30,21 @@ export default async function SupportAnswersPage() {
       id,
       slug,
       category,
+      question,
       keywords,
       answer,
       requires_human,
       priority,
+      show_in_menu,
+      menu_order,
       active,
       updated_at
       `,
     )
-    .order("priority", {
-      ascending: false,
+    .order("menu_order", {
+      ascending: true,
     })
-    .order("updated_at", {
+    .order("priority", {
       ascending: false,
     });
 
@@ -51,8 +54,12 @@ export default async function SupportAnswersPage() {
 
   const activeCount = (answers ?? []).filter((answer) => answer.active).length;
 
+  const menuCount = (answers ?? []).filter(
+    (answer) => answer.active && answer.show_in_menu,
+  ).length;
+
   const humanCount = (answers ?? []).filter(
-    (answer) => answer.requires_human && answer.active,
+    (answer) => answer.active && answer.requires_human,
   ).length;
 
   return (
@@ -79,7 +86,7 @@ export default async function SupportAnswersPage() {
             </h1>
 
             <p className="text-sm text-gray-500 mt-1">
-              Manage the approved answers used by Teraa Assistant.
+              Control the questions and answers shown by Teraa Assistant.
             </p>
           </div>
 
@@ -94,10 +101,12 @@ export default async function SupportAnswersPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <StatCard label="Total" value={answers?.length ?? 0} />
 
           <StatCard label="Active" value={activeCount} />
+
+          <StatCard label="Question menu" value={menuCount} />
 
           <StatCard label="Human review" value={humanCount} />
         </div>
@@ -110,10 +119,6 @@ export default async function SupportAnswersPage() {
             }}
           >
             <p className="font-medium">No support answers</p>
-
-            <p className="text-sm text-gray-500 mt-1">
-              Add your first automatic support answer.
-            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -124,17 +129,25 @@ export default async function SupportAnswersPage() {
                 className="block rounded-xl border bg-white p-4 hover:shadow-sm transition"
                 style={{
                   borderColor: "var(--sand)",
-                  opacity: answer.active ? 1 : 0.65,
+                  opacity: answer.active ? 1 : 0.6,
                 }}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">{answer.slug}</p>
+                    <p className="text-sm font-semibold">
+                      {answer.question || answer.slug}
+                    </p>
 
-                    <div className="flex flex-wrap gap-2 mt-2">
+                    {answer.question && (
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        {answer.slug}
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap gap-1.5 mt-2">
                       <Badge>{categoryLabel(answer.category)}</Badge>
 
-                      <Badge>Priority {answer.priority}</Badge>
+                      {answer.show_in_menu && <Badge>Question menu</Badge>}
 
                       {answer.requires_human && <Badge>Human review</Badge>}
                     </div>
@@ -156,9 +169,15 @@ export default async function SupportAnswersPage() {
                   {answer.answer}
                 </p>
 
-                <p className="text-xs text-gray-400 mt-3">
-                  {answer.keywords?.length ?? 0} matching phrases
-                </p>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] text-gray-400 mt-3">
+                  <span>{answer.keywords?.length ?? 0} matching phrases</span>
+
+                  <span>Priority {answer.priority}</span>
+
+                  {answer.show_in_menu && (
+                    <span>Menu order {answer.menu_order}</span>
+                  )}
+                </div>
               </Link>
             ))}
           </div>
@@ -170,13 +189,13 @@ export default async function SupportAnswersPage() {
 
 function categoryLabel(category: string) {
   const labels: Record<string, string> = {
-    all: "All",
-    order: "Order",
+    all: "General",
+    order: "Orders",
     delivery: "Delivery",
     seller_account: "Seller account",
     account: "Account",
-    payment: "Payment",
-    report: "Report",
+    payment: "Payments",
+    report: "Safety",
     other: "Other",
   };
 

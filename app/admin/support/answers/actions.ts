@@ -29,10 +29,14 @@ async function requireAdmin() {
 }
 
 function parseKeywords(value: string) {
-  return value
-    .split("\n")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
+  return [
+    ...new Set(
+      value
+        .split("\n")
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 export async function createSupportAnswer(formData: FormData) {
@@ -42,13 +46,19 @@ export async function createSupportAnswer(formData: FormData) {
 
   const category = String(formData.get("category") ?? "").trim();
 
+  const question = String(formData.get("question") ?? "").trim();
+
   const keywords = parseKeywords(String(formData.get("keywords") ?? ""));
 
   const answer = String(formData.get("answer") ?? "").trim();
 
   const requiresHuman = formData.get("requiresHuman") === "on";
 
+  const showInMenu = formData.get("showInMenu") === "on";
+
   const priority = Number(formData.get("priority") ?? 100);
+
+  const menuOrder = Number(formData.get("menuOrder") ?? 100);
 
   const { data: id, error } = await supabase.rpc(
     "admin_create_support_answer",
@@ -59,6 +69,9 @@ export async function createSupportAnswer(formData: FormData) {
       p_answer: answer,
       p_requires_human: requiresHuman,
       p_priority: priority,
+      p_question: question || null,
+      p_show_in_menu: showInMenu,
+      p_menu_order: menuOrder,
     },
   );
 
@@ -70,6 +83,8 @@ export async function createSupportAnswer(formData: FormData) {
 
   revalidatePath("/admin/support/answers");
 
+  revalidatePath("/account/support/new");
+
   redirect(`/admin/support/answers/${id}`);
 }
 
@@ -80,13 +95,19 @@ export async function updateSupportAnswer(id: string, formData: FormData) {
 
   const category = String(formData.get("category") ?? "").trim();
 
+  const question = String(formData.get("question") ?? "").trim();
+
   const keywords = parseKeywords(String(formData.get("keywords") ?? ""));
 
   const answer = String(formData.get("answer") ?? "").trim();
 
   const requiresHuman = formData.get("requiresHuman") === "on";
 
+  const showInMenu = formData.get("showInMenu") === "on";
+
   const priority = Number(formData.get("priority") ?? 100);
+
+  const menuOrder = Number(formData.get("menuOrder") ?? 100);
 
   const { error } = await supabase.rpc("admin_update_support_answer", {
     p_id: id,
@@ -96,6 +117,9 @@ export async function updateSupportAnswer(id: string, formData: FormData) {
     p_answer: answer,
     p_requires_human: requiresHuman,
     p_priority: priority,
+    p_question: question || null,
+    p_show_in_menu: showInMenu,
+    p_menu_order: menuOrder,
   });
 
   if (error) {
@@ -107,6 +131,8 @@ export async function updateSupportAnswer(id: string, formData: FormData) {
   revalidatePath("/admin/support/answers");
 
   revalidatePath(`/admin/support/answers/${id}`);
+
+  revalidatePath("/account/support/new");
 }
 
 export async function setSupportAnswerActive(id: string, active: boolean) {
@@ -124,4 +150,6 @@ export async function setSupportAnswerActive(id: string, active: boolean) {
   revalidatePath("/admin/support/answers");
 
   revalidatePath(`/admin/support/answers/${id}`);
+
+  revalidatePath("/account/support/new");
 }
