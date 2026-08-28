@@ -9,6 +9,7 @@ import {
   cancelOrder,
   markOrderReceived,
   messageSellerFromOrder,
+  reportOrderNotReceived,
   submitReview,
   updateReview,
 } from "./actions";
@@ -26,6 +27,11 @@ type PublicSellerProfile = {
 
   rating_avg: number | null;
   total_sales: number | null;
+};
+
+type DeliveryIssue = {
+  status: string;
+  reported_at: string;
 };
 
 export default async function OrderPage({
@@ -51,10 +57,6 @@ export default async function OrderPage({
    * ==========================================================
    * ORDER
    * ==========================================================
-   *
-   * seller_id is loaded directly from the order.
-   *
-   * Do not join directly to sellers().
    */
   const { data: order, error } = await supabase
     .from("orders")
@@ -102,10 +104,8 @@ export default async function OrderPage({
 
   /*
    * ==========================================================
-   * PUBLIC SELLER
+   * PUBLIC SELLER PROFILE
    * ==========================================================
-   *
-   * Safe seller identity comes through the public profile RPC.
    */
   const { data: sellerProfileData, error: sellerProfileError } =
     await supabase.rpc("get_public_profile", {
@@ -139,20 +139,16 @@ export default async function OrderPage({
       order as {
         order_items?: {
           product_id: string;
-
           quantity: number;
-
           price_at_purchase: number;
 
           products?:
             | {
                 id: string;
-
                 title: string;
               }
             | {
                 id: string;
-
                 title: string;
               }[];
         }[];
@@ -161,7 +157,7 @@ export default async function OrderPage({
 
   /*
    * ==========================================================
-   * LEGACY DIGITAL PAYMENT
+   * PAYMENT METHOD
    * ==========================================================
    */
   const paymentMethodRaw = (
@@ -195,9 +191,37 @@ export default async function OrderPage({
 
   const canMarkReceived = ["shipped", "delivered"].includes(order.status);
 
+  const canReportNotReceived = order.status === "delivered";
+
   /*
    * ==========================================================
-   * REVIEW PRODUCT
+   * DELIVERY ISSUE
+   * ==========================================================
+   */
+  let deliveryIssue: DeliveryIssue | null = null;
+
+  if (order.status === "delivered") {
+    const { data: issueData, error: issueError } = await supabase
+      .from("order_delivery_issues")
+      .select(
+        `
+        status,
+        reported_at
+        `,
+      )
+      .eq("order_id", order.id)
+      .maybeSingle();
+
+    if (issueError) {
+      console.error("Could not load delivery issue:", issueError);
+    }
+
+    deliveryIssue = issueData;
+  }
+
+  /*
+   * ==========================================================
+   * REVIEW
    * ==========================================================
    */
   const reviewItem = items[0] ?? null;
@@ -221,12 +245,12 @@ export default async function OrderPage({
       .from("reviews")
       .select(
         `
-          id,
-          product_id,
-          rating,
-          comment,
-          updated_at
-          `,
+        id,
+        product_id,
+        rating,
+        comment,
+        updated_at
+        `,
       )
       .eq("order_id", order.id)
       .eq("product_id", reviewItem.product_id)
@@ -369,8 +393,6 @@ export default async function OrderPage({
             </Link>
           </div>
 
-          {/* MESSAGE SELLER */}
-
           <form
             action={messageSellerFromOrder.bind(null, order.id)}
             className="mt-4"
@@ -380,7 +402,6 @@ export default async function OrderPage({
               className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50"
               style={{
                 borderColor: "var(--indigo)",
-
                 color: "var(--indigo)",
               }}
             >
@@ -397,7 +418,6 @@ export default async function OrderPage({
             className="rounded-xl border p-4 mb-4"
             style={{
               borderColor: "var(--gold)",
-
               background: "#fbf3df",
             }}
           >
@@ -406,7 +426,6 @@ export default async function OrderPage({
                 className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                 style={{
                   background: "white",
-
                   color: "var(--gold)",
                 }}
               >
@@ -452,7 +471,6 @@ export default async function OrderPage({
                 className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                 style={{
                   background: "#f3f4f6",
-
                   color: "var(--indigo)",
                 }}
               >
@@ -484,7 +502,6 @@ export default async function OrderPage({
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
               style={{
                 background: "#f3f4f6",
-
                 color: "var(--indigo)",
               }}
             >
@@ -512,7 +529,6 @@ export default async function OrderPage({
               className="w-full rounded-full py-2.5 text-sm font-semibold border"
               style={{
                 borderColor: "var(--clay)",
-
                 color: "var(--clay)",
               }}
             >
@@ -525,27 +541,89 @@ export default async function OrderPage({
           </form>
         )}
 
-        {/* RECEIVED */}
+        {/* DELIVERY CONFIRMATION */}
 
         {canMarkReceived && (
-          <form
-            action={markOrderReceived.bind(null, order.id)}
-            className="mb-4"
-          >
-            <button
-              type="submit"
-              className="w-full rounded-full py-2.5 text-white text-sm font-semibold"
-              style={{
-                background: "var(--leaf)",
-              }}
-            >
-              I&apos;ve received this order
-            </button>
+          <div className="mb-4">
+            <form action={markOrderReceived.bind(null, order.id)}>
+              <button
+                type="submit"
+                className="w-full rounded-full py-2.5 text-white text-sm font-semibold"
+                style={{
+                  background: "var(--leaf)",
+                }}
+              >
+                I&apos;ve received this order
+              </button>
+            </form>
 
-            <p className="text-xs text-gray-500 text-center mt-1.5">
+            {canReportNotReceived && deliveryIssue?.status !== "open" && (
+              <form
+                action={reportOrderNotReceived.bind(null, order.id)}
+                className="mt-3"
+              >
+                <button
+                  type="submit"
+                  className="w-full rounded-full py-2.5 text-sm font-semibold border"
+                  style={{
+                    borderColor: "var(--clay)",
+                    color: "var(--clay)",
+                  }}
+                >
+                  I haven&apos;t received this order
+                </button>
+              </form>
+            )}
+
+            <p className="text-xs text-gray-500 text-center mt-2">
               Only confirm after you actually receive and inspect the item.
             </p>
-          </form>
+          </div>
+        )}
+
+        {/* DELIVERY ISSUE */}
+
+        {deliveryIssue?.status === "open" && (
+          <div
+            className="rounded-xl border p-4 mb-4"
+            style={{
+              borderColor: "var(--clay)",
+              background: "#fffaf7",
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                style={{
+                  background: "#f8eee9",
+                  color: "var(--clay)",
+                }}
+              >
+                <AlertIcon />
+              </div>
+
+              <div className="min-w-0">
+                <p
+                  className="text-sm font-semibold"
+                  style={{
+                    color: "var(--clay)",
+                  }}
+                >
+                  Delivery issue reported
+                </p>
+
+                <p className="text-sm text-gray-600 mt-1 leading-5">
+                  You told us that this order has not arrived. The order will
+                  remain open while you resolve the delivery with the seller.
+                </p>
+
+                <p className="text-xs text-gray-500 mt-2">
+                  If the item arrives later, use &ldquo; I&apos;ve received this
+                  order &rdquo; to complete the order.
+                </p>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* CANCELLED */}
@@ -651,7 +729,6 @@ export default async function OrderPage({
                   className="rounded-full px-2 py-1 text-[10px] font-medium shrink-0"
                   style={{
                     background: "#f3f4f6",
-
                     color: "#6b7280",
                   }}
                 >
@@ -664,8 +741,7 @@ export default async function OrderPage({
               <StaticStarRating rating={Number(existingReview.rating)} />
 
               <span className="text-xs text-gray-500">
-                {existingReview.rating}
-                /5
+                {existingReview.rating}/5
               </span>
             </div>
 
@@ -674,8 +750,6 @@ export default async function OrderPage({
                 {existingReview.comment}
               </p>
             )}
-
-            {/* EDIT REVIEW */}
 
             <details
               className="rounded-xl border mt-4 overflow-hidden"
@@ -775,7 +849,6 @@ export default async function OrderPage({
  * STATUS
  * ============================================================
  */
-
 function OrderStatus({ status }: { status: string }) {
   const labels: Record<string, string> = {
     placed: "Order placed",
@@ -805,7 +878,6 @@ function OrderStatus({ status }: { status: string }) {
  * STAR RATING
  * ============================================================
  */
-
 function StaticStarRating({ rating }: { rating: number }) {
   return (
     <div
@@ -840,7 +912,6 @@ function StaticStarRating({ rating }: { rating: number }) {
  * ICONS
  * ============================================================
  */
-
 function MessageIcon() {
   return (
     <svg
@@ -900,8 +971,27 @@ function ShieldIcon() {
       aria-hidden="true"
     >
       <path d="M12 3 5 6v5c0 5 3 8.5 7 10 4-1.5 7-5 7-10V6l-7-3Z" />
-
       <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+      <path d="M10.3 3.8 2.4 17.5A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.5L13.7 3.8a2 2 0 0 0-3.4 0Z" />
     </svg>
   );
 }
@@ -920,7 +1010,6 @@ function EditIcon() {
       aria-hidden="true"
     >
       <path d="M12 20h9" />
-
       <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
     </svg>
   );

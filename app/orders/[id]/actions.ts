@@ -45,10 +45,6 @@ async function requireActiveBuyer() {
  * ============================================================
  * MESSAGE SELLER FROM ORDER
  * ============================================================
- *
- * This uses the secure order-backed RPC instead of trying
- * to insert a conversation directly through normal listing
- * messaging RLS.
  */
 export async function messageSellerFromOrder(orderId: string) {
   const { supabase } = await requireActiveBuyer();
@@ -73,6 +69,33 @@ export async function messageSellerFromOrder(orderId: string) {
   }
 
   redirect(`/messages/${conversationId}`);
+}
+
+/*
+ * ============================================================
+ * REPORT ORDER NOT RECEIVED
+ * ============================================================
+ */
+export async function reportOrderNotReceived(orderId: string) {
+  const { supabase } = await requireActiveBuyer();
+
+  const { error } = await supabase.rpc("report_order_not_received", {
+    p_order_id: orderId,
+  });
+
+  if (error) {
+    console.error("Delivery issue report failed:", error);
+
+    throw new Error(error.message || "Couldn't report this delivery issue.");
+  }
+
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/orders");
+
+  revalidatePath(`/seller/dashboard/orders/${orderId}`);
+  revalidatePath("/seller/dashboard/orders");
+
+  revalidatePath("/notifications");
 }
 
 /*
@@ -124,9 +147,7 @@ export async function cancelOrder(orderId: string) {
   revalidatePath("/search");
 
   revalidatePath("/seller/dashboard");
-
   revalidatePath("/seller/dashboard/orders");
-
   revalidatePath(`/seller/dashboard/orders/${orderId}`);
 
   revalidatePath("/notifications");
@@ -193,11 +214,9 @@ export async function markOrderReceived(orderId: string) {
   revalidatePath("/orders");
 
   revalidatePath("/seller/dashboard/orders");
-
   revalidatePath(`/seller/dashboard/orders/${orderId}`);
 
   revalidatePath(`/profile/${order.seller_id}`);
-
   revalidatePath("/notifications");
 }
 
@@ -205,9 +224,6 @@ export async function markOrderReceived(orderId: string) {
  * ============================================================
  * SUBMIT PRODUCT REVIEW
  * ============================================================
- *
- * seller_id comes from the real order.
- * We do not trust a hidden seller ID submitted by the browser.
  */
 export async function submitReview(formData: FormData) {
   const { supabase, user } = await requireActiveBuyer();
@@ -403,10 +419,7 @@ function revalidateReviewPages(
   productId: string,
 ) {
   revalidatePath(`/orders/${orderId}`);
-
   revalidatePath(`/products/${productId}`);
-
   revalidatePath(`/profile/${sellerId}`);
-
   revalidatePath("/seller/dashboard");
 }
