@@ -143,19 +143,14 @@ export default async function ProductDetailPage({
   const outOfStock =
     product.status === "out_of_stock" || product.stock_quantity === 0;
 
-  /*
-   * IMPORTANT:
-   *
-   * Determine ownership directly from product.seller_id.
-   * Do not depend on the nested seller relation because
-   * seller profile visibility may be restricted by RLS.
-   */
-  const isOwnListing = Boolean(user && user.id === product.seller_id);
+  const isOwnListing = Boolean(user && seller && user.id === seller.id);
 
   /*
    * PRODUCT REVIEWS
    *
-   * Reviews are attached to this specific product.
+   * Reviews are now attached to this specific
+   * product instead of counting every review
+   * received by the seller.
    */
   const { data: reviewData, error: reviewError } = await supabase
     .from("reviews")
@@ -386,31 +381,26 @@ export default async function ProductDetailPage({
                     View profile
                   </Link>
                 </div>
+
+                {!isOwnListing && (
+                  <form
+                    action={messageSeller.bind(null, product.id)}
+                    className="mt-4"
+                  >
+                    <button
+                      type="submit"
+                      className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50"
+                      style={{
+                        borderColor: "var(--indigo)",
+                        color: "var(--indigo)",
+                      }}
+                    >
+                      <MessageIcon />
+                      Message seller
+                    </button>
+                  </form>
+                )}
               </div>
-            )}
-
-            {/* MESSAGE SELLER
-                Keep this independent from seller-profile visibility.
-                messageSeller() performs its own secure seller checks.
-            */}
-
-            {!isOwnListing && (
-              <form
-                action={messageSeller.bind(null, product.id)}
-                className={seller ? "mt-3" : "mt-5"}
-              >
-                <button
-                  type="submit"
-                  className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50"
-                  style={{
-                    borderColor: "var(--indigo)",
-                    color: "var(--indigo)",
-                  }}
-                >
-                  <MessageIcon />
-                  Message seller
-                </button>
-              </form>
             )}
 
             {/* PAYMENT */}
@@ -469,6 +459,7 @@ export default async function ProductDetailPage({
                   className="block w-full text-center rounded-full py-3 text-white text-sm font-semibold transition-opacity"
                   style={{
                     background: outOfStock ? "#c9c9c0" : "var(--indigo)",
+
                     pointerEvents: outOfStock ? "none" : "auto",
                   }}
                 >
