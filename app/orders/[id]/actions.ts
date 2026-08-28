@@ -22,7 +22,7 @@ async function requireActiveBuyer() {
       `
       id,
       account_status
-    `,
+      `,
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -41,6 +41,156 @@ async function requireActiveBuyer() {
   };
 }
 
+/*
+ * ============================================================
+ * MESSAGE SELLER FROM ORDER
+ * ============================================================
+ *
+ * Lets a buyer contact the seller directly from an order.
+ *
+ * The buyer does not need to return to the product page.
+ * Existing conversations are reused.
+ */
+export async function messageSellerFromOrder(orderId: string) {
+  const { supabase, user } = await requireActiveBuyer();
+
+  /*
+   * Load the order directly.
+   */
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .select(
+      `
+      id,
+      buyer_id,
+      seller_id
+      `,
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (orderError || !order) {
+    throw new Error("Order not found.");
+  }
+
+  /*
+   * Only the buyer who placed this order can use
+   * this buyer-side action.
+   */
+  if (order.buyer_id !== user.id) {
+    throw new Error("You are not allowed to message this seller.");
+  }
+
+  /*
+   * Teraa currently creates an order from one listing.
+   * Load the product attached to the order so the
+   * marketplace conversation stays attached to that product.
+   */
+  const { data: orderItem, error: itemError } = await supabase
+    .from("order_items")
+    .select(
+      `
+      product_id
+      `,
+    )
+    .eq("order_id", order.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (itemError || !orderItem) {
+    throw new Error("Could not find the product for this order.");
+  }
+
+  /*
+   * Reuse an existing conversation for the same
+   * buyer + seller + product.
+   */
+  const { data: existingConversation, error: lookupError } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("buyer_id", user.id)
+    .eq("seller_id", order.seller_id)
+    .eq("product_id", orderItem.product_id)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new Error(lookupError.message || "Couldn't open the conversation.");
+  }
+
+  if (existingConversation) {
+    redirect(`/messages/${existingConversation.id}`);
+  }
+
+  /*
+   * Check seller marketplace availability through
+   * the secure database helper.
+   */
+  const { data: sellerAvailable, error: sellerAvailabilityError } =
+    await supabase.rpc("marketplace_seller_is_available", {
+      p_seller_id: order.seller_id,
+    });
+
+  if (sellerAvailabilityError) {
+    console.error("Seller availability check failed:", sellerAvailabilityError);
+
+    throw new Error("Couldn't check whether this seller is available.");
+  }
+
+  if (!sellerAvailable) {
+    throw new Error("This seller account is currently unavailable.");
+  }
+
+  /*
+   * Create a new conversation.
+   *
+   * Messaging RLS still independently validates the
+   * buyer, seller and product.
+   */
+  const { data: conversation, error: conversationError } = await supabase
+    .from("conversations")
+    .insert({
+      buyer_id: user.id,
+      seller_id: order.seller_id,
+      product_id: orderItem.product_id,
+    })
+    .select("id")
+    .single();
+
+  /*
+   * In the unlikely event that two requests created
+   * the same conversation at almost the same time,
+   * recover by loading the existing one.
+   */
+  if (conversationError?.code === "23505") {
+    const { data: duplicateConversation } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("buyer_id", user.id)
+      .eq("seller_id", order.seller_id)
+      .eq("product_id", orderItem.product_id)
+      .maybeSingle();
+
+    if (duplicateConversation) {
+      redirect(`/messages/${duplicateConversation.id}`);
+    }
+  }
+
+  if (conversationError || !conversation) {
+    console.error("Conversation creation failed:", conversationError);
+
+    throw new Error(
+      conversationError?.message || "Couldn't start conversation.",
+    );
+  }
+
+  redirect(`/messages/${conversation.id}`);
+}
+
+/*
+ * ============================================================
+ * CANCEL ORDER
+ * ============================================================
+ */
 export async function cancelOrder(orderId: string) {
   const { supabase, user } = await requireActiveBuyer();
 
@@ -51,7 +201,7 @@ export async function cancelOrder(orderId: string) {
       id,
       buyer_id,
       status
-    `,
+      `,
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -88,6 +238,11 @@ export async function cancelOrder(orderId: string) {
   revalidatePath("/notifications");
 }
 
+/*
+ * ============================================================
+ * MARK ORDER RECEIVED
+ * ============================================================
+ */
 export async function markOrderReceived(orderId: string) {
   const { supabase, user } = await requireActiveBuyer();
 
@@ -101,7 +256,7 @@ export async function markOrderReceived(orderId: string) {
       status,
       payment_method,
       payment_status
-    `,
+      `,
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -148,12 +303,19 @@ export async function markOrderReceived(orderId: string) {
   revalidatePath("/notifications");
 }
 
+/*
+ * ============================================================
+ * SUBMIT PRODUCT REVIEW
+ * ============================================================
+ *
+ * Important:
+ * seller_id is no longer trusted from a hidden browser field.
+ * It is taken directly from the real order instead.
+ */
 export async function submitReview(formData: FormData) {
   const { supabase, user } = await requireActiveBuyer();
 
   const orderId = String(formData.get("orderId") ?? "").trim();
-
-  const sellerId = String(formData.get("sellerId") ?? "").trim();
 
   const productId = String(formData.get("productId") ?? "").trim();
 
@@ -163,7 +325,6 @@ export async function submitReview(formData: FormData) {
 
   if (
     !orderId ||
-    !sellerId ||
     !productId ||
     !Number.isInteger(rating) ||
     rating < 1 ||
@@ -176,6 +337,9 @@ export async function submitReview(formData: FormData) {
     throw new Error("Review comment is too long.");
   }
 
+  /*
+   * Load the real order.
+   */
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .select(
@@ -184,7 +348,7 @@ export async function submitReview(formData: FormData) {
       buyer_id,
       seller_id,
       status
-    `,
+      `,
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -193,21 +357,24 @@ export async function submitReview(formData: FormData) {
     throw new Error("Order not found.");
   }
 
-  if (
-    order.buyer_id !== user.id ||
-    order.seller_id !== sellerId ||
-    order.status !== "completed"
-  ) {
+  /*
+   * Buyer must own the completed order.
+   */
+  if (order.buyer_id !== user.id || order.status !== "completed") {
     throw new Error("You cannot review this order.");
   }
 
+  /*
+   * Confirm this product was genuinely purchased
+   * in this order.
+   */
   const { data: orderItem, error: itemError } = await supabase
     .from("order_items")
     .select(
       `
       order_id,
       product_id
-    `,
+      `,
     )
     .eq("order_id", orderId)
     .eq("product_id", productId)
@@ -217,6 +384,9 @@ export async function submitReview(formData: FormData) {
     throw new Error("This product was not part of the order.");
   }
 
+  /*
+   * Prevent duplicate reviews.
+   */
   const { data: existingReview, error: existingReviewError } = await supabase
     .from("reviews")
     .select("id")
@@ -232,10 +402,16 @@ export async function submitReview(formData: FormData) {
     throw new Error("You already reviewed this product.");
   }
 
+  /*
+   * Use seller_id from the real order.
+   *
+   * The browser is never trusted to tell us who
+   * the seller was.
+   */
   const { error } = await supabase.from("reviews").insert({
     order_id: orderId,
     buyer_id: user.id,
-    seller_id: sellerId,
+    seller_id: order.seller_id,
     product_id: productId,
     rating,
     comment: comment || null,
@@ -247,9 +423,14 @@ export async function submitReview(formData: FormData) {
     throw new Error(error.message || "Couldn't submit review.");
   }
 
-  revalidateReviewPages(orderId, sellerId, productId);
+  revalidateReviewPages(orderId, order.seller_id, productId);
 }
 
+/*
+ * ============================================================
+ * UPDATE PRODUCT REVIEW
+ * ============================================================
+ */
 export async function updateReview(formData: FormData) {
   const { supabase, user } = await requireActiveBuyer();
 
@@ -268,10 +449,10 @@ export async function updateReview(formData: FormData) {
   }
 
   /*
-   * Load the existing review from the database.
+   * Load the existing review.
    *
-   * We do not trust seller/order/product IDs submitted
-   * through the browser when editing.
+   * Do not trust order/product/seller IDs coming
+   * from the browser when editing.
    */
   const { data: review, error: reviewError } = await supabase
     .from("reviews")
@@ -282,7 +463,7 @@ export async function updateReview(formData: FormData) {
       seller_id,
       order_id,
       product_id
-    `,
+      `,
     )
     .eq("id", reviewId)
     .maybeSingle();
@@ -296,8 +477,8 @@ export async function updateReview(formData: FormData) {
   }
 
   /*
-   * The order must still genuinely belong to this buyer
-   * and remain completed.
+   * The associated order must still genuinely
+   * belong to this buyer and remain completed.
    */
   const { data: order, error: orderError } = await supabase
     .from("orders")
@@ -307,7 +488,7 @@ export async function updateReview(formData: FormData) {
       buyer_id,
       seller_id,
       status
-    `,
+      `,
     )
     .eq("id", review.order_id)
     .maybeSingle();
@@ -343,6 +524,11 @@ export async function updateReview(formData: FormData) {
   revalidateReviewPages(review.order_id, review.seller_id, review.product_id);
 }
 
+/*
+ * ============================================================
+ * REVALIDATION
+ * ============================================================
+ */
 function revalidateReviewPages(
   orderId: string,
   sellerId: string,
