@@ -5,7 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SupportAutoRefresh } from "@/components/support/SupportAutoRefresh";
 
-import { sendSupportMessage } from "../actions";
+import {
+  sendSupportMessage,
+  requestHumanSupport,
+  resolveOwnSupportThread,
+} from "../actions";
 
 export default async function SupportThreadPage({
   params,
@@ -154,7 +158,67 @@ export default async function SupportThreadPage({
                   at any time.
                 </p>
 
-                <form
+                
+        {thread.status === "bot_handling" && (
+          <div
+            className="rounded-xl border bg-white p-4 mb-4"
+            style={{
+              borderColor: "var(--sand)",
+            }}
+          >
+            <p
+              className="text-sm font-semibold"
+              style={{
+                color: "var(--ink)",
+              }}
+            >
+              Did this solve your problem?
+            </p>
+
+            <p className="text-xs text-gray-500 mt-1">
+              Let us know whether you still need help.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+              <form
+                action={resolveOwnSupportThread.bind(
+                  null,
+                  thread.id,
+                )}
+              >
+                <button
+                  type="submit"
+                  className="w-full rounded-full px-4 py-2.5 text-sm font-semibold"
+                  style={{
+                    background: "#e3f0e8",
+                    color: "var(--leaf)",
+                  }}
+                >
+                  This solved my problem
+                </button>
+              </form>
+
+              <form
+                action={requestHumanSupport.bind(
+                  null,
+                  thread.id,
+                )}
+              >
+                <button
+                  type="submit"
+                  className="w-full rounded-full border px-4 py-2.5 text-sm font-semibold"
+                  style={{
+                    borderColor: "var(--indigo)",
+                    color: "var(--indigo)",
+                  }}
+                >
+                  I still need help
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+<form
                   action={sendSupportMessage.bind(null, thread.id)}
                   className="mt-3"
                 >

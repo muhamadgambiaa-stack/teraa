@@ -180,3 +180,87 @@ export async function sendSupportMessage(threadId: string, formData: FormData) {
 
   revalidatePath(`/admin/support/${threadId}`);
 }
+
+
+/* ============================================================
+   USER MARKS SUPPORT AS SOLVED
+============================================================ */
+
+export async function resolveOwnSupportThread(
+  threadId: string,
+  _formData: FormData,
+) {
+  const { supabase } = await requireActiveUser();
+
+  const { error } = await supabase.rpc(
+    "user_resolve_support_thread",
+    {
+      p_thread_id: threadId,
+    },
+  );
+
+  if (error) {
+    console.error(
+      "Could not resolve support conversation:",
+      error,
+    );
+
+    throw new Error(
+      error.message ||
+        "Could not mark this conversation as solved.",
+    );
+  }
+
+  revalidatePath(
+    `/account/support/${threadId}`,
+  );
+
+  revalidatePath("/account/support");
+  revalidatePath("/admin/support");
+
+  revalidatePath(
+    `/admin/support/${threadId}`,
+  );
+}
+
+
+/* ============================================================
+   USER REQUESTS HUMAN SUPPORT
+============================================================ */
+
+export async function requestHumanSupport(
+  threadId: string,
+  _formData: FormData,
+) {
+  const { supabase } = await requireActiveUser();
+
+  const { error } = await supabase.rpc(
+    "user_request_human_support",
+    {
+      p_thread_id: threadId,
+    },
+  );
+
+  if (error) {
+    console.error(
+      "Could not request human support:",
+      error,
+    );
+
+    throw new Error(
+      error.message ||
+        "Could not request human support.",
+    );
+  }
+
+  revalidatePath(
+    `/account/support/${threadId}`,
+  );
+
+  revalidatePath("/account/support");
+  revalidatePath("/admin/support");
+
+  revalidatePath(
+    `/admin/support/${threadId}`,
+  );
+}
