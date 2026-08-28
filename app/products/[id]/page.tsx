@@ -27,9 +27,31 @@ type ProductReview = {
     | null;
 };
 
+type PublicSellerProfile = {
+  id: string;
+  full_name: string;
+  city: string | null;
+  profile_photo_url: string | null;
+  public_role: "buyer" | "seller";
+  business_name: string | null;
+  shop_description: string | null;
+  shop_banner_url: string | null;
+  verification_status: string | null;
+  rating_avg: number | null;
+  total_sales: number | null;
+  member_since: string | null;
+};
+
 async function getProduct(id: string) {
   const supabase = await createClient();
 
+  /*
+   * Do not join directly to public.sellers here.
+   *
+   * That table is intentionally protected by RLS.
+   * Public seller information is loaded separately
+   * through get_public_profile().
+   */
   const { data, error } = await supabase
     .from("products")
     .select(
@@ -49,14 +71,6 @@ async function getProduct(id: string) {
         photo_url,
         is_cover,
         sort_order
-      ),
-
-      sellers(
-        id,
-        business_name,
-        verification_status,
-        account_status,
-        total_sales
       )
       `,
     )
@@ -92,8 +106,11 @@ export default async function ProductDetailPage({
   } = await supabase.auth.getUser();
 
   /*
+   * ----------------------------------------------------------
    * PRODUCT PHOTOS
+   * ----------------------------------------------------------
    */
+
   const photos =
     (
       product as {
@@ -112,46 +129,62 @@ export default async function ProductDetailPage({
   );
 
   /*
-   * SELLER
+   * ----------------------------------------------------------
+   * PUBLIC SELLER PROFILE
+   * ----------------------------------------------------------
+   *
+   * This is the safe public seller source used by Teraa.
+   *
+   * Buyers and other sellers do not need direct SELECT access
+   * to the private sellers table.
    */
-  const sellerRaw = (
-    product as {
-      sellers?:
-        | {
-            id: string;
-            business_name: string;
-            verification_status: string;
-            account_status: string;
-            total_sales: number;
-          }
-        | {
-            id: string;
-            business_name: string;
-            verification_status: string;
-            account_status: string;
-            total_sales: number;
-          }[];
-    }
-  ).sellers;
 
-  const seller = Array.isArray(sellerRaw) ? sellerRaw[0] : sellerRaw;
+  const { data: publicSellerData, error: publicSellerError } =
+    await supabase.rpc("get_public_profile", {
+      p_user_id: product.seller_id,
+    });
+
+  if (publicSellerError) {
+    console.error("Could not load public seller profile:", publicSellerError);
+  }
+
+  const rawPublicSeller = Array.isArray(publicSellerData)
+    ? publicSellerData[0]
+    : publicSellerData;
+
+  const publicSeller = rawPublicSeller as PublicSellerProfile | null;
+
+  const seller = publicSeller?.public_role === "seller" ? publicSeller : null;
 
   const isVerified = seller?.verification_status === "approved";
+
+  const sellerSales = Number(seller?.total_sales ?? 0);
+
+  /*
+   * ----------------------------------------------------------
+   * PRODUCT STATE
+   * ----------------------------------------------------------
+   */
 
   const condition = product.condition as ProductCondition;
 
   const outOfStock =
     product.status === "out_of_stock" || product.stock_quantity === 0;
 
-  const isOwnListing = Boolean(user && seller && user.id === seller.id);
+  /*
+   * Ownership must come directly from the product.
+   *
+   * Do not depend on whether another user's public seller
+   * profile was returned.
+   */
+  const isOwnListing = Boolean(user && user.id === product.seller_id);
 
   /*
+   * ----------------------------------------------------------
    * PRODUCT REVIEWS
-   *
-   * Reviews are now attached to this specific
-   * product instead of counting every review
-   * received by the seller.
+   * ----------------------------------------------------------
    */
+
   const { data: reviewData, error: reviewError } = await supabase
     .from("reviews")
     .select(
@@ -349,16 +382,17 @@ export default async function ProductDetailPage({
                       href={`/profile/${seller.id}`}
                       className="inline-flex items-center gap-1.5 font-semibold text-sm hover:underline"
                     >
-                      <span className="truncate">{seller.business_name}</span>
+                      <span className="truncate">
+                        {seller.business_name ?? seller.full_name}
+                      </span>
 
                       {isVerified && <VerifiedIcon />}
                     </Link>
 
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
-                      {seller.total_sales > 0 && (
+                      {sellerSales > 0 && (
                         <span>
-                          {seller.total_sales}{" "}
-                          {seller.total_sales === 1 ? "sale" : "sales"}
+                          {sellerSales} {sellerSales === 1 ? "sale" : "sales"}
                         </span>
                       )}
 
@@ -381,26 +415,31 @@ export default async function ProductDetailPage({
                     View profile
                   </Link>
                 </div>
-
-                {!isOwnListing && (
-                  <form
-                    action={messageSeller.bind(null, product.id)}
-                    className="mt-4"
-                  >
-                    <button
-                      type="submit"
-                      className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50"
-                      style={{
-                        borderColor: "var(--indigo)",
-                        color: "var(--indigo)",
-                      }}
-                    >
-                      <MessageIcon />
-                      Message seller
-                    </button>
-                  </form>
-                )}
               </div>
+            )}
+
+            {/* MESSAGE SELLER
+                Keep contact independent from seller-card visibility.
+                messageSeller() performs its own secure seller checks.
+            */}
+
+            {!isOwnListing && (
+              <form
+                action={messageSeller.bind(null, product.id)}
+                className={seller ? "mt-3" : "mt-5"}
+              >
+                <button
+                  type="submit"
+                  className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50"
+                  style={{
+                    borderColor: "var(--indigo)",
+                    color: "var(--indigo)",
+                  }}
+                >
+                  <MessageIcon />
+                  Message seller
+                </button>
+              </form>
             )}
 
             {/* PAYMENT */}
