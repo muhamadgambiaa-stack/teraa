@@ -53,7 +53,7 @@ export default async function SupportPage() {
             </h1>
 
             <p className="text-sm text-gray-500 mt-1">
-              Get help with your Teraa account, orders, delivery, or marketplace
+              Get help with your Teraa account, orders, delivery or marketplace
               issues.
             </p>
           </div>
@@ -81,7 +81,8 @@ export default async function SupportPage() {
             <p className="font-medium mt-3">No support conversations</p>
 
             <p className="text-sm text-gray-500 mt-1 mb-4">
-              Contact Teraa Support if you need help.
+              Teraa Assistant can help answer common questions, with human
+              support available when needed.
             </p>
 
             <Link
@@ -111,7 +112,7 @@ export default async function SupportPage() {
                       {thread.subject}
                     </p>
 
-                    <p className="text-xs text-gray-500 mt-1 capitalize">
+                    <p className="text-xs text-gray-500 mt-1">
                       {categoryLabel(thread.category)}
                     </p>
                   </div>
@@ -146,26 +147,33 @@ function categoryLabel(category: string) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const label =
-    status === "resolved"
-      ? "Resolved"
-      : status === "agent_handling"
-        ? "Support joined"
-        : "Waiting for support";
+  let label = "Waiting";
+  let background = "#fbf3df";
+  let color = "var(--gold)";
 
-  const background =
-    status === "resolved"
-      ? "#e3f0e8"
-      : status === "agent_handling"
-        ? "#e6edf3"
-        : "#fbf3df";
+  if (status === "bot_handling") {
+    label = "Automated support";
+    background = "#e6edf3";
+    color = "var(--indigo)";
+  }
 
-  const color =
-    status === "resolved"
-      ? "var(--leaf)"
-      : status === "agent_handling"
-        ? "var(--indigo)"
-        : "var(--gold)";
+  if (status === "waiting_for_agent") {
+    label = "Waiting for support";
+    background = "#fbf3df";
+    color = "var(--gold)";
+  }
+
+  if (status === "agent_handling") {
+    label = "Human support";
+    background = "#e3f0e8";
+    color = "var(--leaf)";
+  }
+
+  if (status === "resolved") {
+    label = "Resolved";
+    background = "#eeeeee";
+    color = "#666";
+  }
 
   return (
     <span

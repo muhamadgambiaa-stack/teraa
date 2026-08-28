@@ -15,9 +15,11 @@ export default async function AdminSupportPage() {
     redirect("/login");
   }
 
-  const { data: isAdmin } = await supabase.rpc("current_user_is_admin");
+  const { data: isAdmin, error: adminError } = await supabase.rpc(
+    "current_user_is_admin",
+  );
 
-  if (!isAdmin) {
+  if (adminError || !isAdmin) {
     redirect("/");
   }
 
@@ -65,6 +67,18 @@ export default async function AdminSupportPage() {
     }),
   );
 
+  const waitingCount = (threads ?? []).filter(
+    (thread) => thread.status === "waiting_for_agent",
+  ).length;
+
+  const handlingCount = (threads ?? []).filter(
+    (thread) => thread.status === "agent_handling",
+  ).length;
+
+  const automatedCount = (threads ?? []).filter(
+    (thread) => thread.status === "bot_handling",
+  ).length;
+
   return (
     <>
       <SiteHeader />
@@ -81,8 +95,18 @@ export default async function AdminSupportPage() {
           </h1>
 
           <p className="text-sm text-gray-500 mt-1">
-            User support conversations
+            Manage Teraa support conversations.
           </p>
+        </div>
+
+        {/* STATS */}
+
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <StatCard value={waitingCount} label="Waiting" />
+
+          <StatCard value={handlingCount} label="Human support" />
+
+          <StatCard value={automatedCount} label="Automated" />
         </div>
 
         {!threads || threads.length === 0 ? (
@@ -102,7 +126,10 @@ export default async function AdminSupportPage() {
                 href={`/admin/support/${thread.id}`}
                 className="block rounded-xl border bg-white p-4 hover:shadow-sm transition"
                 style={{
-                  borderColor: "var(--sand)",
+                  borderColor:
+                    thread.status === "waiting_for_agent"
+                      ? "var(--gold)"
+                      : "var(--sand)",
                 }}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -133,31 +160,63 @@ export default async function AdminSupportPage() {
   );
 }
 
+function StatCard({ value, label }: { value: number; label: string }) {
+  return (
+    <div
+      className="rounded-xl border bg-white p-3"
+      style={{
+        borderColor: "var(--sand)",
+      }}
+    >
+      <p
+        className="text-xl font-bold"
+        style={{
+          color: "var(--ink)",
+        }}
+      >
+        {value}
+      </p>
+
+      <p className="text-[11px] text-gray-500 mt-0.5">{label}</p>
+    </div>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
-  const label =
-    status === "resolved"
-      ? "Resolved"
-      : status === "agent_handling"
-        ? "Handling"
-        : "Waiting";
+  let label = "Waiting";
+  let background = "#fbf3df";
+  let color = "var(--gold)";
+
+  if (status === "bot_handling") {
+    label = "Automated";
+    background = "#e6edf3";
+    color = "var(--indigo)";
+  }
+
+  if (status === "waiting_for_agent") {
+    label = "Needs support";
+    background = "#fbf3df";
+    color = "var(--gold)";
+  }
+
+  if (status === "agent_handling") {
+    label = "Human support";
+    background = "#e3f0e8";
+    color = "var(--leaf)";
+  }
+
+  if (status === "resolved") {
+    label = "Resolved";
+    background = "#eeeeee";
+    color = "#666";
+  }
 
   return (
     <span
       className="rounded-full px-2.5 py-1 text-[10px] font-semibold shrink-0"
       style={{
-        background:
-          status === "resolved"
-            ? "#e3f0e8"
-            : status === "agent_handling"
-              ? "#e6edf3"
-              : "#fbf3df",
-
-        color:
-          status === "resolved"
-            ? "var(--leaf)"
-            : status === "agent_handling"
-              ? "var(--indigo)"
-              : "var(--gold)",
+        background,
+        color,
       }}
     >
       {label}

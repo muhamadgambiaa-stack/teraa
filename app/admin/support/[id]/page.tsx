@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
-
 import { SupportAutoRefresh } from "@/components/support/SupportAutoRefresh";
 
 import {
@@ -31,9 +30,11 @@ export default async function AdminSupportThreadPage({
     redirect("/login");
   }
 
-  const { data: isAdmin } = await supabase.rpc("current_user_is_admin");
+  const { data: isAdmin, error: adminError } = await supabase.rpc(
+    "current_user_is_admin",
+  );
 
-  if (!isAdmin) {
+  if (adminError || !isAdmin) {
     redirect("/");
   }
 
@@ -79,14 +80,24 @@ export default async function AdminSupportThreadPage({
     console.error("Could not load support messages:", messagesError);
   }
 
-  const { data: profileData } = await supabase.rpc("get_public_profile", {
-    p_user_id: thread.user_id,
-  });
+  const { data: profileData, error: profileError } = await supabase.rpc(
+    "get_public_profile",
+    {
+      p_user_id: thread.user_id,
+    },
+  );
+
+  if (profileError) {
+    console.error("Could not load support customer:", profileError);
+  }
 
   const rawProfile = Array.isArray(profileData) ? profileData[0] : profileData;
 
   const customerName =
     rawProfile?.full_name ?? rawProfile?.business_name ?? "Teraa user";
+
+  const canTakeConversation =
+    thread.status === "waiting_for_agent" || thread.status === "bot_handling";
 
   return (
     <>
@@ -97,13 +108,16 @@ export default async function AdminSupportThreadPage({
       <main className="max-w-3xl mx-auto px-4 py-5 pb-32 sm:pb-8">
         <Link
           href="/admin/support"
-          className="text-xs text-gray-500 hover:underline"
+          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:underline"
         >
-          ← Support queue
+          <ArrowLeftIcon />
+          Support queue
         </Link>
 
+        {/* HEADER */}
+
         <div className="flex items-start justify-between gap-4 mt-5 mb-5">
-          <div>
+          <div className="min-w-0">
             <h1
               className="font-display text-xl"
               style={{
@@ -131,6 +145,63 @@ export default async function AdminSupportThreadPage({
           <StatusBadge status={thread.status} />
         </div>
 
+        {/* BOT HANDLING */}
+
+        {thread.status === "bot_handling" && (
+          <div
+            className="rounded-xl border p-4 mb-4"
+            style={{
+              borderColor: "var(--indigo)",
+              background: "#f7f8fb",
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <BotIcon />
+
+              <div>
+                <p
+                  className="text-sm font-semibold"
+                  style={{
+                    color: "var(--indigo)",
+                  }}
+                >
+                  Teraa Assistant is handling this
+                </p>
+
+                <p className="text-xs text-gray-600 mt-1 leading-5">
+                  The automated support system has found answers for this
+                  conversation. No human action is currently required.
+                </p>
+
+                <p className="text-xs text-gray-500 mt-1">
+                  You can still take over the conversation if necessary.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* WAITING */}
+
+        {thread.status === "waiting_for_agent" && (
+          <div
+            className="rounded-xl border p-4 mb-4"
+            style={{
+              borderColor: "var(--gold)",
+              background: "#fbf3df",
+            }}
+          >
+            <p className="text-sm font-semibold">Human support required</p>
+
+            <p className="text-xs text-gray-600 mt-1">
+              The Teraa Assistant could not resolve this request or the user
+              asked to speak with a person.
+            </p>
+          </div>
+        )}
+
+        {/* ORDER */}
+
         {thread.order_id && (
           <div
             className="rounded-xl border p-3 mb-4 text-sm"
@@ -138,13 +209,16 @@ export default async function AdminSupportThreadPage({
               borderColor: "var(--sand)",
             }}
           >
-            Related order:{" "}
-            <span className="font-medium">#{thread.order_id.slice(0, 8)}</span>
+            <p className="text-xs text-gray-500">Related order</p>
+
+            <p className="font-medium mt-0.5">#{thread.order_id.slice(0, 8)}</p>
           </div>
         )}
 
+        {/* ADMIN ACTIONS */}
+
         <div className="flex flex-wrap gap-2 mb-5">
-          {thread.status === "waiting_for_agent" && (
+          {canTakeConversation && (
             <form action={claimSupportThread.bind(null, thread.id)}>
               <button
                 type="submit"
@@ -153,7 +227,9 @@ export default async function AdminSupportThreadPage({
                   background: "var(--indigo)",
                 }}
               >
-                Take conversation
+                {thread.status === "bot_handling"
+                  ? "Take over conversation"
+                  : "Take conversation"}
               </button>
             </form>
           )}
@@ -165,7 +241,6 @@ export default async function AdminSupportThreadPage({
                 className="rounded-full border px-4 py-2 text-sm font-medium"
                 style={{
                   borderColor: "var(--leaf)",
-
                   color: "var(--leaf)",
                 }}
               >
@@ -175,9 +250,21 @@ export default async function AdminSupportThreadPage({
           )}
         </div>
 
-        <section className="space-y-3 min-h-[50vh]">
+        {/* MESSAGES */}
+
+        <section className="space-y-3 min-h-[45vh]">
           {(messages ?? []).map((message) => {
             const fromAgent = message.sender_type === "agent";
+
+            const fromBot = message.sender_type === "bot";
+
+            const fromCustomer = message.sender_type === "user";
+
+            const label = fromAgent
+              ? "Human support"
+              : fromBot
+                ? "Teraa Assistant"
+                : customerName;
 
             return (
               <div
@@ -187,18 +274,32 @@ export default async function AdminSupportThreadPage({
                 }`}
               >
                 <div
-                  className="max-w-[82%] rounded-2xl px-4 py-3"
+                  className={`max-w-[84%] rounded-2xl px-4 py-3 ${
+                    fromBot ? "border" : ""
+                  }`}
                   style={{
-                    background: fromAgent ? "var(--indigo)" : "#f3f4f6",
+                    background: fromAgent
+                      ? "var(--indigo)"
+                      : fromBot
+                        ? "#fbfaf7"
+                        : "#f3f4f6",
 
                     color: fromAgent ? "white" : "var(--ink)",
+
+                    borderColor: fromBot ? "var(--sand)" : undefined,
                   }}
                 >
-                  <p className="text-[10px] font-medium mb-1 opacity-70">
-                    {fromAgent ? "Support" : customerName}
-                  </p>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    {fromBot && <BotSmallIcon />}
 
-                  <p className="text-sm whitespace-pre-wrap break-words">
+                    {fromAgent && <HumanSmallIcon />}
+
+                    <p className="text-[10px] font-semibold opacity-70">
+                      {label}
+                    </p>
+                  </div>
+
+                  <p className="text-sm whitespace-pre-wrap break-words leading-5">
                     {message.message}
                   </p>
 
@@ -211,6 +312,8 @@ export default async function AdminSupportThreadPage({
           })}
         </section>
 
+        {/* COMPOSER */}
+
         <form
           action={sendAdminSupportMessage.bind(null, thread.id)}
           className="sticky bottom-0 mt-5 border-t bg-white py-3"
@@ -218,6 +321,13 @@ export default async function AdminSupportThreadPage({
             borderColor: "var(--sand)",
           }}
         >
+          {thread.status === "bot_handling" && (
+            <p className="text-[11px] text-gray-500 mb-2">
+              Sending a reply will move this conversation from automated support
+              to human support.
+            </p>
+          )}
+
           <div className="flex items-end gap-2">
             <textarea
               name="message"
@@ -233,7 +343,7 @@ export default async function AdminSupportThreadPage({
 
             <button
               type="submit"
-              className="rounded-full px-5 py-3 text-sm font-semibold text-white"
+              className="rounded-full px-5 py-3 text-sm font-semibold text-white shrink-0"
               style={{
                 background: "var(--indigo)",
               }}
@@ -248,33 +358,132 @@ export default async function AdminSupportThreadPage({
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const label =
-    status === "resolved"
-      ? "Resolved"
-      : status === "agent_handling"
-        ? "Handling"
-        : "Waiting";
+  let label = "Waiting";
+  let background = "#fbf3df";
+  let color = "var(--gold)";
+
+  if (status === "bot_handling") {
+    label = "Automated";
+    background = "#e6edf3";
+    color = "var(--indigo)";
+  }
+
+  if (status === "waiting_for_agent") {
+    label = "Needs support";
+    background = "#fbf3df";
+    color = "var(--gold)";
+  }
+
+  if (status === "agent_handling") {
+    label = "Human support";
+    background = "#e3f0e8";
+    color = "var(--leaf)";
+  }
+
+  if (status === "resolved") {
+    label = "Resolved";
+    background = "#eeeeee";
+    color = "#666";
+  }
 
   return (
     <span
-      className="rounded-full px-3 py-1 text-xs font-semibold"
+      className="rounded-full px-3 py-1 text-xs font-semibold shrink-0"
       style={{
-        background:
-          status === "resolved"
-            ? "#e3f0e8"
-            : status === "agent_handling"
-              ? "#e6edf3"
-              : "#fbf3df",
-
-        color:
-          status === "resolved"
-            ? "var(--leaf)"
-            : status === "agent_handling"
-              ? "var(--indigo)"
-              : "var(--gold)",
+        background,
+        color,
       }}
     >
       {label}
     </span>
+  );
+}
+
+function ArrowLeftIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M19 12H5" />
+      <path d="m12 19-7-7 7-7" />
+    </svg>
+  );
+}
+
+function BotIcon() {
+  return (
+    <div
+      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+      style={{
+        background: "#e6edf3",
+        color: "var(--indigo)",
+      }}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <rect x="4" y="7" width="16" height="12" rx="3" />
+        <path d="M12 3v4" />
+        <path d="M8 12h.01" />
+        <path d="M16 12h.01" />
+        <path d="M9 16h6" />
+      </svg>
+    </div>
+  );
+}
+
+function BotSmallIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="4" y="7" width="16" height="12" rx="3" />
+      <path d="M12 3v4" />
+      <path d="M8 12h.01" />
+      <path d="M16 12h.01" />
+    </svg>
+  );
+}
+
+function HumanSmallIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
   );
 }
