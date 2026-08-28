@@ -1,16 +1,32 @@
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { StarRatingInput } from "@/components/StarRatingInput";
 
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-
 import {
   cancelOrder,
   markOrderReceived,
+  messageSellerFromOrder,
   submitReview,
   updateReview,
 } from "./actions";
+
+type PublicSellerProfile = {
+  id: string;
+  full_name: string;
+  city: string | null;
+  profile_photo_url: string | null;
+
+  public_role: "buyer" | "seller";
+
+  business_name: string | null;
+  verification_status: string | null;
+
+  rating_avg: number | null;
+  total_sales: number | null;
+};
 
 export default async function OrderPage({
   params,
@@ -31,6 +47,15 @@ export default async function OrderPage({
     redirect(`/login?redirect=/orders/${id}`);
   }
 
+  /*
+   * ==========================================================
+   * ORDER
+   * ==========================================================
+   *
+   * seller_id is loaded directly from the order.
+   *
+   * Do not join directly to sellers().
+   */
   const { data: order, error } = await supabase
     .from("orders")
     .select(
@@ -43,21 +68,17 @@ export default async function OrderPage({
       delivery_notes,
       created_at,
       buyer_id,
+      seller_id,
 
       order_items(
         product_id,
         quantity,
         price_at_purchase,
+
         products(
           id,
           title
         )
-      ),
-
-      sellers(
-        id,
-        business_name,
-        verification_status
       ),
 
       seller_payment_methods(
@@ -79,45 +100,70 @@ export default async function OrderPage({
     notFound();
   }
 
+  /*
+   * ==========================================================
+   * PUBLIC SELLER
+   * ==========================================================
+   *
+   * Safe seller identity comes through the public profile RPC.
+   */
+  const { data: sellerProfileData, error: sellerProfileError } =
+    await supabase.rpc("get_public_profile", {
+      p_user_id: order.seller_id,
+    });
+
+  if (sellerProfileError) {
+    console.error("Could not load public seller profile:", sellerProfileError);
+  }
+
+  const rawSellerProfile = Array.isArray(sellerProfileData)
+    ? sellerProfileData[0]
+    : sellerProfileData;
+
+  const publicSeller = rawSellerProfile as PublicSellerProfile | null;
+
+  const seller = publicSeller?.public_role === "seller" ? publicSeller : null;
+
+  const sellerName =
+    seller?.business_name ?? seller?.full_name ?? "Teraa seller";
+
+  const sellerVerified = seller?.verification_status === "approved";
+
+  /*
+   * ==========================================================
+   * ORDER ITEMS
+   * ==========================================================
+   */
   const items =
     (
       order as {
         order_items?: {
           product_id: string;
+
           quantity: number;
+
           price_at_purchase: number;
 
           products?:
             | {
                 id: string;
+
                 title: string;
               }
             | {
                 id: string;
+
                 title: string;
               }[];
         }[];
       }
     ).order_items ?? [];
 
-  const sellerRaw = (
-    order as {
-      sellers?:
-        | {
-            id: string;
-            business_name: string;
-            verification_status?: string;
-          }
-        | {
-            id: string;
-            business_name: string;
-            verification_status?: string;
-          }[];
-    }
-  ).sellers;
-
-  const seller = Array.isArray(sellerRaw) ? sellerRaw[0] : sellerRaw;
-
+  /*
+   * ==========================================================
+   * LEGACY DIGITAL PAYMENT
+   * ==========================================================
+   */
   const paymentMethodRaw = (
     order as {
       seller_payment_methods?:
@@ -149,6 +195,11 @@ export default async function OrderPage({
 
   const canMarkReceived = ["shipped", "delivered"].includes(order.status);
 
+  /*
+   * ==========================================================
+   * REVIEW PRODUCT
+   * ==========================================================
+   */
   const reviewItem = items[0] ?? null;
 
   const reviewProductRaw = reviewItem?.products;
@@ -170,12 +221,12 @@ export default async function OrderPage({
       .from("reviews")
       .select(
         `
-        id,
-        product_id,
-        rating,
-        comment,
-        updated_at
-        `,
+          id,
+          product_id,
+          rating,
+          comment,
+          updated_at
+          `,
       )
       .eq("order_id", order.id)
       .eq("product_id", reviewItem.product_id)
@@ -271,6 +322,74 @@ export default async function OrderPage({
           </div>
         </div>
 
+        {/* SELLER */}
+
+        <div
+          className="rounded-xl border p-4 mb-4 bg-white"
+          style={{
+            borderColor: "var(--sand)",
+          }}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">
+                Seller
+              </p>
+
+              <Link
+                href={`/profile/${order.seller_id}`}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold hover:underline"
+              >
+                <span className="truncate">{sellerName}</span>
+
+                {sellerVerified && <VerifiedIcon />}
+              </Link>
+
+              {sellerVerified && (
+                <div
+                  className="flex items-center gap-1 mt-1 text-xs"
+                  style={{
+                    color: "var(--leaf)",
+                  }}
+                >
+                  <ShieldIcon />
+                  Verified seller
+                </div>
+              )}
+            </div>
+
+            <Link
+              href={`/profile/${order.seller_id}`}
+              className="text-xs font-medium shrink-0"
+              style={{
+                color: "var(--indigo)",
+              }}
+            >
+              View profile
+            </Link>
+          </div>
+
+          {/* MESSAGE SELLER */}
+
+          <form
+            action={messageSellerFromOrder.bind(null, order.id)}
+            className="mt-4"
+          >
+            <button
+              type="submit"
+              className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50"
+              style={{
+                borderColor: "var(--indigo)",
+
+                color: "var(--indigo)",
+              }}
+            >
+              <MessageIcon />
+              Message seller
+            </button>
+          </form>
+        </div>
+
         {/* DIGITAL PAYMENT */}
 
         {order.payment_method === "digital" && (
@@ -278,6 +397,7 @@ export default async function OrderPage({
             className="rounded-xl border p-4 mb-4"
             style={{
               borderColor: "var(--gold)",
+
               background: "#fbf3df",
             }}
           >
@@ -286,6 +406,7 @@ export default async function OrderPage({
                 className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                 style={{
                   background: "white",
+
                   color: "var(--gold)",
                 }}
               >
@@ -331,6 +452,7 @@ export default async function OrderPage({
                 className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                 style={{
                   background: "#f3f4f6",
+
                   color: "var(--indigo)",
                 }}
               >
@@ -362,6 +484,7 @@ export default async function OrderPage({
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
               style={{
                 background: "#f3f4f6",
+
                 color: "var(--indigo)",
               }}
             >
@@ -389,6 +512,7 @@ export default async function OrderPage({
               className="w-full rounded-full py-2.5 text-sm font-semibold border"
               style={{
                 borderColor: "var(--clay)",
+
                 color: "var(--clay)",
               }}
             >
@@ -441,7 +565,6 @@ export default async function OrderPage({
         {/* NEW PRODUCT REVIEW */}
 
         {order.status === "completed" &&
-          seller &&
           reviewItem &&
           reviewProduct &&
           !existingReview && (
@@ -453,8 +576,6 @@ export default async function OrderPage({
               }}
             >
               <input type="hidden" name="orderId" value={order.id} />
-
-              <input type="hidden" name="sellerId" value={seller.id} />
 
               <input
                 type="hidden"
@@ -507,7 +628,7 @@ export default async function OrderPage({
             </form>
           )}
 
-        {/* EXISTING PRODUCT REVIEW */}
+        {/* EXISTING REVIEW */}
 
         {existingReview && reviewProduct && (
           <div
@@ -530,6 +651,7 @@ export default async function OrderPage({
                   className="rounded-full px-2 py-1 text-[10px] font-medium shrink-0"
                   style={{
                     background: "#f3f4f6",
+
                     color: "#6b7280",
                   }}
                 >
@@ -542,7 +664,8 @@ export default async function OrderPage({
               <StaticStarRating rating={Number(existingReview.rating)} />
 
               <span className="text-xs text-gray-500">
-                {existingReview.rating}/5
+                {existingReview.rating}
+                /5
               </span>
             </div>
 
@@ -647,6 +770,12 @@ export default async function OrderPage({
   );
 }
 
+/*
+ * ============================================================
+ * STATUS
+ * ============================================================
+ */
+
 function OrderStatus({ status }: { status: string }) {
   const labels: Record<string, string> = {
     placed: "Order placed",
@@ -670,6 +799,12 @@ function OrderStatus({ status }: { status: string }) {
     </span>
   );
 }
+
+/*
+ * ============================================================
+ * STAR RATING
+ * ============================================================
+ */
 
 function StaticStarRating({ rating }: { rating: number }) {
   return (
@@ -700,6 +835,77 @@ function StaticStarRating({ rating }: { rating: number }) {
   );
 }
 
+/*
+ * ============================================================
+ * ICONS
+ * ============================================================
+ */
+
+function MessageIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+    </svg>
+  );
+}
+
+function VerifiedIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="shrink-0"
+      style={{
+        color: "var(--leaf)",
+      }}
+      aria-label="Verified seller"
+    >
+      <path d="M12 2l2.4 1.9 3-.5 1.1 2.9 2.9 1.1-.5 3L23 12l-1.9 2.4.5 3-2.9 1.1-1.1 2.9-3-.5L12 23l-2.4-1.9-3 .5-1.1-2.9-2.9-1.1.5-3L1 12l1.9-2.4-.5-3 2.9-1.1L6.4 2.6l3 .5L12 2Z" />
+
+      <path
+        d="m9 12 2 2 4-4"
+        stroke="white"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3 5 6v5c0 5 3 8.5 7 10 4-1.5 7-5 7-10V6l-7-3Z" />
+
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
 function EditIcon() {
   return (
     <svg
@@ -714,6 +920,7 @@ function EditIcon() {
       aria-hidden="true"
     >
       <path d="M12 20h9" />
+
       <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
     </svg>
   );
