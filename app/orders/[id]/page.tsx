@@ -316,7 +316,7 @@ export default async function OrderPage({
                 className="flex justify-between gap-4 text-sm py-1"
               >
                 <span className="min-w-0">
-                  {item.quantity} Ã— {product?.title ?? "Product"}
+                  {item.quantity} &times; {product?.title ?? "Product"}
                 </span>
 
                 <span className="shrink-0">
@@ -1102,4 +1102,5 @@ function LocationIcon() {
     </svg>
   );
 }
+
 

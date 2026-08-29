@@ -402,7 +402,7 @@ export default function AccountPage() {
                     color: "var(--leaf)",
                   }}
                 >
-                  âœ“ Verified seller
+                  Verified seller
                 </span>
               )}
 
@@ -504,11 +504,7 @@ export default function AccountPage() {
                     }}
                   >
                     <div className="flex items-center gap-1.5">
-                      <span className="text-base" aria-hidden="true">
-                        â­
-                      </span>
-
-                      <p
+<p
                         className="font-bold text-base"
                         style={{
                           color: "var(--ink)",
@@ -529,11 +525,7 @@ export default function AccountPage() {
                     }}
                   >
                     <div className="flex items-center gap-1.5">
-                      <span className="text-base" aria-hidden="true">
-                        ðŸ›ï¸
-                      </span>
-
-                      <p
+<p
                         className="font-bold text-base"
                         style={{
                           color: "var(--ink)",
@@ -719,26 +711,26 @@ export default function AccountPage() {
               Terms
             </Link>
 
-            <span className="text-gray-300">Â·</span>
+            <span className="text-gray-300">&middot;</span>
 
             <Link href="/privacy" className="hover:underline">
               Privacy
             </Link>
 
-            <span className="text-gray-300">Â·</span>
+            <span className="text-gray-300">&middot;</span>
 
             <Link href="/marketplace-rules" className="hover:underline">
               Marketplace Rules
             </Link>
 
-            <span className="text-gray-300">Â·</span>
+            <span className="text-gray-300">&middot;</span>
 
             <Link href="/safety" className="hover:underline">
               Safety
             </Link>
           </div>
 
-          <p className="text-[11px] text-gray-400 mt-3">Â© 2026 Teraa</p>
+          <p className="text-[11px] text-gray-400 mt-3">&copy; 2026 Teraa</p>
         </footer>
       </main>
     </>
@@ -974,7 +966,7 @@ function SellerStatus({
   }
 
   if (verification === "approved") {
-    return <StatusPill text="âœ“ Verified" type="success" />;
+    return <StatusPill text="Verified" type="success" />;
   }
 
   if (verification === "rejected") {
@@ -1016,6 +1008,7 @@ function StatusPill({
     </span>
   );
 }
+
 
 
 
