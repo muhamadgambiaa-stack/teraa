@@ -638,183 +638,60 @@ export default function AccountPage() {
 
         {/* ACCOUNT SETTINGS */}
 
-        <AccountSection title="Account settings">
-          <form onSubmit={handleSave} className="p-4 space-y-4">
-            {email && (
-              <div>
-                <label className="text-sm font-medium block mb-1">Email</label>
+        <AccountSection title="Account">
+          <AccountLink
+            href="/account/settings"
+            icon="settings"
+            title="Settings"
+            description="Personal information and account details"
+          />
 
-                <input
-                  disabled
-                  value={email}
-                  className="w-full rounded-lg border px-3 py-2.5 text-sm bg-gray-50 text-gray-500"
-                  style={{
-                    borderColor: "var(--sand)",
-                  }}
-                />
-
-                <p className="text-xs text-gray-500 mt-1">Used to log in.</p>
-              </div>
-            )}
-
-            <div>
-              <label className="text-sm font-medium block mb-1">
-                Full name
-              </label>
-
-              <input
-                required
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
-                style={{
-                  borderColor: "var(--sand)",
-                }}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium block mb-1">
-                Phone number
-              </label>
-
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
-                style={{
-                  borderColor: "var(--sand)",
-                }}
-              />
-
-              <p className="text-xs text-gray-500 mt-1">
-                Used for delivery coordination.
-              </p>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium block mb-1">City</label>
-
-              <select
-                required
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none bg-white"
-                style={{
-                  borderColor: "var(--sand)",
-                }}
-              >
-                <option value="">Select your city</option>
-
-                {GAMBIA_CITIES.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {error && <p className="text-sm text-red-600">{error}</p>}
-
-            <div className="flex items-center gap-3">
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-full px-6 py-2.5 text-white text-sm font-medium disabled:opacity-50"
-                style={{
-                  background: "var(--indigo)",
-                }}
-              >
-                {saving ? "Savingâ€¦" : "Save changes"}
-              </button>
-
-              {saved && (
-                <span
-                  className="text-sm"
-                  style={{
-                    color: "var(--leaf)",
-                  }}
-                >
-                  âœ“ Saved
-                </span>
-              )}
-            </div>
-          </form>
-        </AccountSection>
-
-        {/* DELETE ACCOUNT */}
-
-        {!isAdmin && (
-          <section className="mb-6">
-            <h2 className="text-xs uppercase tracking-wide font-semibold text-red-600 mb-2 px-1">
-              Delete account
-            </h2>
-
-            <div
-              className="rounded-xl border bg-white p-4"
-              style={{
-                borderColor: "#efb4b4",
-              }}
+          {!isAdmin && (
+            <Link
+              href="/account/delete"
+              className="flex items-center gap-3 px-4 py-3.5 border-b last:border-b-0 hover:bg-red-50 transition"
+              style={{ borderColor: "var(--sand)" }}
             >
-              <h3 className="font-semibold text-sm text-red-700">
-                Permanently delete your Teraa account
-              </h3>
-
-              <p className="text-xs text-gray-600 leading-5 mt-2">
-                This permanently deletes your account and marketplace data.
-                This action cannot be undone.
-              </p>
-
-              <p className="text-xs text-gray-600 leading-5 mt-3">
-                To continue, type{" "}
-                <span className="font-semibold text-red-700">
-                  delete my account
-                </span>
-              </p>
-
-              <input
-                type="text"
-                value={deleteConfirmation}
-                onChange={(event) => {
-                  setDeleteConfirmation(event.target.value);
-                  setDeleteError(null);
-                }}
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="delete my account"
-                disabled={deletingAccount}
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none mt-3 disabled:bg-gray-50"
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                 style={{
-                  borderColor: "#efb4b4",
-                }}
-              />
-
-              {deleteError && (
-                <p className="text-xs text-red-600 mt-2">{deleteError}</p>
-              )}
-
-              <button
-                type="button"
-                onClick={handleDeleteAccount}
-                disabled={
-                  deletingAccount ||
-                  deleteConfirmation !== "delete my account"
-                }
-                className="w-full rounded-lg py-2.5 text-sm font-semibold text-white mt-4 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{
-                  background: "#b42318",
+                  background: "#fff1f1",
+                  color: "#b42318",
                 }}
               >
-                {deletingAccount
-                  ? "Deleting account..."
-                  : "Delete my account permanently"}
-              </button>
-            </div>
-          </section>
-        )}
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4h8v2" />
+                  <path d="M19 6l-1 14H6L5 6" />
+                  <path d="M10 11v5" />
+                  <path d="M14 11v5" />
+                </svg>
+              </div>
 
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-red-700">
+                  Delete account
+                </p>
+
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Permanently remove your Teraa account
+                </p>
+              </div>
+
+              <ChevronIcon />
+            </Link>
+          )}
+        </AccountSection>
         {/* LOGOUT */}
 
         <button
@@ -1139,6 +1016,7 @@ function StatusPill({
     </span>
   );
 }
+
 
 
 
