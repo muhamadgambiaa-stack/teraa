@@ -46,6 +46,7 @@ export default async function AdminSellersPage({
       admin_note
       `,
     )
+    .not("application_submitted_at", "is", null)
     .order("created_at", {
       ascending: false,
     })

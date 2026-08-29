@@ -23,6 +23,7 @@ type Seller = {
   account_status: string | null;
   rating_avg: number | null;
   total_sales: number | null;
+  application_submitted_at: string | null;
 };
 
 type IconName =
@@ -117,7 +118,8 @@ export default function AccountPage() {
               business_name,
               verification_status,
               account_status,
-              rating_avg
+              rating_avg,
+              application_submitted_at
             `,
             )
             .eq("id", user.id)
@@ -148,6 +150,7 @@ export default function AccountPage() {
             account_status: sellerData.account_status,
             rating_avg: sellerData.rating_avg,
             total_sales: completedSales ?? 0,
+            application_submitted_at: sellerData.application_submitted_at,
           });
         }
       }
@@ -501,6 +504,7 @@ export default function AccountPage() {
                   <SellerStatus
                     verification={seller.verification_status}
                     accountStatus={seller.account_status}
+                    submittedAt={seller.application_submitted_at}
                   />
                 </div>
 
@@ -964,10 +968,15 @@ function ChevronIcon() {
 function SellerStatus({
   verification,
   accountStatus,
+  submittedAt,
 }: {
   verification: string | null;
   accountStatus: string | null;
+  submittedAt: string | null;
 }) {
+  if (!submittedAt) {
+    return <StatusPill text="Setup incomplete" type="warning" />;
+  }
   if (accountStatus === "suspended") {
     return <StatusPill text="Suspended" type="danger" />;
   }
