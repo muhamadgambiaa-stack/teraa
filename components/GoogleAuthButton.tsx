@@ -1,61 +1,140 @@
 ﻿"use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import Script from "next/script";
 
 import { createClient } from "@/lib/supabase/client";
 
 export default function GoogleAuthButton() {
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function continueWithGoogle() {
-    setLoading(true);
-    setMessage(null);
+  async function finishLogin() {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    try {
-      const redirectTo = `${window.location.origin}/callback`;
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo,
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not continue with Google.",
-      );
-
-      setLoading(false);
+    if (userError || !user) {
+      throw new Error("Could not load your account.");
     }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      throw profileError;
+    }
+
+    if (!profile) {
+      router.replace("/onboarding");
+      router.refresh();
+      return;
+    }
+
+    if (profile.role === "seller") {
+      router.replace("/seller/dashboard");
+      router.refresh();
+      return;
+    }
+
+    router.replace("/");
+    router.refresh();
+  }
+
+  function initializeGoogle() {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+    if (!clientId) {
+      setMessage("Google sign-in is not configured.");
+      return;
+    }
+
+    const google = (window as any).google;
+    const container = document.getElementById("google-signin-button");
+
+    if (!google || !container) {
+      return;
+    }
+
+    google.accounts.id.initialize({
+      client_id: clientId,
+
+      callback: async (response: { credential?: string }) => {
+        if (!response.credential) {
+          setMessage("Google did not return a credential.");
+          return;
+        }
+
+        setLoading(true);
+        setMessage(null);
+
+        try {
+          const { error } = await supabase.auth.signInWithIdToken({
+            provider: "google",
+            token: response.credential,
+          });
+
+          if (error) {
+            throw error;
+          }
+
+          await finishLogin();
+        } catch (error) {
+          console.error("Google sign-in failed:", error);
+
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : "Could not continue with Google.",
+          );
+
+          setLoading(false);
+        }
+      },
+    });
+
+    container.innerHTML = "";
+
+    google.accounts.id.renderButton(container, {
+      type: "standard",
+      theme: "outline",
+      size: "large",
+      text: "continue_with",
+      shape: "rectangular",
+    });
   }
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={continueWithGoogle}
-        disabled={loading}
-        className="w-full rounded-lg border px-4 py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{
-          borderColor: "var(--sand)",
-          background: "white",
-          color: "var(--ink)",
-        }}
-      >
-        {loading ? "Connecting to Google..." : "Continue with Google"}
-      </button>
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={initializeGoogle}
+      />
+
+      <div
+        id="google-signin-button"
+        className={loading ? "pointer-events-none opacity-50" : ""}
+      />
+
+      {loading && (
+        <p className="mt-2 text-center text-xs text-gray-500">
+          Connecting to Google...
+        </p>
+      )}
 
       {message && (
-        <p className="mt-2 text-center text-xs text-red-600">{message}</p>
+        <p className="mt-2 text-center text-xs text-red-600">
+          {message}
+        </p>
       )}
     </div>
   );
