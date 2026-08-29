@@ -174,6 +174,12 @@ export default async function AdminHomePage() {
             />
 
             <AdminLink
+              href="/admin/categories"
+              title="Categories"
+              description="Manage the categories sellers use for product listings"
+            />
+
+            <AdminLink
               href="/admin/reports"
               title="Reports"
               description="Investigate open and closed user reports"
@@ -226,7 +232,7 @@ function AdminLink({
         <p className="text-xs text-gray-500 mt-0.5">{description}</p>
       </div>
 
-      <span className="text-gray-400">→</span>
+      <span className="text-gray-400">â†’</span>
     </Link>
   );
 }
