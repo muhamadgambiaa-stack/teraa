@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -221,16 +221,62 @@ export default function AccountPage() {
 
   if (loading) {
     return (
-      <>
-        <SiteHeader />
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center px-6"
+        style={{ background: "#fffdf8" }}
+        role="status"
+        aria-live="polite"
+        aria-label="Loading Teraa"
+      >
+        <div className="flex flex-col items-center">
+          <img
+            src="/branding/teraa-icon.svg"
+            alt=""
+            width="72"
+            height="72"
+            className="h-16 w-16 sm:h-[72px] sm:w-[72px]"
+          />
 
-        <main className="max-w-2xl mx-auto px-4 py-8 pb-24">
-          <p className="text-sm text-gray-500">Loading your account…</p>
-        </main>
-      </>
+          <p
+            className="mt-3 text-lg font-semibold"
+            style={{ color: "var(--indigo)" }}
+          >
+            Teraa
+          </p>
+
+          <p className="mt-1 text-sm text-gray-400">
+            Loading...
+          </p>
+
+          <div
+            className="mt-5 flex items-center gap-2"
+            aria-hidden="true"
+          >
+            <span
+              className="h-2 w-2 rounded-full animate-pulse"
+              style={{ background: "var(--indigo)" }}
+            />
+
+            <span
+              className="h-2 w-2 rounded-full animate-pulse"
+              style={{
+                background: "var(--leaf)",
+                animationDelay: "150ms",
+              }}
+            />
+
+            <span
+              className="h-2 w-2 rounded-full animate-pulse"
+              style={{
+                background: "var(--indigo)",
+                animationDelay: "300ms",
+              }}
+            />
+          </div>
+        </div>
+      </div>
     );
   }
-
   if (!profile) {
     return (
       <>
@@ -299,7 +345,7 @@ export default function AccountPage() {
                     color: "var(--leaf)",
                   }}
                 >
-                  ✓ Verified seller
+                  âœ“ Verified seller
                 </span>
               )}
 
@@ -402,7 +448,7 @@ export default function AccountPage() {
                   >
                     <div className="flex items-center gap-1.5">
                       <span className="text-base" aria-hidden="true">
-                        ⭐
+                        â­
                       </span>
 
                       <p
@@ -427,7 +473,7 @@ export default function AccountPage() {
                   >
                     <div className="flex items-center gap-1.5">
                       <span className="text-base" aria-hidden="true">
-                        🛍️
+                        ðŸ›ï¸
                       </span>
 
                       <p
@@ -624,7 +670,7 @@ export default function AccountPage() {
                   background: "var(--indigo)",
                 }}
               >
-                {saving ? "Saving…" : "Save changes"}
+                {saving ? "Savingâ€¦" : "Save changes"}
               </button>
 
               {saved && (
@@ -634,7 +680,7 @@ export default function AccountPage() {
                     color: "var(--leaf)",
                   }}
                 >
-                  ✓ Saved
+                  âœ“ Saved
                 </span>
               )}
             </div>
@@ -668,26 +714,26 @@ export default function AccountPage() {
               Terms
             </Link>
 
-            <span className="text-gray-300">·</span>
+            <span className="text-gray-300">Â·</span>
 
             <Link href="/privacy" className="hover:underline">
               Privacy
             </Link>
 
-            <span className="text-gray-300">·</span>
+            <span className="text-gray-300">Â·</span>
 
             <Link href="/marketplace-rules" className="hover:underline">
               Marketplace Rules
             </Link>
 
-            <span className="text-gray-300">·</span>
+            <span className="text-gray-300">Â·</span>
 
             <Link href="/safety" className="hover:underline">
               Safety
             </Link>
           </div>
 
-          <p className="text-[11px] text-gray-400 mt-3">© 2026 Teraa</p>
+          <p className="text-[11px] text-gray-400 mt-3">Â© 2026 Teraa</p>
         </footer>
       </main>
     </>
@@ -923,7 +969,7 @@ function SellerStatus({
   }
 
   if (verification === "approved") {
-    return <StatusPill text="✓ Verified" type="success" />;
+    return <StatusPill text="âœ“ Verified" type="success" />;
   }
 
   if (verification === "rejected") {
@@ -965,3 +1011,5 @@ function StatusPill({
     </span>
   );
 }
+
+
