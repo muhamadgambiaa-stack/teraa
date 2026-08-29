@@ -1,0 +1,20 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 180">
+  <g transform="translate(8 8) scale(.32)">
+    <path d="M136 187c0-36 29-65 65-65h110c36 0 65 29 65 65v198c0 28-23 51-51 51H187c-28 0-51-23-51-51V187Z" fill="#08275F"/>
+    <path d="M193 170v-33c0-35 28-63 63-63s63 28 63 63v33"
+          fill="none" stroke="#08275F" stroke-width="25" stroke-linecap="round"/>
+    <path d="M173 216h166l-16 37c-6 15-20 24-36 24h-16v112h-31V277h-16c-16 0-30-9-36-24l-15-37Z" fill="#FBF4E7"/>
+    <path d="M240 389c17-30 35-39 49-70 4 43-5 76-49 103v-33Z" fill="#92B84A"/>
+  </g>
+
+  <text
+    x="180"
+    y="121"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="112"
+    font-weight="700"
+    fill="#08275F"
+  >
+    Teraa
+  </text>
+</svg>

@@ -22,16 +22,12 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
       <div className="hidden sm:flex max-w-6xl mx-auto px-4 py-3 items-center gap-4">
         <Link
           href="/"
-          aria-label="Teraa home"
-          className="shrink-0 flex items-center"
+          className="font-display text-2xl font-bold shrink-0"
+          style={{
+            color: "var(--indigo)",
+          }}
         >
-          <img
-            src="/branding/teraa-logo.svg"
-            alt="Teraa"
-            width="760"
-            height="180"
-            className="h-8 w-auto"
-          />
+          Teraa
         </Link>
 
         {showSearch && (
@@ -54,16 +50,12 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
         >
           <Link
             href="/"
-            aria-label="Teraa home"
-            className="flex items-center"
+            className="font-display text-xl font-bold leading-none"
+            style={{
+              color: "var(--indigo)",
+            }}
           >
-            <img
-              src="/branding/teraa-logo.svg"
-              alt="Teraa"
-              width="760"
-              height="180"
-              className="h-7 w-auto"
-            />
+            Teraa
           </Link>
         </div>
 
