@@ -1,6 +1,6 @@
-export type UserRole = "buyer" | "seller" | "admin";
+﻿export type UserRole = "buyer" | "seller" | "admin";
 export type VerificationStatus = "pending" | "approved" | "rejected";
-export type ProductStatus = "active" | "out_of_stock" | "hidden";
+export type ProductStatus = "active" | "out_of_stock" | "hidden" | "admin_hidden";
 export type ProductCondition = "new" | "used_like_new" | "used_good" | "used_fair";
 
 export const CONDITION_LABELS: Record<ProductCondition, string> = {
@@ -107,3 +107,4 @@ export interface Order {
   delivery_notes: string | null;
   created_at: string;
 }
+
