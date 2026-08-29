@@ -56,6 +56,10 @@ export default function AccountPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   useEffect(() => {
     let active = true;
 
@@ -208,6 +212,59 @@ export default function AccountPage() {
     setTimeout(() => {
       setSaved(false);
     }, 2500);
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmation !== "delete my account") {
+      setDeleteError('Type exactly "delete my account" to continue.');
+      return;
+    }
+
+    setDeletingAccount(true);
+    setDeleteError(null);
+
+    const supabase = createClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setDeletingAccount(false);
+      setDeleteError("Your session has expired. Please log in again.");
+      return;
+    }
+
+    const { error: deleteAccountError } = await supabase.rpc(
+      "delete_my_account",
+      {
+        p_confirmation: deleteConfirmation,
+      },
+    );
+
+    if (deleteAccountError) {
+      console.error("Account deletion failed:", deleteAccountError);
+
+      setDeletingAccount(false);
+      setDeleteError(
+        "Couldn't delete your account. Please try again or contact support.",
+      );
+      return;
+    }
+
+    /*
+     * The Auth user has now been deleted server-side.
+     * Clear any remaining local session data before leaving /account.
+     */
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // The Auth identity is already deleted, so there may be nothing left
+      // for the server to sign out. Redirecting still clears the UI state.
+    }
+
+    window.location.replace("/");
   }
 
   async function handleLogout() {
@@ -687,6 +744,77 @@ export default function AccountPage() {
           </form>
         </AccountSection>
 
+        {/* DELETE ACCOUNT */}
+
+        {!isAdmin && (
+          <section className="mb-6">
+            <h2 className="text-xs uppercase tracking-wide font-semibold text-red-600 mb-2 px-1">
+              Delete account
+            </h2>
+
+            <div
+              className="rounded-xl border bg-white p-4"
+              style={{
+                borderColor: "#efb4b4",
+              }}
+            >
+              <h3 className="font-semibold text-sm text-red-700">
+                Permanently delete your Teraa account
+              </h3>
+
+              <p className="text-xs text-gray-600 leading-5 mt-2">
+                This permanently deletes your account and marketplace data.
+                This action cannot be undone.
+              </p>
+
+              <p className="text-xs text-gray-600 leading-5 mt-3">
+                To continue, type{" "}
+                <span className="font-semibold text-red-700">
+                  delete my account
+                </span>
+              </p>
+
+              <input
+                type="text"
+                value={deleteConfirmation}
+                onChange={(event) => {
+                  setDeleteConfirmation(event.target.value);
+                  setDeleteError(null);
+                }}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="delete my account"
+                disabled={deletingAccount}
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none mt-3 disabled:bg-gray-50"
+                style={{
+                  borderColor: "#efb4b4",
+                }}
+              />
+
+              {deleteError && (
+                <p className="text-xs text-red-600 mt-2">{deleteError}</p>
+              )}
+
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={
+                  deletingAccount ||
+                  deleteConfirmation !== "delete my account"
+                }
+                className="w-full rounded-lg py-2.5 text-sm font-semibold text-white mt-4 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{
+                  background: "#b42318",
+                }}
+              >
+                {deletingAccount
+                  ? "Deleting account..."
+                  : "Delete my account permanently"}
+              </button>
+            </div>
+          </section>
+        )}
+
         {/* LOGOUT */}
 
         <button
@@ -1011,5 +1139,6 @@ function StatusPill({
     </span>
   );
 }
+
 
 
