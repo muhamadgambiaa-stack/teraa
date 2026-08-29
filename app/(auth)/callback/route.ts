@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
+
 import { createClient } from "@/lib/supabase/server";
 
 type PublicRole = "buyer" | "seller";
@@ -9,30 +10,26 @@ function getSafeRole(value: unknown): PublicRole {
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
-
   const code = requestUrl.searchParams.get("code");
-
-  // We deliberately use the current site's origin so this
-  // works both locally and on Vercel.
   const origin = requestUrl.origin;
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=missing_callback_code`);
+    return NextResponse.redirect(
+      `${origin}/login?error=missing_callback_code`,
+    );
   }
 
   const supabase = await createClient();
 
-  /*
-   * Exchange the PKCE code from Supabase's verification email
-   * for a real authenticated session.
-   */
   const { error: exchangeError } =
     await supabase.auth.exchangeCodeForSession(code);
 
   if (exchangeError) {
     console.error("Supabase callback exchange failed:", exchangeError);
 
-    return NextResponse.redirect(`${origin}/login?error=verification_failed`);
+    return NextResponse.redirect(
+      `${origin}/login?error=verification_failed`,
+    );
   }
 
   const {
@@ -47,9 +44,52 @@ export async function GET(request: Request) {
   }
 
   /*
-   * These values were saved in user_metadata by the signup form.
+   * Existing Teraa users do not need onboarding again.
+   */
+  const { data: existingProfile, error: profileLookupError } = await supabase
+    .from("users")
+    .select("id, role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileLookupError) {
+    console.error("Profile lookup failed:", profileLookupError);
+
+    return NextResponse.redirect(
+      `${origin}/login?error=profile_lookup_failed`,
+    );
+  }
+
+  if (existingProfile) {
+    if (existingProfile.role === "seller") {
+      return NextResponse.redirect(`${origin}/seller/dashboard`);
+    }
+
+    return NextResponse.redirect(`${origin}/`);
+  }
+
+  /*
+   * Google gives us authentication information, but Teraa still
+   * requires phone, city, role and legal consent.
    *
-   * Never accept "admin" through public signup.
+   * New Google users therefore finish their profile on onboarding.
+   */
+  const provider =
+    typeof user.app_metadata?.provider === "string"
+      ? user.app_metadata.provider
+      : "";
+
+  const isGoogleUser =
+    provider === "google" ||
+    user.identities?.some((identity) => identity.provider === "google");
+
+  if (isGoogleUser) {
+    return NextResponse.redirect(`${origin}/onboarding`);
+  }
+
+  /*
+   * Email/password signup keeps using the information saved in
+   * Auth metadata by the normal signup form.
    */
   const metadata = user.user_metadata ?? {};
 
@@ -61,56 +101,31 @@ export async function GET(request: Request) {
       ? metadata.phone_number.trim()
       : "";
 
-  const city = typeof metadata.city === "string" ? metadata.city.trim() : "";
+  const city =
+    typeof metadata.city === "string" ? metadata.city.trim() : "";
 
   const role = getSafeRole(metadata.role);
 
-  /*
-   * Check whether this user's application profile already exists.
-   *
-   * This makes the callback safe if the user accidentally opens
-   * the confirmation link more than once.
-   */
-  const { data: existingProfile, error: profileLookupError } = await supabase
-    .from("users")
-    .select("id, role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileLookupError) {
-    console.error("Profile lookup failed:", profileLookupError);
-
-    return NextResponse.redirect(`${origin}/login?error=profile_lookup_failed`);
+  if (!fullName || !phoneNumber) {
+    return NextResponse.redirect(`${origin}/onboarding`);
   }
 
-  if (!existingProfile) {
-    const { error: profileInsertError } = await supabase.from("users").insert({
-      id: user.id,
-      full_name: fullName,
-      phone_number: phoneNumber,
-      city,
-      role,
-    });
+  const { error: profileInsertError } = await supabase.from("users").insert({
+    id: user.id,
+    full_name: fullName,
+    phone_number: phoneNumber,
+    city,
+    role,
+  });
 
-    if (profileInsertError) {
-      console.error("Profile creation failed:", profileInsertError);
+  if (profileInsertError) {
+    console.error("Profile creation failed:", profileInsertError);
 
-      return NextResponse.redirect(
-        `${origin}/login?error=profile_creation_failed`,
-      );
-    }
+    return NextResponse.redirect(
+      `${origin}/login?error=profile_creation_failed`,
+    );
   }
 
-  /*
-   * A seller has TWO related records:
-   *
-   * auth.users     -> authentication account
-   * public.users   -> Teraa user profile
-   * public.sellers -> seller profile
-   *
-   * This sellers row was the missing piece causing the
-   * signup -> seller dashboard -> signup redirect loop.
-   */
   if (role === "seller") {
     const { data: existingSeller, error: sellerLookupError } = await supabase
       .from("sellers")

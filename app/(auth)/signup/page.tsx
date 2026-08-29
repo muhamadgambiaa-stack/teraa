@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
 
 type SignupRole = "buyer" | "seller";
 
@@ -283,6 +284,20 @@ export default function SignupPage() {
         <p className="text-sm text-gray-500 text-center mb-8">
           Join Teraa to buy and sell across The Gambia.
         </p>
+
+        <GoogleAuthButton />
+
+        <div className="flex items-center gap-3 my-5">
+          <div
+            className="h-px flex-1"
+            style={{ background: "var(--sand)" }}
+          />
+          <span className="text-xs text-gray-400">or continue with email</span>
+          <div
+            className="h-px flex-1"
+            style={{ background: "var(--sand)" }}
+          />
+        </div>
 
         <form onSubmit={handleSignup} className="space-y-4">
           {/* FULL NAME */}
@@ -601,3 +616,4 @@ export default function SignupPage() {
     </main>
   );
 }
+

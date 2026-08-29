@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
@@ -49,6 +50,20 @@ export default function LoginPage() {
           Log in
         </h1>
 
+        <GoogleAuthButton />
+
+        <div className="flex items-center gap-3 my-5">
+          <div
+            className="h-px flex-1"
+            style={{ background: "var(--sand)" }}
+          />
+          <span className="text-xs text-gray-400">or continue with email</span>
+          <div
+            className="h-px flex-1"
+            style={{ background: "var(--sand)" }}
+          />
+        </div>
+
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="text-sm font-medium block mb-1">
@@ -89,7 +104,7 @@ export default function LoginPage() {
             className="w-full rounded-lg py-2 text-white text-sm font-medium disabled:opacity-50"
             style={{ background: "var(--indigo)" }}
           >
-            {loading ? "Logging in…" : "Log in"}
+            {loading ? "Logging inâ€¦" : "Log in"}
           </button>
         </form>
 
@@ -111,3 +126,4 @@ export default function LoginPage() {
     </main>
   );
 }
+
