@@ -7,7 +7,7 @@ import { MobileBottomNav } from "@/components/MobileBottomNav";
 export const metadata: Metadata = {
   title: "Teraa: Buy & sell, safely",
   description:
-    "Teraa is The Gambia's trusted marketplace. Verified sellers, bank transfer, mobile money, and cash on delivery.",
+    "Teraa is The Gambia's marketplace for buying and selling. Discover products from verified sellers and shop with confidence.",
 };
 
 export default function RootLayout({
