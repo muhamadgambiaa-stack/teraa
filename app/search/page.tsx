@@ -15,7 +15,10 @@ interface SearchParams {
   min?: string;
   max?: string;
   category?: string;
+  page?: string;
 }
+
+const PAGE_SIZE = 30;
 
 type Category = {
   id: string;
@@ -54,6 +57,7 @@ async function getCategories(): Promise<Category[]> {
 
 async function searchProducts(params: SearchParams): Promise<{
   products: ProductCardData[];
+  total: number;
   error: string | null;
 }> {
   try {
@@ -88,6 +92,7 @@ async function searchProducts(params: SearchParams): Promise<{
           is_cover
         )
         `,
+        { count: "exact" },
       )
       .eq("status", "active");
 
@@ -157,11 +162,20 @@ async function searchProducts(params: SearchParams): Promise<{
       });
     }
 
-    const { data, error } = await query.limit(60);
+    const currentPage = Math.max(
+      1,
+      Number.parseInt(params.page ?? "1", 10) || 1,
+    );
+
+    const from = (currentPage - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    const { data, error, count } = await query.range(from, to);
 
     if (error) {
       return {
         products: [],
+        total: 0,
         error: error.message,
       };
     }
@@ -272,6 +286,7 @@ async function searchProducts(params: SearchParams): Promise<{
 
     return {
       products,
+      total: count ?? 0,
       error: null,
     };
   } catch (error) {
@@ -279,6 +294,7 @@ async function searchProducts(params: SearchParams): Promise<{
 
     return {
       products: [],
+      total: 0,
       error: "not_configured",
     };
   }
@@ -291,13 +307,38 @@ export default async function SearchPage({
 }) {
   const params = await searchParams;
 
-  const [{ products, error }, categories] = await Promise.all([
+  const [{ products, total, error }, categories] = await Promise.all([
     searchProducts(params),
     getCategories(),
   ]);
 
   const selectedCategory =
     categories.find((category) => category.id === params.category) ?? null;
+
+  const currentPage = Math.max(
+    1,
+    Number.parseInt(params.page ?? "1", 10) || 1,
+  );
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  function pageHref(page: number) {
+    const query = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(params)) {
+      if (key !== "page" && value) {
+        query.set(key, value);
+      }
+    }
+
+    if (page > 1) {
+      query.set("page", String(page));
+    }
+
+    const queryString = query.toString();
+
+    return queryString ? `/search?${queryString}` : "/search";
+  }
 
   const hasFilters = Boolean(
     params.q ||
@@ -561,7 +602,7 @@ export default async function SearchPage({
             </h2>
 
             <p className="text-xs text-gray-500 mt-0.5">
-              {products.length} {products.length === 1 ? "listing" : "listings"}
+              {total} {total === 1 ? "listing" : "listings"}
             </p>
           </div>
         </div>
@@ -610,6 +651,61 @@ export default async function SearchPage({
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
+
+        {total > PAGE_SIZE && (
+          <nav
+            className="flex items-center justify-between gap-3 mt-7"
+            aria-label="Search result pages"
+          >
+            {currentPage > 1 ? (
+              <Link
+                href={pageHref(currentPage - 1)}
+                className="rounded-full border px-4 py-2 text-sm font-medium bg-white"
+                style={{
+                  borderColor: "var(--sand)",
+                  color: "var(--indigo)",
+                }}
+              >
+                Previous
+              </Link>
+            ) : (
+              <span
+                className="rounded-full border px-4 py-2 text-sm font-medium opacity-40"
+                style={{
+                  borderColor: "var(--sand)",
+                }}
+              >
+                Previous
+              </span>
+            )}
+
+            <span className="text-xs text-gray-500">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            {currentPage < totalPages ? (
+              <Link
+                href={pageHref(currentPage + 1)}
+                className="rounded-full border px-4 py-2 text-sm font-medium bg-white"
+                style={{
+                  borderColor: "var(--sand)",
+                  color: "var(--indigo)",
+                }}
+              >
+                Next
+              </Link>
+            ) : (
+              <span
+                className="rounded-full border px-4 py-2 text-sm font-medium opacity-40"
+                style={{
+                  borderColor: "var(--sand)",
+                }}
+              >
+                Next
+              </span>
+            )}
+          </nav>
+        )}
       </main>
     </>
   );
