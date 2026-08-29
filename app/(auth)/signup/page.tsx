@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
-
-type SignupRole = "buyer" | "seller";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -26,18 +24,13 @@ export default function SignupPage() {
 
   const [city, setCity] = useState("");
 
-  const [role, setRole] = useState<SignupRole>("buyer");
-
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
   const [message, setMessage] = useState<string | null>(null);
 
-  async function createDatabaseRecords(
-    userId: string,
-    selectedRole: SignupRole,
-  ) {
+  async function createDatabaseRecords(userId: string) {
     /*
      * Check whether the main user profile
      * already exists.
@@ -62,7 +55,7 @@ export default function SignupPage() {
 
         city: city.trim(),
 
-        role: selectedRole,
+        role: "buyer",
       });
 
       if (profileError) {
@@ -70,33 +63,6 @@ export default function SignupPage() {
       }
     }
 
-    /*
-     * Sellers need an additional row in
-     * the sellers table.
-     */
-    if (selectedRole === "seller") {
-      const { data: existingSeller, error: sellerLookupError } = await supabase
-        .from("sellers")
-        .select("id")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (sellerLookupError) {
-        throw new Error(sellerLookupError.message);
-      }
-
-      if (!existingSeller) {
-        const { error: sellerError } = await supabase.from("sellers").insert({
-          id: userId,
-
-          business_name: fullName.trim(),
-        });
-
-        if (sellerError) {
-          throw new Error(sellerError.message);
-        }
-      }
-    }
   }
 
   async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
@@ -188,7 +154,7 @@ export default function SignupPage() {
              * Never accept admin from
              * this form.
              */
-            role,
+            role: "buyer",
 
             /*
              * Keep a simple record in Auth
@@ -226,13 +192,9 @@ export default function SignupPage() {
        *    email confirmation link.
        */
       if (data.session) {
-        await createDatabaseRecords(data.user.id, role);
+        await createDatabaseRecords(data.user.id);
 
-        if (role === "seller") {
-          router.replace("/seller/dashboard");
-        } else {
-          router.replace("/");
-        }
+        router.replace("/");
 
         router.refresh();
 
@@ -421,67 +383,6 @@ export default function SignupPage() {
               }}
             />
           </div>
-
-          {/* ROLE */}
-
-          <div>
-            <label className="text-sm font-medium block mb-2">I want to</label>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setRole("buyer")}
-                className="rounded-lg border py-3 text-sm font-medium"
-                style={{
-                  borderColor:
-                    role === "buyer" ? "var(--indigo)" : "var(--sand)",
-
-                  background:
-                    role === "buyer" ? "var(--indigo)" : "transparent",
-
-                  color: role === "buyer" ? "white" : "var(--ink)",
-                }}
-              >
-                Buy Products
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setRole("seller")}
-                className="rounded-lg border py-3 text-sm font-medium"
-                style={{
-                  borderColor:
-                    role === "seller" ? "var(--indigo)" : "var(--sand)",
-
-                  background:
-                    role === "seller" ? "var(--indigo)" : "transparent",
-
-                  color: role === "seller" ? "white" : "var(--ink)",
-                }}
-              >
-                Sell Products
-              </button>
-            </div>
-          </div>
-
-          {/* SELLER NOTICE */}
-
-          {role === "seller" && (
-            <div
-              className="rounded-lg border p-3"
-              style={{
-                borderColor: "var(--sand)",
-
-                background: "#fbfaf7",
-              }}
-            >
-              <p className="text-xs text-gray-600 leading-5">
-                Sellers complete identity verification after creating an
-                account. You can publish products after your verification is
-                approved.
-              </p>
-            </div>
-          )}
 
           {/* TERMS CONSENT */}
 
