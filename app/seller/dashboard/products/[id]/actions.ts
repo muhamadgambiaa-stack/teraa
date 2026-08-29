@@ -178,7 +178,9 @@ export async function updateListing(productId: string, formData: FormData) {
     throw new Error("Stock quantity must be 0 or more.");
   }
 
-  if (!["new", "used"].includes(condition)) {
+  if (
+    !["new", "used_like_new", "used_good", "used_fair"].includes(condition)
+  ) {
     throw new Error("Invalid product condition.");
   }
 
