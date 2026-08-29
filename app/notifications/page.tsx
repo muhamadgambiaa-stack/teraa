@@ -50,7 +50,7 @@ export default async function NotificationsPage() {
     <>
       <SiteHeader />
 
-      <main className="max-w-2xl mx-auto px-4 py-5 pb-24 sm:pb-6">
+      <main className="max-w-2xl mx-auto px-4 py-5 sm:pb-6">
         <div className="flex items-start justify-between gap-4 mb-5">
           <div>
             <h1

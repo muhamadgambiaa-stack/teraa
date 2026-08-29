@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -135,7 +135,7 @@ export default function AccountSettingsPage() {
     <>
       <SiteHeader />
 
-      <main className="max-w-2xl mx-auto px-4 py-5 pb-28">
+      <main className="max-w-2xl mx-auto px-4 py-5">
         <Link
           href="/account"
           className="text-sm font-medium"

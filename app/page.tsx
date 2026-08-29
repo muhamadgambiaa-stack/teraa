@@ -240,7 +240,7 @@ export default async function Home() {
 
       {/* MAIN */}
 
-      <main className="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 w-full pb-24 sm:pb-6">
+      <main className="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 w-full sm:pb-6">
         {error === "not_configured" && (
           <div
             className="rounded-xl border p-5 mb-6 text-sm"

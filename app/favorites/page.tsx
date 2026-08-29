@@ -124,7 +124,7 @@ export default async function FavoritesPage() {
     <>
       <SiteHeader />
 
-      <main className="max-w-6xl mx-auto px-4 py-6 pb-24 sm:pb-8">
+      <main className="max-w-6xl mx-auto px-4 py-6 sm:pb-8">
         <div className="mb-5">
           <h1
             className="font-display text-2xl"
