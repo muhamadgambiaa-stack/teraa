@@ -105,7 +105,7 @@ export default function AccountPage() {
       setPhone(userProfile.phone_number ?? "");
       setCity(userProfile.city ?? "");
 
-      if (userProfile.role === "seller") {
+      if (userProfile.role !== "admin") {
         const [
           { data: sellerData, error: sellerError },
           { count: completedSales, error: salesError },
@@ -462,7 +462,18 @@ export default function AccountPage() {
 
         {/* SELLING */}
 
-        {isSeller && (
+        {!isAdmin && !seller && (
+          <AccountSection title="Selling">
+            <AccountLink
+              href="/seller/register"
+              icon="store"
+              title="Start selling"
+              description="Create your seller profile and list products on Teraa"
+            />
+          </AccountSection>
+        )}
+
+        {(isSeller || seller) && (
           <AccountSection title="Selling">
             {seller && (
               <div
