@@ -1,85 +1,48 @@
 export default function Loading() {
   return (
     <div
-      className="fixed inset-0 z-[100] overflow-y-auto px-4 py-8"
-      style={{ background: "#fffdf8" }}
+      className="fixed inset-0 z-[100] flex items-center justify-center px-6"
+      style={{
+        background: "#fffdf8",
+      }}
+      role="status"
+      aria-live="polite"
+      aria-label="Loading Teraa"
     >
-      <div className="max-w-6xl mx-auto">
-        {/* TERAA BRAND */}
-        <div className="flex items-center justify-center mb-7">
-          <div className="flex flex-col items-center">
-            <img
-              src="/branding/teraa-icon.svg"
-              alt="Teraa"
-              width="64"
-              height="64"
-              className="w-14 h-14 sm:w-16 sm:h-16"
-            />
+      <div className="flex flex-col items-center text-center">
+        <img
+          src="/branding/teraa-icon.svg"
+          alt=""
+          width="72"
+          height="72"
+          className="w-16 h-16 sm:w-[72px] sm:h-[72px]"
+        />
 
-            <p
-              className="text-sm font-semibold mt-2"
-              style={{
-                color: "var(--indigo)",
-              }}
-            >
-              Teraa
-            </p>
+        <p
+          className="font-display text-xl font-semibold mt-3"
+          style={{
+            color: "var(--indigo)",
+          }}
+        >
+          Teraa
+        </p>
 
-            <p className="text-xs text-gray-400 mt-0.5">
-              Loading marketplace...
-            </p>
-          </div>
-        </div>
+        <p className="text-xs text-gray-400 mt-1">
+          Loading...
+        </p>
 
-        {/* TOP SKELETON */}
         <div
-          className="h-24 rounded-xl mb-6 animate-pulse"
+          className="w-32 h-1 rounded-full overflow-hidden mt-5"
           style={{
             background: "var(--sand)",
           }}
-        />
-
-        <div
-          className="h-8 w-40 rounded mb-4 animate-pulse"
-          style={{
-            background: "var(--sand)",
-          }}
-        />
-
-        {/* PRODUCT SKELETONS */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-xl border overflow-hidden"
-              style={{
-                borderColor: "var(--sand)",
-              }}
-            >
-              <div
-                className="aspect-square animate-pulse"
-                style={{
-                  background: "var(--sand)",
-                }}
-              />
-
-              <div className="p-3 space-y-2">
-                <div
-                  className="h-3 rounded animate-pulse"
-                  style={{
-                    background: "var(--sand)",
-                  }}
-                />
-
-                <div
-                  className="h-3 w-1/2 rounded animate-pulse"
-                  style={{
-                    background: "var(--sand)",
-                  }}
-                />
-              </div>
-            </div>
-          ))}
+        >
+          <div
+            className="w-2/3 h-full rounded-full animate-pulse"
+            style={{
+              background: "var(--indigo)",
+            }}
+          />
         </div>
       </div>
     </div>
