@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ReportButton } from "@/components/ReportButton";
+import { ProductGallery } from "@/components/ProductGallery";
 
 import { CONDITION_LABELS, type ProductCondition } from "@/types/database";
 
