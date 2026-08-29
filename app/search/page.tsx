@@ -415,7 +415,11 @@ export default async function SearchPage({
 
               <option value="new">Brand new</option>
 
-              <option value="used">Used</option>
+              <option value="used_like_new">Used, like new</option>
+
+              <option value="used_good">Used, good condition</option>
+
+              <option value="used_fair">Used, fair condition</option>
             </select>
 
             {/* SORT */}
