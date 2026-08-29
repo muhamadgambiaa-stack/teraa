@@ -1,8 +1,9 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
+import { MessageSellerButton } from "@/components/MessageSellerButton";
 import { StarRatingInput } from "@/components/StarRatingInput";
 
 import {
@@ -315,7 +316,7 @@ export default async function OrderPage({
                 className="flex justify-between gap-4 text-sm py-1"
               >
                 <span className="min-w-0">
-                  {item.quantity} × {product?.title ?? "Product"}
+                  {item.quantity} Ã— {product?.title ?? "Product"}
                 </span>
 
                 <span className="shrink-0">
@@ -397,17 +398,7 @@ export default async function OrderPage({
             action={messageSellerFromOrder.bind(null, order.id)}
             className="mt-4"
           >
-            <button
-              type="submit"
-              className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50"
-              style={{
-                borderColor: "var(--indigo)",
-                color: "var(--indigo)",
-              }}
-            >
-              <MessageIcon />
-              Message seller
-            </button>
+            <MessageSellerButton />
           </form>
         </div>
 
@@ -1111,3 +1102,4 @@ function LocationIcon() {
     </svg>
   );
 }
+

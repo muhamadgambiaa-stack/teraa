@@ -1,10 +1,11 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ReportButton } from "@/components/ReportButton";
 import { ProductGallery } from "@/components/ProductGallery";
+import { MessageSellerButton } from "@/components/MessageSellerButton";
 
 import { CONDITION_LABELS, type ProductCondition } from "@/types/database";
 
@@ -429,17 +430,7 @@ export default async function ProductDetailPage({
                 action={messageSeller.bind(null, product.id)}
                 className={seller ? "mt-3" : "mt-5"}
               >
-                <button
-                  type="submit"
-                  className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50"
-                  style={{
-                    borderColor: "var(--indigo)",
-                    color: "var(--indigo)",
-                  }}
-                >
-                  <MessageIcon />
-                  Message seller
-                </button>
+                <MessageSellerButton />
               </form>
             )}
 
@@ -1057,3 +1048,4 @@ function formatReviewDate(value: string) {
     year: "numeric",
   });
 }
+

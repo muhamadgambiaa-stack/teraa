@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -133,7 +133,55 @@ export default function SellerSettingsPage() {
         <SellerNav active="settings" />
 
         {loading ? (
-          <p className="text-sm text-gray-500">Loading…</p>
+          <div
+  className="fixed inset-0 z-[100] flex items-center justify-center px-6"
+  style={{ background: "#fffdf8" }}
+  role="status"
+  aria-live="polite"
+  aria-label="Loading Teraa"
+>
+  <div className="flex flex-col items-center">
+    <img
+      src="/branding/teraa-icon.svg"
+      alt=""
+      width="72"
+      height="72"
+      className="h-16 w-16 sm:h-[72px] sm:w-[72px]"
+    />
+
+    <p
+      className="mt-3 text-lg font-semibold"
+      style={{ color: "var(--indigo)" }}
+    >
+      Teraa
+    </p>
+
+    <p className="mt-1 text-sm text-gray-400">Loading...</p>
+
+    <div className="mt-5 flex items-center gap-2" aria-hidden="true">
+      <span
+        className="h-2 w-2 rounded-full animate-pulse"
+        style={{ background: "var(--indigo)" }}
+      />
+
+      <span
+        className="h-2 w-2 rounded-full animate-pulse"
+        style={{
+          background: "var(--leaf)",
+          animationDelay: "150ms",
+        }}
+      />
+
+      <span
+        className="h-2 w-2 rounded-full animate-pulse"
+        style={{
+          background: "var(--indigo)",
+          animationDelay: "300ms",
+        }}
+      />
+    </div>
+  </div>
+</div>
         ) : (
           <>
             <form onSubmit={handleSave} className="space-y-5 mb-10">
@@ -168,17 +216,17 @@ export default function SellerSettingsPage() {
                 className="rounded-full px-6 py-2.5 text-white text-sm font-medium disabled:opacity-50"
                 style={{ background: "var(--indigo)" }}
               >
-                {saving ? "Saving…" : "Save changes"}
+                {saving ? "Savingâ€¦" : "Save changes"}
               </button>
-              {saved && <span className="ml-3 text-sm" style={{ color: "var(--leaf)" }}>Saved ✓</span>}
+              {saved && <span className="ml-3 text-sm" style={{ color: "var(--leaf)" }}>Saved âœ“</span>}
             </form>
 
             <div>
-              <h2 className="text-sm font-semibold mb-1">Payment methods</h2>
+              <h2 className="text-sm font-semibold mb-1">Payment methods <span className="text-xs font-normal text-gray-400">(coming soon)</span></h2>
               <p className="text-xs text-gray-500 mb-3">
-                Add a bank account or mobile money account (Wave, or any other provider).
-                Buyers choosing digital payment at checkout will see these options and pay
-                you directly. Cash on delivery is always available with no setup needed.
+                You can save a bank or mobile money account for future use.
+                Digital payments are not active yet and these details are not shown to buyers.
+                Cash on delivery is currently the only checkout method.
               </p>
 
               {methods.length === 0 && !showAddForm && (
@@ -288,7 +336,7 @@ export default function SellerSettingsPage() {
                       className="rounded-full px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
                       style={{ background: "var(--indigo)" }}
                     >
-                      {addingMethod ? "Adding…" : "Add"}
+                      {addingMethod ? "Addingâ€¦" : "Add"}
                     </button>
                     <button
                       type="button"
@@ -308,3 +356,5 @@ export default function SellerSettingsPage() {
     </>
   );
 }
+
+
