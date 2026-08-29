@@ -1,12 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
-
-type SignupRole = "buyer" | "seller";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -18,7 +16,6 @@ export default function OnboardingPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
-  const [role, setRole] = useState<SignupRole>("buyer");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -137,14 +134,14 @@ export default function OnboardingPage() {
 
       /*
        * Keep useful onboarding information in Auth metadata as well.
-       * Role is deliberately restricted to buyer/seller in this UI.
+       * Every public account starts as a normal Teraa account.
        */
       const { error: metadataError } = await supabase.auth.updateUser({
         data: {
           full_name: cleanName,
           phone_number: cleanPhone,
           city: cleanCity,
-          role,
+          role: "buyer",
           accepted_terms: true,
           terms_version: "2026-08-27",
         },
@@ -159,29 +156,14 @@ export default function OnboardingPage() {
         full_name: cleanName,
         phone_number: cleanPhone,
         city: cleanCity,
-        role,
+        role: "buyer",
       });
 
       if (profileError) {
         throw profileError;
       }
 
-      if (role === "seller") {
-        const { error: sellerError } = await supabase.from("sellers").insert({
-          id: user.id,
-          business_name: cleanName,
-        });
-
-        if (sellerError) {
-          throw sellerError;
-        }
-      }
-
-      if (role === "seller") {
-        router.replace("/seller/dashboard");
-      } else {
-        router.replace("/");
-      }
+      router.replace("/");
 
       router.refresh();
     } catch (error) {
@@ -289,60 +271,6 @@ export default function OnboardingPage() {
               style={{ borderColor: "var(--sand)" }}
             />
           </div>
-
-          <div>
-            <label className="text-sm font-medium block mb-2">
-              I want to
-            </label>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setRole("buyer")}
-                className="rounded-lg border py-3 text-sm font-medium"
-                style={{
-                  borderColor:
-                    role === "buyer" ? "var(--indigo)" : "var(--sand)",
-                  background:
-                    role === "buyer" ? "var(--indigo)" : "transparent",
-                  color: role === "buyer" ? "white" : "var(--ink)",
-                }}
-              >
-                Buy Products
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setRole("seller")}
-                className="rounded-lg border py-3 text-sm font-medium"
-                style={{
-                  borderColor:
-                    role === "seller" ? "var(--indigo)" : "var(--sand)",
-                  background:
-                    role === "seller" ? "var(--indigo)" : "transparent",
-                  color: role === "seller" ? "white" : "var(--ink)",
-                }}
-              >
-                Sell Products
-              </button>
-            </div>
-          </div>
-
-          {role === "seller" && (
-            <div
-              className="rounded-lg border p-3"
-              style={{
-                borderColor: "var(--sand)",
-                background: "#fbfaf7",
-              }}
-            >
-              <p className="text-xs text-gray-600 leading-5">
-                Sellers complete identity verification after creating an
-                account. Products can be published after verification is
-                approved.
-              </p>
-            </div>
-          )}
 
           <div
             className="rounded-lg border p-3"
