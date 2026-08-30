@@ -2,6 +2,16 @@
 
 import { useEffect, useState } from "react";
 
+import { createClient } from "@/lib/supabase/client";
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+}
+
 export function PushNotifications() {
   const [supported, setSupported] = useState(false);
   const [permission, setPermission] =
@@ -24,6 +34,47 @@ export function PushNotifications() {
     }
   }, []);
 
+  async function saveSubscription(subscription: PushSubscription) {
+    const supabase = createClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error("User not logged in.");
+      return;
+    }
+
+    const json = subscription.toJSON();
+
+    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+      console.error("Invalid push subscription.");
+      return;
+    }
+
+    const { error } = await supabase.from("push_subscriptions").upsert(
+      {
+        user_id: user.id,
+        endpoint: json.endpoint,
+        p256dh: json.keys.p256dh,
+        auth: json.keys.auth,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "endpoint",
+      },
+    );
+
+    if (error) {
+      console.error("Could not save push subscription:", error);
+      return;
+    }
+
+    console.log("Push subscription saved.");
+  }
+
   async function enableNotifications() {
     try {
       const registration = await navigator.serviceWorker.register("/sw.js");
@@ -34,16 +85,36 @@ export function PushNotifications() {
 
       setPermission(result);
 
-      if (result === "granted") {
-        await registration.showNotification("Teraa notifications enabled", {
-          body: "You'll receive important updates from Teraa here.",
-          icon: "/branding/teraa-icon.svg",
-          badge: "/branding/teraa-icon.svg",
-          data: {
-            url: "/notifications",
-          },
+      if (result !== "granted") {
+        return;
+      }
+
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+      if (!vapidPublicKey) {
+        console.error("Missing VAPID public key.");
+        return;
+      }
+
+      let subscription = await registration.pushManager.getSubscription();
+
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
         });
       }
+
+      await saveSubscription(subscription);
+
+      await registration.showNotification("Teraa notifications enabled", {
+        body: "You'll receive messages, orders and important Teraa updates here.",
+        icon: "/branding/teraa-icon.svg",
+        badge: "/branding/teraa-icon.svg",
+        data: {
+          url: "/notifications",
+        },
+      });
     } catch (error) {
       console.error("Could not enable notifications:", error);
     }
