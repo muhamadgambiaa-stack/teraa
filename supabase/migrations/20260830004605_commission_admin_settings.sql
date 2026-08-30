@@ -16,7 +16,7 @@ begin
   end if;
 
   if p_commission_rate < 0.001 or p_commission_rate > 0.25 then
-    raise exception 'Commission rate must be between 0.1% and 25%.'
+    raise exception 'Commission rate must be between 0.1%% and 25%%.'
       using errcode = '22023';
   end if;
 
@@ -150,3 +150,4 @@ $$;
 revoke all
 on function public.create_commission_on_order_completion()
 from public, anon, authenticated;
+
