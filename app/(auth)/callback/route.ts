@@ -7,6 +7,7 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const origin = requestUrl.origin;
+  const next = requestUrl.searchParams.get("next");
 
   if (!code) {
     return NextResponse.redirect(
@@ -36,6 +37,10 @@ export async function GET(request: Request) {
     console.error("Could not read user after callback:", userError);
 
     return NextResponse.redirect(`${origin}/login?error=session_failed`);
+  }
+
+  if (next === "/reset-password") {
+    return NextResponse.redirect(`${origin}/reset-password`);
   }
 
   /*
