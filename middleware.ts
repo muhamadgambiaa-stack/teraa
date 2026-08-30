@@ -28,15 +28,15 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired — required for Server Components to read it.
+  // Refresh session if expired â€” required for Server Components to read it.
   // Wrapped in try/catch: if Supabase isn't configured (see fallback above)
   // this call will fail, and we don't want that to take down every page on
-  // the site — better to let the request through and have the page itself
+  // the site â€” better to let the request through and have the page itself
   // show its own "not connected" state.
   try {
     await supabase.auth.getUser();
   } catch {
-    // swallow — see comment above
+    // swallow â€” see comment above
   }
 
   return response;
@@ -44,6 +44,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api/push/send|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
