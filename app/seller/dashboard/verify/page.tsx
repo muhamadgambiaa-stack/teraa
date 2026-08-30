@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -56,6 +56,15 @@ export default function VerifyPage() {
 
       const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
 
+      const fileBytes = await file.arrayBuffer();
+      const digest = await crypto.subtle.digest("SHA-256", fileBytes);
+
+      const documentFingerprint = Array.from(
+        new Uint8Array(digest),
+      )
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+
       /*
        * Reuse one verification path for the seller.
        *
@@ -90,6 +99,19 @@ export default function VerifyPage() {
 
       if (resubmitError) {
         throw new Error(resubmitError.message);
+      }
+
+      const { error: fingerprintError } = await supabase.rpc(
+        "record_seller_document_fingerprint",
+        {
+          p_document_sha256: documentFingerprint,
+        },
+      );
+
+      if (fingerprintError) {
+        throw new Error(
+          "Your document was uploaded, but its security check failed. Please submit it again.",
+        );
       }
 
       router.push("/seller/dashboard");
@@ -169,7 +191,7 @@ export default function VerifyPage() {
                   background: "#fbfaf7",
                 }}
               >
-                <p className="text-xs font-medium">📄 {file.name}</p>
+                <p className="text-xs font-medium">ðŸ“„ {file.name}</p>
 
                 <p className="text-[11px] text-gray-500 mt-1">
                   Ready to submit for review.
@@ -203,10 +225,11 @@ export default function VerifyPage() {
         </div>
 
         <p className="text-xs text-gray-500 mt-4 leading-5">
-          🔒 Your verification document is stored privately and is only
+          ðŸ”’ Your verification document is stored privately and is only
           available to you and authorized Teraa administrators.
         </p>
       </main>
     </>
   );
 }
+
