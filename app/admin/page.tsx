@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 import { requireAdmin } from "@/lib/require-admin";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -13,6 +13,9 @@ export default async function AdminHomePage() {
     { count: totalOrders },
     { count: pendingAppeals },
     { count: suspendedSellers },
+    { count: commissionRequests },
+    { count: proofsToReview },
+    { count: overdueCommissions },
   ] = await Promise.all([
     supabase
       .from("sellers")
@@ -58,9 +61,54 @@ export default async function AdminHomePage() {
         head: true,
       })
       .eq("account_status", "suspended"),
+
+    supabase
+      .from("commissions")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "instructions_requested"),
+
+    supabase
+      .from("commissions")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "proof_submitted"),
+
+    supabase
+      .from("commissions")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "overdue"),
   ]);
 
   const stats = [
+    {
+      label: "Payment detail requests",
+      value: commissionRequests ?? 0,
+      href: "/admin/commissions?status=instructions_requested",
+      urgent: (commissionRequests ?? 0) > 0,
+    },
+
+    {
+      label: "Commission proofs to review",
+      value: proofsToReview ?? 0,
+      href: "/admin/commissions?status=proof_submitted",
+      urgent: (proofsToReview ?? 0) > 0,
+    },
+
+    {
+      label: "Overdue commissions",
+      value: overdueCommissions ?? 0,
+      href: "/admin/commissions?status=overdue",
+      urgent: (overdueCommissions ?? 0) > 0,
+    },
+
     {
       label: "Sellers awaiting review",
       value: pendingSellers ?? 0,
@@ -238,7 +286,8 @@ function AdminLink({
         <p className="text-xs text-gray-500 mt-0.5">{description}</p>
       </div>
 
-      <span className="text-gray-400">â†’</span>
+      <span className="text-gray-400">Ã¢â€ â€™</span>
     </Link>
   );
 }
+
