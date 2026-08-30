@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 
 import { requireAdmin } from "@/lib/require-admin";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -286,7 +286,7 @@ function AdminLink({
         <p className="text-xs text-gray-500 mt-0.5">{description}</p>
       </div>
 
-      <span className="text-gray-400">Ã¢â€ â€™</span>
+      <span className="text-gray-400">→</span>
     </Link>
   );
 }

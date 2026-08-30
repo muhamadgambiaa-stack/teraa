@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireAdmin } from "@/lib/require-admin";
@@ -134,7 +134,7 @@ export default async function AdminSellerDetailPage({
           href="/admin/sellers"
           className="text-xs text-gray-500 hover:underline"
         >
-          â† All sellers
+          ← All sellers
         </Link>
 
         <div className="flex items-start justify-between flex-wrap gap-4 mt-3 mb-6">
@@ -154,9 +154,9 @@ export default async function AdminSellerDetailPage({
               <p className="text-sm text-gray-500 mt-1">
                 {profile.full_name}
 
-                {profile.city ? ` Â· ${profile.city}` : ""}
+                {profile.city ? ` · ${profile.city}` : ""}
 
-                {profile.phone_number ? ` Â· ${profile.phone_number}` : ""}
+                {profile.phone_number ? ` · ${profile.phone_number}` : ""}
               </p>
             )}
           </div>
@@ -500,7 +500,7 @@ export default async function AdminSellerDetailPage({
 
                     <p className="text-xs text-gray-500">
                       GMD {Number(product.price).toLocaleString()}
-                      {" Â· "}
+                      {" · "}
                       Stock {product.stock_quantity}
                     </p>
                   </div>
@@ -527,7 +527,7 @@ export default async function AdminSellerDetailPage({
 
                   <p className="text-xs text-gray-500">
                     {order.status}
-                    {" Â· "}
+                    {" · "}
                     Payment: {order.payment_status}
                   </p>
                 </div>

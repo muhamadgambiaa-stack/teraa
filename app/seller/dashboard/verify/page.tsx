@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -191,7 +191,7 @@ export default function VerifyPage() {
                   background: "#fbfaf7",
                 }}
               >
-                <p className="text-xs font-medium">ðŸ“„ {file.name}</p>
+                <p className="text-xs font-medium">📄 {file.name}</p>
 
                 <p className="text-[11px] text-gray-500 mt-1">
                   Ready to submit for review.
@@ -225,7 +225,7 @@ export default function VerifyPage() {
         </div>
 
         <p className="text-xs text-gray-500 mt-4 leading-5">
-          ðŸ”’ Your verification document is stored privately and is only
+          🔒 Your verification document is stored privately and is only
           available to you and authorized Teraa administrators.
         </p>
       </main>
