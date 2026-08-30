@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   }
 
   const payload = (await request.json()) as PushWebhookBody;
-  const notification = payload.record ?? payload;
+  const notification = payload.record ?? {};
 
   if (!notification.user_id || !notification.title) {
     return NextResponse.json(
