@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 import { requireAdmin } from "@/lib/require-admin";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -73,14 +73,21 @@ export default async function AdminCommissionsPage({
           Back to admin
         </Link>
 
-        <div className="mt-4 mb-6">
-          <p className="text-xs text-gray-500">Administration</p>
+        <div className="mt-4 mb-6 flex items-start justify-between gap-4">
+          <div><p className="text-xs text-gray-500">Administration</p>
 
           <h1 className="font-display text-2xl">Commissions</h1>
 
           <p className="text-sm text-gray-500 mt-1">
             Review commission balances, payment requests and submitted proof.
-          </p>
+          </p></div>
+          <Link
+            href="/admin/commissions/settings"
+            className="rounded-full border px-4 py-2 text-sm font-semibold whitespace-nowrap"
+            style={{ borderColor: "var(--sand)" }}
+          >
+            Settings
+          </Link>
         </div>
 
         <form method="GET" className="mb-6">
