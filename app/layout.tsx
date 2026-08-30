@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { InstallTeraa } from "@/components/InstallTeraa";
+import { PushNotifications } from "@/components/PushNotifications";
 
 export const metadata: Metadata = {
   title: "Teraa: Buy & sell, safely",
@@ -33,6 +34,7 @@ export default function RootLayout({
         <div className="flex-1 pb-20 sm:pb-0">{children}</div>
 
         <InstallTeraa />
+        <PushNotifications />
         <MobileBottomNav />
       </body>
     </html>
