@@ -34,6 +34,9 @@ export default async function AdminSellerDetailPage({
       legal_name,
       document_sha256,
       id_document_url,
+      identity_document_type,
+      identity_document_number,
+      application_submitted_at,
       verification_status,
       account_status,
       rating_avg,
@@ -237,6 +240,24 @@ export default async function AdminSellerDetailPage({
             }}
           >
             <h2 className="font-semibold mb-4">Verification</h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-gray-500">Document type</p>
+                <p className="text-sm font-medium capitalize mt-1">
+                  {seller.identity_document_type
+                    ? seller.identity_document_type.replace(/_/g, " ")
+                    : "Not provided"}
+                </p>
+              </div>
+
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-gray-500">Document number</p>
+                <p className="text-sm font-medium mt-1">
+                  {seller.identity_document_number || "Not provided"}
+                </p>
+              </div>
+            </div>
 
             {signedDocumentUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
