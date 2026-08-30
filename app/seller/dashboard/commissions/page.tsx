@@ -1,10 +1,11 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SellerNav } from "@/components/SellerNav";
 
 import { CommissionPaymentActions } from "./CommissionPaymentActions";
+import { CommissionDeadline } from "./CommissionDeadline";
 
 const STATUS_LABELS: Record<string, string> = {
   awaiting_payment: "Payment required",
@@ -86,7 +87,7 @@ export default async function SellerCommissionsPage() {
         </h1>
 
         <p className="text-sm text-gray-500 mt-1 mb-6">
-          Teraa charges 5% only when an order is successfully completed.
+          Teraa charges commission only when an order is successfully completed.
         </p>
 
         <SellerNav active="commissions" />
@@ -149,7 +150,7 @@ export default async function SellerCommissionsPage() {
                     </p>
 
                     <p className="text-xs text-gray-500 mt-1">
-                      5% of GMD{" "}
+                      {Number(commission.commission_rate) * 100}% of GMD{" "}
                       {Number(commission.order_total).toLocaleString()}
                     </p>
                   </div>
@@ -161,13 +162,11 @@ export default async function SellerCommissionsPage() {
 
                 {commission.due_at &&
                   !["paid", "waived"].includes(commission.status) && (
-                    <p className="text-xs text-gray-500 mt-3">
-                      {paused
-                        ? "Deadline paused"
-                        : `Due: ${new Date(
-                            commission.due_at,
-                          ).toLocaleString()}`}
-                    </p>
+                    <CommissionDeadline
+                      dueAt={commission.due_at}
+                      status={commission.status}
+                      paused={paused}
+                    />
                   )}
 
                 {commission.payment_instructions && (
