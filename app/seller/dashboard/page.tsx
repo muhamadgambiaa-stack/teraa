@@ -294,7 +294,7 @@ function VerificationPending({ hasDocument }: { hasDocument: boolean }) {
       <p className="font-semibold mb-1">
         {hasDocument
           ? "Your ID is under review"
-          : "Verify your identity to start selling"}
+          : "Seller application draft"}
       </p>
 
       <p className="text-sm text-gray-700 mb-4 max-w-md">
@@ -453,9 +453,9 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
 
                 <p className="text-xs text-gray-500">
                   GMD {Number(product.price).toLocaleString()}
-                  {" · "}
+                  {" Â· "}
                   {CONDITION_LABELS[product.condition as ProductCondition]}
-                  {" · Stock: "}
+                  {" Â· Stock: "}
                   {product.stock_quantity}
                 </p>
               </div>

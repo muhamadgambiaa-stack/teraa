@@ -13,6 +13,10 @@ export default function VerifyPage() {
 
   const [file, setFile] = useState<File | null>(null);
 
+  const [documentType, setDocumentType] = useState("");
+
+  const [documentNumber, setDocumentNumber] = useState("");
+
   const [loading, setLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +25,18 @@ export default function VerifyPage() {
     e.preventDefault();
 
     if (!file) return;
+
+    const cleanDocumentNumber = documentNumber.trim();
+
+    if (!documentType) {
+      setError("Select the type of identity document.");
+      return;
+    }
+
+    if (cleanDocumentNumber.length < 3) {
+      setError("Enter the ID, passport or registration number.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -91,9 +107,11 @@ export default function VerifyPage() {
        * pending/rejected sellers to return to pending.
        */
       const { error: resubmitError } = await supabase.rpc(
-        "resubmit_seller_verification",
+        "submit_seller_verification",
         {
           p_document_path: path,
+          p_document_type: documentType,
+          p_document_number: cleanDocumentNumber,
         },
       );
 
@@ -159,6 +177,52 @@ export default function VerifyPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="text-sm font-medium block mb-1">
+                Document type
+              </label>
+
+              <select
+                required
+                value={documentType}
+                onChange={(event) => {
+                  setError(null);
+                  setDocumentType(event.target.value);
+                }}
+                className="w-full rounded-lg border px-3 py-2.5 text-sm bg-white"
+                style={{ borderColor: "var(--sand)" }}
+              >
+                <option value="">Select a document</option>
+                <option value="national_id">National ID card</option>
+                <option value="passport">Passport</option>
+                <option value="business_registration">
+                  Business registration
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">
+                Document number
+              </label>
+
+              <input
+                type="text"
+                required
+                minLength={3}
+                maxLength={64}
+                value={documentNumber}
+                onChange={(event) => {
+                  setError(null);
+                  setDocumentNumber(event.target.value);
+                }}
+                placeholder="Enter the number shown on the document"
+                autoCapitalize="characters"
+                className="w-full rounded-lg border px-3 py-2.5 text-sm"
+                style={{ borderColor: "var(--sand)" }}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">
                 ID document photo
               </label>
 
@@ -191,7 +255,7 @@ export default function VerifyPage() {
                   background: "#fbfaf7",
                 }}
               >
-                <p className="text-xs font-medium">📄 {file.name}</p>
+                <p className="text-xs font-medium">ðŸ“„ {file.name}</p>
 
                 <p className="text-[11px] text-gray-500 mt-1">
                   Ready to submit for review.
@@ -225,7 +289,7 @@ export default function VerifyPage() {
         </div>
 
         <p className="text-xs text-gray-500 mt-4 leading-5">
-          🔒 Your verification document is stored privately and is only
+          ðŸ”’ Your verification document is stored privately and is only
           available to you and authorized Teraa administrators.
         </p>
       </main>

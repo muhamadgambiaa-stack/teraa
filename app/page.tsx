@@ -315,7 +315,7 @@ export default async function Home() {
             </p>
 
             <Link
-              href="/signup"
+              href="/seller/register"
               className="inline-block rounded-full px-5 py-2 text-white text-sm font-medium"
               style={{
                 background: "var(--indigo)",

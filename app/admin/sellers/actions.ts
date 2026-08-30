@@ -17,6 +17,29 @@ function refreshSellerAdmin(sellerId: string) {
 export async function approveSeller(sellerId: string) {
   const { supabase, user } = await requireAdmin();
 
+  const { data: application, error: applicationError } = await supabase
+    .from("sellers")
+    .select(
+      "application_submitted_at, id_document_url, identity_document_type, identity_document_number",
+    )
+    .eq("id", sellerId)
+    .maybeSingle();
+
+  if (applicationError || !application) {
+    throw new Error("Couldn't load the seller application.");
+  }
+
+  if (
+    !application.application_submitted_at ||
+    !application.id_document_url ||
+    !application.identity_document_type ||
+    !application.identity_document_number
+  ) {
+    throw new Error(
+      "This seller has not completed and submitted the identity application.",
+    );
+  }
+
   const { error } = await supabase
     .from("sellers")
     .update({

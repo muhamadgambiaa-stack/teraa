@@ -23,7 +23,8 @@ export default async function AdminHomePage() {
         count: "exact",
         head: true,
       })
-      .eq("verification_status", "pending"),
+      .eq("verification_status", "pending")
+      .not("application_submitted_at", "is", null),
 
     supabase
       .from("reports")
@@ -286,7 +287,7 @@ function AdminLink({
         <p className="text-xs text-gray-500 mt-0.5">{description}</p>
       </div>
 
-      <span className="text-gray-400">→</span>
+      <span className="text-gray-400">â†’</span>
     </Link>
   );
 }

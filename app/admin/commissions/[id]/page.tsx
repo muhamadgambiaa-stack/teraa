@@ -165,7 +165,7 @@ export default async function AdminCommissionDetailPage({
               name="instructions"
               required
               minLength={5}
-              maxLength={2000}
+              maxLength={5000}
               rows={5}
               placeholder="Enter the Wave number, account name and payment reference instructions."
               className="w-full rounded-lg border p-3 text-sm mt-2"
