@@ -31,6 +31,8 @@ export default async function AdminSellerDetailPage({
       `
       id,
       business_name,
+      legal_name,
+      document_sha256,
       id_document_url,
       verification_status,
       account_status,
@@ -578,4 +580,5 @@ function Stat({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+
 
