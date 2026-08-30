@@ -104,7 +104,7 @@ export default function LoginPage() {
             className="w-full rounded-lg py-2 text-white text-sm font-medium disabled:opacity-50"
             style={{ background: "var(--indigo)" }}
           >
-            {loading ? "Logging inâ€¦" : "Log in"}
+            {loading ? "Logging in..." : "Log in"}
           </button>
         </form>
 
@@ -121,6 +121,17 @@ export default function LoginPage() {
           >
             Sign up
           </Link>
+        </p>
+
+        <p className="text-xs text-center mt-4 text-gray-500">
+          Need help? Email{" "}
+          <a
+            href="mailto:support@getteraa.com"
+            className="underline"
+            style={{ color: "var(--indigo)" }}
+          >
+            support@getteraa.com
+          </a>
         </p>
       </div>
     </main>
