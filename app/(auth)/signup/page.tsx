@@ -90,8 +90,16 @@ export default function SignupPage() {
       return;
     }
 
-    if (password.length < 8) {
-      setMessage("Password must be at least 8 characters.");
+    if (
+      password.length < 10 ||
+      !/[a-z]/.test(password) ||
+      !/[A-Z]/.test(password) ||
+      !/[0-9]/.test(password) ||
+      !/[^A-Za-z0-9]/.test(password)
+    ) {
+      setMessage(
+        "Password must contain at least 10 characters, including uppercase, lowercase, a number and a symbol.",
+      );
 
       return;
     }
@@ -308,7 +316,7 @@ export default function SignupPage() {
             <input
               type="password"
               required
-              minLength={8}
+              minLength={10}
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -318,7 +326,7 @@ export default function SignupPage() {
               }}
             />
 
-            <p className="text-xs text-gray-500 mt-1">At least 8 characters.</p>
+            <p className="text-xs text-gray-500 mt-1">At least 10 characters with uppercase, lowercase, a number and a symbol.</p>
           </div>
 
           {/* CONFIRM PASSWORD */}
