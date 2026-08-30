@@ -255,7 +255,7 @@ export default function VerifyPage() {
                   background: "#fbfaf7",
                 }}
               >
-                <p className="text-xs font-medium">ðŸ“„ {file.name}</p>
+                <p className="text-xs font-medium">File: {file.name}</p>
 
                 <p className="text-[11px] text-gray-500 mt-1">
                   Ready to submit for review.
@@ -288,10 +288,7 @@ export default function VerifyPage() {
           </form>
         </div>
 
-        <p className="text-xs text-gray-500 mt-4 leading-5">
-          ðŸ”’ Your verification document is stored privately and is only
-          available to you and authorized Teraa administrators.
-        </p>
+        <p className="text-xs text-gray-500 mt-4 leading-5">Your verification document is stored privately and is only available to you and authorized Teraa administrators.</p>
       </main>
     </>
   );
