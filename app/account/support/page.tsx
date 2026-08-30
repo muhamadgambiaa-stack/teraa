@@ -70,6 +70,25 @@ export default async function SupportPage() {
           </Link>
         </div>
 
+        <div
+          className="rounded-xl border bg-white p-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+          style={{ borderColor: "var(--sand)" }}
+        >
+          <div>
+            <p className="text-sm font-medium">Email support</p>
+            <p className="text-xs text-gray-500 mt-1">
+              You can also contact the Teraa team directly by email.
+            </p>
+          </div>
+
+          <a
+            href="mailto:support@getteraa.com"
+            className="text-sm font-medium underline break-all"
+            style={{ color: "var(--indigo)" }}
+          >
+            support@getteraa.com
+          </a>
+        </div>
         {!threads || threads.length === 0 ? (
           <div
             className="rounded-xl border bg-white p-8 text-center"
