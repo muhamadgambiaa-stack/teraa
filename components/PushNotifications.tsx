@@ -9,6 +9,7 @@ function urlBase64ToUint8Array(base64String: string) {
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
 
   const rawData = window.atob(base64);
+
   return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 }
 
@@ -16,23 +17,6 @@ export function PushNotifications() {
   const [supported, setSupported] = useState(false);
   const [permission, setPermission] =
     useState<NotificationPermission>("default");
-
-  useEffect(() => {
-    const canUseNotifications =
-      "serviceWorker" in navigator &&
-      "PushManager" in window &&
-      "Notification" in window;
-
-    setSupported(canUseNotifications);
-
-    if (canUseNotifications) {
-      setPermission(Notification.permission);
-
-      navigator.serviceWorker.register("/sw.js").catch((error) => {
-        console.error("Service worker registration failed:", error);
-      });
-    }
-  }, []);
 
   async function saveSubscription(subscription: PushSubscription) {
     const supabase = createClient();
@@ -43,7 +27,7 @@ export function PushNotifications() {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      console.error("User not logged in.");
+      console.log("Push subscription waiting for login.");
       return;
     }
 
@@ -75,6 +59,64 @@ export function PushNotifications() {
     console.log("Push subscription saved.");
   }
 
+  async function createAndSaveSubscription(
+    registration: ServiceWorkerRegistration,
+  ) {
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+    if (!vapidPublicKey) {
+      console.error("Missing VAPID public key.");
+      return;
+    }
+
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+    }
+
+    await saveSubscription(subscription);
+  }
+
+  useEffect(() => {
+    async function setupPush() {
+      const canUseNotifications =
+        "serviceWorker" in navigator &&
+        "PushManager" in window &&
+        "Notification" in window;
+
+      setSupported(canUseNotifications);
+
+      if (!canUseNotifications) {
+        return;
+      }
+
+      const currentPermission = Notification.permission;
+
+      setPermission(currentPermission);
+
+      try {
+        const registration = await navigator.serviceWorker.register("/sw.js");
+
+        await navigator.serviceWorker.ready;
+
+        // Important:
+        // If permission was already granted before this update,
+        // create and save the subscription automatically.
+        if (currentPermission === "granted") {
+          await createAndSaveSubscription(registration);
+        }
+      } catch (error) {
+        console.error("Push notification setup failed:", error);
+      }
+    }
+
+    setupPush();
+  }, []);
+
   async function enableNotifications() {
     try {
       const registration = await navigator.serviceWorker.register("/sw.js");
@@ -89,23 +131,7 @@ export function PushNotifications() {
         return;
       }
 
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-
-      if (!vapidPublicKey) {
-        console.error("Missing VAPID public key.");
-        return;
-      }
-
-      let subscription = await registration.pushManager.getSubscription();
-
-      if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-        });
-      }
-
-      await saveSubscription(subscription);
+      await createAndSaveSubscription(registration);
 
       await registration.showNotification("Teraa notifications enabled", {
         body: "You'll receive messages, orders and important Teraa updates here.",
@@ -120,11 +146,7 @@ export function PushNotifications() {
     }
   }
 
-  if (!supported || permission === "granted") {
-    return null;
-  }
-
-  if (permission === "denied") {
+  if (!supported || permission === "granted" || permission === "denied") {
     return null;
   }
 
