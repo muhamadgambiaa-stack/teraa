@@ -60,6 +60,14 @@ export async function POST(request: Request) {
   const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
   const vapidSubject = process.env.VAPID_SUBJECT;
 
+  console.error("Push configuration status", {
+    NEXT_PUBLIC_SUPABASE_URL: Boolean(supabaseUrl),
+    SUPABASE_SERVICE_ROLE_KEY: Boolean(serviceRoleKey),
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: Boolean(vapidPublicKey),
+    VAPID_PRIVATE_KEY: Boolean(vapidPrivateKey),
+    VAPID_SUBJECT: Boolean(vapidSubject),
+  });
+
   if (
     !supabaseUrl ||
     !serviceRoleKey ||
