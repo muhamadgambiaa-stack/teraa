@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireAdmin } from "@/lib/require-admin";
@@ -63,6 +63,21 @@ export default async function AdminSellerDetailPage({
     .eq("id", seller.id)
     .maybeSingle();
 
+  const { data: matchingDocuments } = seller.document_sha256
+    ? await supabase
+        .from("sellers")
+        .select(`
+          id,
+          business_name,
+          legal_name,
+          verification_status,
+          account_status,
+          created_at
+        `)
+        .eq("document_sha256", seller.document_sha256)
+        .neq("id", seller.id)
+        .limit(10)
+    : { data: [] };
   const [productResult, orderResult, reportResult] = await Promise.all([
     supabase
       .from("products")
@@ -117,7 +132,7 @@ export default async function AdminSellerDetailPage({
           href="/admin/sellers"
           className="text-xs text-gray-500 hover:underline"
         >
-          ← All sellers
+          â† All sellers
         </Link>
 
         <div className="flex items-start justify-between flex-wrap gap-4 mt-3 mb-6">
@@ -137,9 +152,9 @@ export default async function AdminSellerDetailPage({
               <p className="text-sm text-gray-500 mt-1">
                 {profile.full_name}
 
-                {profile.city ? ` · ${profile.city}` : ""}
+                {profile.city ? ` Â· ${profile.city}` : ""}
 
-                {profile.phone_number ? ` · ${profile.phone_number}` : ""}
+                {profile.phone_number ? ` Â· ${profile.phone_number}` : ""}
               </p>
             )}
           </div>
@@ -155,6 +170,55 @@ export default async function AdminSellerDetailPage({
           </div>
         </div>
 
+        {(matchingDocuments ?? []).length > 0 && (
+          <section
+            className="mb-6 rounded-xl border p-5"
+            style={{
+              borderColor: "var(--clay)",
+              background: "#fff5f5",
+            }}
+          >
+            <p className="text-sm font-bold text-red-700">
+              Exact identity document reuse detected
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-red-600">
+              The exact same uploaded file was submitted by another seller
+              account. Review both accounts manually before approving,
+              suspending, or banning anyone.
+            </p>
+
+            <div className="mt-4 space-y-2">
+              {(matchingDocuments ?? []).map((match) => (
+                <Link
+                  key={match.id}
+                  href={`/admin/sellers/${match.id}`}
+                  className="block rounded-lg border bg-white p-3"
+                  style={{ borderColor: "#efb4b4" }}
+                >
+                  <p className="text-sm font-semibold">
+                    {match.business_name}
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    {match.legal_name || "Legal name unavailable"}
+                    {" · "}
+                    Verification: {match.verification_status}
+                    {" · "}
+                    Account: {match.account_status}
+                  </p>
+
+                  <p
+                    className="mt-2 text-xs font-medium"
+                    style={{ color: "var(--indigo)" }}
+                  >
+                    Review matching seller →
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
         <div className="grid sm:grid-cols-3 gap-3 mb-8">
           <Stat label="Listings" value={products.length} />
 
@@ -434,7 +498,7 @@ export default async function AdminSellerDetailPage({
 
                     <p className="text-xs text-gray-500">
                       GMD {Number(product.price).toLocaleString()}
-                      {" · "}
+                      {" Â· "}
                       Stock {product.stock_quantity}
                     </p>
                   </div>
@@ -461,7 +525,7 @@ export default async function AdminSellerDetailPage({
 
                   <p className="text-xs text-gray-500">
                     {order.status}
-                    {" · "}
+                    {" Â· "}
                     Payment: {order.payment_status}
                   </p>
                 </div>
@@ -514,3 +578,4 @@ function Stat({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+
