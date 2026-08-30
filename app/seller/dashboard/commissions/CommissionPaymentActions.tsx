@@ -20,10 +20,13 @@ export function CommissionPaymentActions({
 
   const [pending, startTransition] = useTransition();
 
-  const canAct =
+  const canRequestDetails =
     status === "awaiting_payment" || status === "rejected";
 
-  if (!canAct) {
+  const canUploadProof =
+    canRequestDetails || status === "overdue";
+
+  if (!canRequestDetails && !canUploadProof) {
     return null;
   }
 
@@ -45,19 +48,22 @@ export function CommissionPaymentActions({
 
   return (
     <div className="mt-4 space-y-3">
-      <button
-        type="button"
-        disabled={pending}
-        onClick={requestDetails}
-        className="rounded-full border px-4 py-2 text-xs font-medium disabled:opacity-50"
-        style={{
-          borderColor: "var(--indigo)",
-          color: "var(--indigo)",
-        }}
-      >
-        Request payment details
-      </button>
+      {canRequestDetails && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={requestDetails}
+          className="rounded-full border px-4 py-2 text-xs font-medium disabled:opacity-50"
+          style={{
+            borderColor: "var(--indigo)",
+            color: "var(--indigo)",
+          }}
+        >
+          Request payment details
+        </button>
+      )}
 
+      {canUploadProof && (
       <form action={submitProof} className="space-y-2">
         <input
           type="hidden"
@@ -83,6 +89,7 @@ export function CommissionPaymentActions({
           {pending ? "Processing..." : "Upload payment proof"}
         </button>
       </form>
+      )}
 
       {result?.success && (
         <p className="text-xs text-green-700">{result.success}</p>
