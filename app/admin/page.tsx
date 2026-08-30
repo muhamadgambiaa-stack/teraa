@@ -198,6 +198,12 @@ export default async function AdminHomePage() {
             />
 
             <AdminLink
+              href="/admin/commissions"
+              title="Commissions"
+              description="Payment instructions, proof review and overdue balances"
+            />
+
+            <AdminLink
               href="/admin/users"
               title="Users"
               description="Manage buyers and general user accounts"
