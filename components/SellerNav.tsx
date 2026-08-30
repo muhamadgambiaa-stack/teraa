@@ -1,9 +1,14 @@
 import Link from "next/link";
 
-export function SellerNav({ active }: { active: "listings" | "orders" | "settings" }) {
+export function SellerNav({ active }: { active: "listings" | "orders" | "commissions" | "settings" }) {
   const tabs = [
     { key: "listings", label: "Listings", href: "/seller/dashboard" },
     { key: "orders", label: "Orders", href: "/seller/dashboard/orders" },
+    {
+      key: "commissions",
+      label: "Commissions",
+      href: "/seller/dashboard/commissions",
+    },
     { key: "settings", label: "Settings", href: "/seller/dashboard/settings" },
   ] as const;
 
