@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 
 import "./globals.css";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
         <InstallTeraa />
         <PushNotifications />
         <MobileBottomNav />
+        <Analytics />
       </body>
     </html>
   );
