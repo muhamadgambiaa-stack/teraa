@@ -19,6 +19,8 @@ export default function SellerSettingsPage() {
   const [businessName, setBusinessName] = useState("");
   const [shopDescription, setShopDescription] = useState("");
   const [deliveryRegions, setDeliveryRegions] = useState<string[]>([]);
+  const [deliveryAreas, setDeliveryAreas] = useState<Record<string, string[]>>({});
+  const [areaDrafts, setAreaDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -50,17 +52,31 @@ export default function SellerSettingsPage() {
         return;
       }
       setSellerId(user.id);
-      const { data } = await supabase
-        .from("sellers")
-        .select("business_name, shop_description, delivery_regions")
-        .eq("id", user.id)
-        .single();
+      const [{ data }, { data: areaRows }] = await Promise.all([
+        supabase
+          .from("sellers")
+          .select("business_name, shop_description, delivery_regions")
+          .eq("id", user.id)
+          .single(),
+        supabase
+          .from("seller_delivery_areas")
+          .select("region, area")
+          .eq("seller_id", user.id)
+          .order("region")
+          .order("area"),
+      ]);
 
       if (data) {
         setBusinessName(data.business_name ?? "");
         setShopDescription(data.shop_description ?? "");
         setDeliveryRegions(data.delivery_regions ?? []);
       }
+
+      const groupedAreas: Record<string, string[]> = {};
+      for (const row of areaRows ?? []) {
+        groupedAreas[row.region] = [...(groupedAreas[row.region] ?? []), row.area];
+      }
+      setDeliveryAreas(groupedAreas);
       await loadMethods(user.id);
       setLoading(false);
     })();
@@ -79,6 +95,30 @@ export default function SellerSettingsPage() {
       return;
     }
 
+    const areasToSave = { ...deliveryAreas };
+
+    for (const region of deliveryRegions) {
+      const draft = (areaDrafts[region] ?? "").trim();
+      const savedAreas = areasToSave[region] ?? [];
+
+      if (
+        draft.length >= 2 &&
+        !savedAreas.some((area) => area.toLowerCase() === draft.toLowerCase())
+      ) {
+        areasToSave[region] = [...savedAreas, draft];
+      }
+    }
+
+    const regionWithoutAreas = deliveryRegions.find(
+      (region) => !(areasToSave[region]?.length),
+    );
+
+    if (regionWithoutAreas) {
+      setSaving(false);
+      setError(`Add at least one town or area inside ${regionWithoutAreas}.`);
+      return;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -87,19 +127,66 @@ export default function SellerSettingsPage() {
       .update({
         business_name: businessName,
         shop_description: shopDescription,
-        delivery_regions: deliveryRegions,
       })
       .eq("id", user.id);
 
-    setSaving(false);
-
     if (updateError) {
+      setSaving(false);
       setError(updateError.message);
       return;
     }
 
+    const coverage = deliveryRegions.flatMap((region) =>
+      (areasToSave[region] ?? []).map((area) => ({ region, area })),
+    );
+
+    const { error: coverageError } = await supabase.rpc(
+      "set_seller_delivery_areas",
+      { p_coverage: coverage },
+    );
+
+    setSaving(false);
+
+    if (coverageError) {
+      setError(coverageError.message);
+      return;
+    }
+
+    setDeliveryAreas(areasToSave);
+    setAreaDrafts({});
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  }
+
+  function addDeliveryArea(region: string) {
+    const area = (areaDrafts[region] ?? "").trim();
+
+    if (area.length < 2) {
+      setError(`Enter a town or area inside ${region}.`);
+      return;
+    }
+
+    if ((deliveryAreas[region] ?? []).some(
+      (item) => item.toLowerCase() === area.toLowerCase(),
+    )) {
+      setError(`${area} is already added under ${region}.`);
+      return;
+    }
+
+    setDeliveryAreas((current) => ({
+      ...current,
+      [region]: [...(current[region] ?? []), area],
+    }));
+    setAreaDrafts((current) => ({ ...current, [region]: "" }));
+    setError(null);
+  }
+
+  function removeDeliveryArea(region: string, area: string) {
+    setDeliveryAreas((current) => ({
+      ...current,
+      [region]: (current[region] ?? []).filter((item) => item !== area),
+    }));
   }
 
   async function handleAddMethod(e: React.FormEvent) {
@@ -226,29 +313,94 @@ export default function SellerSettingsPage() {
                   Where can you deliver?
                 </legend>
                 <p className="text-xs text-gray-500 mb-3">
-                  Choose every region you can serve. Buyers will only be able to order to these regions.
+                  Choose a region, then add the towns or areas you can serve inside it.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {GAMBIA_DELIVERY_REGIONS.map((region) => (
-                    <label
-                      key={region}
-                      className="flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer"
-                      style={{ borderColor: "var(--sand)" }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={deliveryRegions.includes(region)}
-                        onChange={(event) => {
-                          setDeliveryRegions((current) =>
-                            event.target.checked
-                              ? [...current, region]
-                              : current.filter((item) => item !== region),
-                          );
-                        }}
-                      />
-                      <span className="text-sm">{region}</span>
-                    </label>
-                  ))}
+                <div className="space-y-3">
+                  {GAMBIA_DELIVERY_REGIONS.map((region) => {
+                    const selected = deliveryRegions.includes(region);
+
+                    return (
+                      <div
+                        key={region}
+                        className="rounded-lg border p-3"
+                        style={{ borderColor: "var(--sand)" }}
+                      >
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={(event) => {
+                              if (event.target.checked) {
+                                setDeliveryRegions((current) => [...current, region]);
+                              } else {
+                                setDeliveryRegions((current) =>
+                                  current.filter((item) => item !== region),
+                                );
+                                setDeliveryAreas((current) => {
+                                  const next = { ...current };
+                                  delete next[region];
+                                  return next;
+                                });
+                              }
+                            }}
+                          />
+                          <span className="text-sm font-medium">{region}</span>
+                        </label>
+
+                        {selected && (
+                          <div className="mt-3 pl-7">
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {(deliveryAreas[region] ?? []).map((area) => (
+                                <span
+                                  key={area}
+                                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs"
+                                  style={{ background: "#eef1f5", color: "var(--indigo)" }}
+                                >
+                                  {area}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeDeliveryArea(region, area)}
+                                    aria-label={`Remove ${area}`}
+                                    className="font-bold"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <input
+                                value={areaDrafts[region] ?? ""}
+                                onChange={(event) => setAreaDrafts((current) => ({
+                                  ...current,
+                                  [region]: event.target.value,
+                                }))}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    addDeliveryArea(region);
+                                  }
+                                }}
+                                maxLength={100}
+                                placeholder="Town or area"
+                                className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none"
+                                style={{ borderColor: "var(--sand)" }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => addDeliveryArea(region)}
+                                className="rounded-lg px-3 py-2 text-sm font-medium text-white"
+                                style={{ background: "var(--indigo)" }}
+                              >
+                                Add
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </fieldset>
 
@@ -400,4 +552,3 @@ export default function SellerSettingsPage() {
     </>
   );
 }
-

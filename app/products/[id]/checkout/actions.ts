@@ -25,9 +25,21 @@ export async function createOrder(formData: FormData) {
 
   const paymentMethodValue = String(formData.get("paymentMethod") ?? "").trim();
 
-  const deliveryRegion = String(formData.get("deliveryRegion") ?? "").trim();
+  const deliveryCoverage = String(formData.get("deliveryCoverage") ?? "").trim();
 
-  const deliveryTown = String(formData.get("deliveryTown") ?? "").trim();
+  let deliveryRegion = "";
+  let deliveryTown = "";
+
+  try {
+    const parsed = JSON.parse(deliveryCoverage) as {
+      region?: unknown;
+      area?: unknown;
+    };
+    deliveryRegion = typeof parsed.region === "string" ? parsed.region.trim() : "";
+    deliveryTown = typeof parsed.area === "string" ? parsed.area.trim() : "";
+  } catch {
+    // Invalid or manipulated form value is handled by the validation below.
+  }
 
   const deliveryAddress = String(formData.get("deliveryAddress") ?? "").trim();
 
@@ -52,12 +64,8 @@ export async function createOrder(formData: FormData) {
     redirect(`/products/${productId}/checkout?error=missing_payment`);
   }
 
-  if (!deliveryRegion) {
-    redirect(`/products/${productId}/checkout?error=missing_region`);
-  }
-
-  if (!deliveryTown) {
-    redirect(`/products/${productId}/checkout?error=missing_town`);
+  if (!deliveryRegion || !deliveryTown) {
+    redirect(`/products/${productId}/checkout?error=missing_area`);
   }
 
   if (!deliveryAddress) {
@@ -117,7 +125,7 @@ export async function createOrder(formData: FormData) {
       redirect("/account/status");
     }
 
-    if (message.includes("seller does not deliver to the selected region")) {
+    if (message.includes("seller does not deliver")) {
       redirect(`/products/${productId}/checkout?error=delivery_unavailable`);
     }
 

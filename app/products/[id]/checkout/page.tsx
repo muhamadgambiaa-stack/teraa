@@ -63,12 +63,13 @@ export default async function CheckoutPage({
     notFound();
   }
 
-  const [{ data: seller }, { data: buyer }] = await Promise.all([
+  const [{ data: coverageRows }, { data: buyer }] = await Promise.all([
     supabase
-      .from("sellers")
-      .select("delivery_regions")
-      .eq("id", product.seller_id)
-      .maybeSingle(),
+      .from("seller_delivery_areas")
+      .select("region, area")
+      .eq("seller_id", product.seller_id)
+      .order("region")
+      .order("area"),
     supabase
       .from("users")
       .select("phone_number")
@@ -76,7 +77,10 @@ export default async function CheckoutPage({
       .maybeSingle(),
   ]);
 
-  const deliveryRegions = (seller?.delivery_regions ?? []) as string[];
+  const deliveryCoverage = (coverageRows ?? []) as {
+    region: string;
+    area: string;
+  }[];
   const buyerPhone = buyer?.phone_number ?? "";
 
   const photos =
@@ -98,9 +102,7 @@ export default async function CheckoutPage({
     product.status !== "active" || product.stock_quantity === 0;
 
   const errorMessages: Record<string, string> = {
-    missing_region: "Choose a delivery region to continue.",
-
-    missing_town: "Enter the town or area for delivery.",
+    missing_area: "Choose a delivery area to continue.",
 
     missing_address: "Enter the full delivery address.",
 
@@ -201,7 +203,7 @@ export default async function CheckoutPage({
               Back to listing
             </Link>
           </div>
-        ) : deliveryRegions.length === 0 ? (
+        ) : deliveryCoverage.length === 0 ? (
           <div
             className="rounded-xl border p-6 text-center text-sm bg-white"
             style={{ borderColor: "var(--sand)" }}
@@ -353,11 +355,11 @@ export default async function CheckoutPage({
 
             <div>
               <label className="text-sm font-medium block mb-1">
-                Delivery region
+                Delivery area
               </label>
 
               <select
-                name="deliveryRegion"
+                name="deliveryCoverage"
                 required
                 defaultValue=""
                 className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none bg-white"
@@ -365,27 +367,25 @@ export default async function CheckoutPage({
                   borderColor: "var(--sand)",
                 }}
               >
-                <option value="">Select a region</option>
+                <option value="">Select where you want delivery</option>
 
-                {deliveryRegions.map((region) => (
-                  <option key={region} value={region}>
-                    {region}
-                  </option>
-                ))}
+                {Array.from(new Set(deliveryCoverage.map((item) => item.region))).map(
+                  (region) => (
+                    <optgroup key={region} label={region}>
+                      {deliveryCoverage
+                        .filter((item) => item.region === region)
+                        .map((item) => (
+                          <option
+                            key={`${item.region}:${item.area}`}
+                            value={JSON.stringify(item)}
+                          >
+                            {item.area}
+                          </option>
+                        ))}
+                    </optgroup>
+                  ),
+                )}
               </select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium block mb-1">Town or area</label>
-              <input
-                name="deliveryTown"
-                required
-                maxLength={120}
-                autoComplete="address-level2"
-                placeholder="For example: Serrekunda, Bakau, Soma"
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
-                style={{ borderColor: "var(--sand)" }}
-              />
             </div>
 
             <div>

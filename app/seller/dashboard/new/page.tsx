@@ -14,17 +14,23 @@ export default async function NewListingPage() {
 
   if (!user) redirect("/login");
 
-  const { data: seller } = await supabase
-    .from("sellers")
-    .select("verification_status, delivery_regions")
-    .eq("id", user.id)
-    .single();
+  const [{ data: seller }, { count: coverageCount }] = await Promise.all([
+    supabase
+      .from("sellers")
+      .select("verification_status")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("seller_delivery_areas")
+      .select("seller_id", { count: "exact", head: true })
+      .eq("seller_id", user.id),
+  ]);
 
   if (!seller || seller.verification_status !== "approved") {
     redirect("/seller/dashboard");
   }
 
-  if (!seller.delivery_regions?.length) {
+  if (!coverageCount) {
     redirect("/seller/dashboard/settings");
   }
 
