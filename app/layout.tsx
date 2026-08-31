@@ -7,10 +7,14 @@ import { InstallTeraa } from "@/components/InstallTeraa";
 import { PushNotifications } from "@/components/PushNotifications";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.getteraa.com"),
   title: "Teraa: Buy & sell, safely",
   description:
     "Teraa is The Gambia's marketplace for buying and selling. Discover products from verified sellers and shop with confidence.",
   applicationName: "Teraa",
+  alternates: {
+    canonical: "/",
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
