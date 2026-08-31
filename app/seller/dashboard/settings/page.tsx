@@ -5,7 +5,11 @@ import { createClient } from "@/lib/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SellerNav } from "@/components/SellerNav";
 import { useRouter } from "next/navigation";
-import type { PaymentMethodType, SellerPaymentMethod } from "@/types/database";
+import {
+  GAMBIA_DELIVERY_REGIONS,
+  type PaymentMethodType,
+  type SellerPaymentMethod,
+} from "@/types/database";
 
 export default function SellerSettingsPage() {
   const supabase = createClient();
@@ -14,6 +18,7 @@ export default function SellerSettingsPage() {
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState("");
   const [shopDescription, setShopDescription] = useState("");
+  const [deliveryRegions, setDeliveryRegions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -47,13 +52,14 @@ export default function SellerSettingsPage() {
       setSellerId(user.id);
       const { data } = await supabase
         .from("sellers")
-        .select("business_name, shop_description")
+        .select("business_name, shop_description, delivery_regions")
         .eq("id", user.id)
         .single();
 
       if (data) {
         setBusinessName(data.business_name ?? "");
         setShopDescription(data.shop_description ?? "");
+        setDeliveryRegions(data.delivery_regions ?? []);
       }
       await loadMethods(user.id);
       setLoading(false);
@@ -67,6 +73,12 @@ export default function SellerSettingsPage() {
     setSaved(false);
     setError(null);
 
+    if (deliveryRegions.length === 0) {
+      setSaving(false);
+      setError("Choose at least one region where you can deliver.");
+      return;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -75,6 +87,7 @@ export default function SellerSettingsPage() {
       .update({
         business_name: businessName,
         shop_description: shopDescription,
+        delivery_regions: deliveryRegions,
       })
       .eq("id", user.id);
 
@@ -208,6 +221,37 @@ export default function SellerSettingsPage() {
                 />
               </div>
 
+              <fieldset>
+                <legend className="text-sm font-medium mb-1">
+                  Where can you deliver?
+                </legend>
+                <p className="text-xs text-gray-500 mb-3">
+                  Choose every region you can serve. Buyers will only be able to order to these regions.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {GAMBIA_DELIVERY_REGIONS.map((region) => (
+                    <label
+                      key={region}
+                      className="flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer"
+                      style={{ borderColor: "var(--sand)" }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={deliveryRegions.includes(region)}
+                        onChange={(event) => {
+                          setDeliveryRegions((current) =>
+                            event.target.checked
+                              ? [...current, region]
+                              : current.filter((item) => item !== region),
+                          );
+                        }}
+                      />
+                      <span className="text-sm">{region}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
               {error && <p className="text-sm text-red-600">{error}</p>}
 
               <button
@@ -216,9 +260,9 @@ export default function SellerSettingsPage() {
                 className="rounded-full px-6 py-2.5 text-white text-sm font-medium disabled:opacity-50"
                 style={{ background: "var(--indigo)" }}
               >
-                {saving ? "Savingâ€¦" : "Save changes"}
+                {saving ? "Saving..." : "Save changes"}
               </button>
-              {saved && <span className="ml-3 text-sm" style={{ color: "var(--leaf)" }}>Saved âœ“</span>}
+              {saved && <span className="ml-3 text-sm" style={{ color: "var(--leaf)" }}>Saved</span>}
             </form>
 
             <div>
@@ -356,5 +400,4 @@ export default function SellerSettingsPage() {
     </>
   );
 }
-
 

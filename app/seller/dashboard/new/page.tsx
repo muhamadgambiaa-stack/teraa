@@ -16,12 +16,16 @@ export default async function NewListingPage() {
 
   const { data: seller } = await supabase
     .from("sellers")
-    .select("verification_status")
+    .select("verification_status, delivery_regions")
     .eq("id", user.id)
     .single();
 
   if (!seller || seller.verification_status !== "approved") {
     redirect("/seller/dashboard");
+  }
+
+  if (!seller.delivery_regions?.length) {
+    redirect("/seller/dashboard/settings");
   }
 
   return (

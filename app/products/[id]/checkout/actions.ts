@@ -25,7 +25,15 @@ export async function createOrder(formData: FormData) {
 
   const paymentMethodValue = String(formData.get("paymentMethod") ?? "").trim();
 
-  const deliveryCity = String(formData.get("deliveryCity") ?? "").trim();
+  const deliveryRegion = String(formData.get("deliveryRegion") ?? "").trim();
+
+  const deliveryTown = String(formData.get("deliveryTown") ?? "").trim();
+
+  const deliveryAddress = String(formData.get("deliveryAddress") ?? "").trim();
+
+  const deliveryPhone = String(formData.get("deliveryPhone") ?? "").trim();
+
+  const deliveryLandmark = String(formData.get("deliveryLandmark") ?? "").trim();
 
   const deliveryNotes = String(formData.get("deliveryNotes") ?? "").trim();
 
@@ -44,8 +52,20 @@ export async function createOrder(formData: FormData) {
     redirect(`/products/${productId}/checkout?error=missing_payment`);
   }
 
-  if (!deliveryCity) {
-    redirect(`/products/${productId}/checkout?error=missing_city`);
+  if (!deliveryRegion) {
+    redirect(`/products/${productId}/checkout?error=missing_region`);
+  }
+
+  if (!deliveryTown) {
+    redirect(`/products/${productId}/checkout?error=missing_town`);
+  }
+
+  if (!deliveryAddress) {
+    redirect(`/products/${productId}/checkout?error=missing_address`);
+  }
+
+  if (!deliveryPhone) {
+    redirect(`/products/${productId}/checkout?error=missing_phone`);
   }
 
   /*
@@ -61,17 +81,21 @@ export async function createOrder(formData: FormData) {
    * - atomic stock reduction
    */
   const { data: orderId, error } = await supabase.rpc(
-    "create_marketplace_order",
+    "create_marketplace_order_v2",
     {
       p_product_id: productId,
 
       p_quantity: quantity,
 
-      p_payment_method: "cod",
+      p_delivery_region: deliveryRegion,
 
-      p_seller_payment_method_id: null,
+      p_delivery_town: deliveryTown,
 
-      p_delivery_city: deliveryCity,
+      p_delivery_address: deliveryAddress,
+
+      p_delivery_phone: deliveryPhone,
+
+      p_delivery_landmark: deliveryLandmark || null,
 
       p_delivery_notes: deliveryNotes || null,
     },
@@ -91,6 +115,10 @@ export async function createOrder(formData: FormData) {
 
     if (message.includes("buyer account is not active")) {
       redirect("/account/status");
+    }
+
+    if (message.includes("seller does not deliver to the selected region")) {
+      redirect(`/products/${productId}/checkout?error=delivery_unavailable`);
     }
 
     if (

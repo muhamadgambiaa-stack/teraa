@@ -70,7 +70,7 @@ export async function GET(request: Request) {
 
   /*
    * Google gives us authentication information, but Teraa still
-   * requires phone, city and legal consent.
+   * requires a phone number and legal consent.
    *
    * New Google users therefore finish their profile on onboarding.
    */
@@ -101,9 +101,6 @@ export async function GET(request: Request) {
       ? metadata.phone_number.trim()
       : "";
 
-  const city =
-    typeof metadata.city === "string" ? metadata.city.trim() : "";
-
   if (!fullName || !phoneNumber) {
     return NextResponse.redirect(`${origin}/onboarding`);
   }
@@ -112,7 +109,6 @@ export async function GET(request: Request) {
     id: user.id,
     full_name: fullName,
     phone_number: phoneNumber,
-    city,
     role: "buyer",
   });
 

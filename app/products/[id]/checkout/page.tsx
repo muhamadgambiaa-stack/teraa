@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
-import { GAMBIA_CITIES } from "@/types/database";
 
 import { createOrder } from "./actions";
 
@@ -64,6 +63,22 @@ export default async function CheckoutPage({
     notFound();
   }
 
+  const [{ data: seller }, { data: buyer }] = await Promise.all([
+    supabase
+      .from("sellers")
+      .select("delivery_regions")
+      .eq("id", product.seller_id)
+      .maybeSingle(),
+    supabase
+      .from("users")
+      .select("phone_number")
+      .eq("id", user.id)
+      .maybeSingle(),
+  ]);
+
+  const deliveryRegions = (seller?.delivery_regions ?? []) as string[];
+  const buyerPhone = buyer?.phone_number ?? "";
+
   const photos =
     (
       product as {
@@ -83,7 +98,15 @@ export default async function CheckoutPage({
     product.status !== "active" || product.stock_quantity === 0;
 
   const errorMessages: Record<string, string> = {
-    missing_city: "Choose a delivery city to continue.",
+    missing_region: "Choose a delivery region to continue.",
+
+    missing_town: "Enter the town or area for delivery.",
+
+    missing_address: "Enter the full delivery address.",
+
+    missing_phone: "Enter a phone number for delivery coordination.",
+
+    delivery_unavailable: "This seller does not deliver to that region.",
 
     missing_payment:
       "Cash on delivery is currently the only available payment method.",
@@ -174,6 +197,21 @@ export default async function CheckoutPage({
               style={{
                 color: "var(--indigo)",
               }}
+            >
+              Back to listing
+            </Link>
+          </div>
+        ) : deliveryRegions.length === 0 ? (
+          <div
+            className="rounded-xl border p-6 text-center text-sm bg-white"
+            style={{ borderColor: "var(--sand)" }}
+          >
+            <p className="font-medium mb-2">Delivery is not available for this item yet.</p>
+            <p className="text-gray-500 mb-3">The seller has not added their delivery regions.</p>
+            <Link
+              href={`/products/${product.id}`}
+              className="text-sm underline"
+              style={{ color: "var(--indigo)" }}
             >
               Back to listing
             </Link>
@@ -311,30 +349,85 @@ export default async function CheckoutPage({
               </div>
             </div>
 
-            {/* DELIVERY CITY */}
+            {/* DELIVERY ADDRESS */}
 
             <div>
               <label className="text-sm font-medium block mb-1">
-                Delivery city
+                Delivery region
               </label>
 
               <select
-                name="deliveryCity"
+                name="deliveryRegion"
                 required
-                defaultValue={product.location_city ?? ""}
+                defaultValue=""
                 className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none bg-white"
                 style={{
                   borderColor: "var(--sand)",
                 }}
               >
-                <option value="">Select your city</option>
+                <option value="">Select a region</option>
 
-                {GAMBIA_CITIES.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
+                {deliveryRegions.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">Town or area</label>
+              <input
+                name="deliveryTown"
+                required
+                maxLength={120}
+                autoComplete="address-level2"
+                placeholder="For example: Serrekunda, Bakau, Soma"
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+                style={{ borderColor: "var(--sand)" }}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">Full delivery address</label>
+              <textarea
+                name="deliveryAddress"
+                required
+                rows={3}
+                maxLength={500}
+                autoComplete="street-address"
+                placeholder="Street, neighbourhood, compound or building details"
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none resize-none"
+                style={{ borderColor: "var(--sand)" }}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">Delivery phone number</label>
+              <input
+                name="deliveryPhone"
+                type="tel"
+                required
+                maxLength={40}
+                autoComplete="tel"
+                defaultValue={buyerPhone}
+                placeholder="+220 7XX XXXX"
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+                style={{ borderColor: "var(--sand)" }}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">
+                Nearby landmark <span className="font-normal text-gray-400">(optional)</span>
+              </label>
+              <input
+                name="deliveryLandmark"
+                maxLength={200}
+                placeholder="A school, mosque, shop or other easy-to-find place"
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+                style={{ borderColor: "var(--sand)" }}
+              />
             </div>
 
             {/* NOTES */}
@@ -349,7 +442,7 @@ export default async function CheckoutPage({
                 name="deliveryNotes"
                 rows={3}
                 maxLength={500}
-                placeholder="Landmark, preferred meeting location, delivery instructions..."
+                placeholder="Preferred time or other delivery instructions"
                 className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none resize-none"
                 style={{
                   borderColor: "var(--sand)",

@@ -22,8 +22,6 @@ export default function SignupPage() {
 
   const [phone, setPhone] = useState("");
 
-  const [city, setCity] = useState("");
-
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -53,8 +51,6 @@ export default function SignupPage() {
 
         phone_number: phone.trim(),
 
-        city: city.trim(),
-
         role: "buyer",
       });
 
@@ -75,8 +71,6 @@ export default function SignupPage() {
     const cleanEmail = email.trim().toLowerCase();
 
     const cleanPhone = phone.trim();
-
-    const cleanCity = city.trim();
 
     if (!cleanName) {
       setMessage("Please enter your full name.");
@@ -116,12 +110,6 @@ export default function SignupPage() {
       return;
     }
 
-    if (!cleanCity) {
-      setMessage("Please enter your city.");
-
-      return;
-    }
-
     if (!acceptedTerms) {
       setMessage(
         "Please agree to the Terms of Service and Privacy Policy to create your account.",
@@ -152,8 +140,6 @@ export default function SignupPage() {
             full_name: cleanName,
 
             phone_number: cleanPhone,
-
-            city: cleanCity,
 
             /*
              * Only buyer/seller can come
@@ -374,24 +360,6 @@ export default function SignupPage() {
             </p>
           </div>
 
-          {/* CITY */}
-
-          <div>
-            <label className="text-sm font-medium block mb-1">City</label>
-
-            <input
-              required
-              autoComplete="address-level2"
-              placeholder="Serrekunda, Banjul, Brikama..."
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="w-full rounded-lg border px-3 py-3 text-sm outline-none focus:ring-2"
-              style={{
-                borderColor: "var(--sand)",
-              }}
-            />
-          </div>
-
           {/* TERMS CONSENT */}
 
           <div
@@ -525,4 +493,3 @@ export default function SignupPage() {
     </main>
   );
 }
-

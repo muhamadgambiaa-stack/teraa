@@ -68,6 +68,11 @@ export default async function OrderPage({
       payment_method,
       payment_status,
       delivery_city,
+      delivery_region,
+      delivery_town,
+      delivery_address,
+      delivery_phone,
+      delivery_landmark,
       delivery_notes,
       created_at,
       buyer_id,
@@ -472,7 +477,7 @@ export default async function OrderPage({
                 <p className="text-sm font-medium mb-1">Cash on delivery</p>
 
                 <p className="text-sm text-gray-600">
-                  Pay when your item arrives in {order.delivery_city}. Inspect
+                  Pay when your item arrives in {order.delivery_town ?? order.delivery_city}. Inspect
                   it before paying.
                 </p>
               </div>
@@ -502,7 +507,23 @@ export default async function OrderPage({
             <div>
               <p className="font-medium mb-1">Delivery</p>
 
-              <p className="text-gray-600">{order.delivery_city}</p>
+              <p className="text-gray-600 font-medium">
+                {[order.delivery_town, order.delivery_region]
+                  .filter(Boolean)
+                  .join(", ") || order.delivery_city}
+              </p>
+
+              {order.delivery_address && (
+                <p className="text-gray-600 mt-1 whitespace-pre-wrap">{order.delivery_address}</p>
+              )}
+
+              {order.delivery_landmark && (
+                <p className="text-gray-600 mt-1">Landmark: {order.delivery_landmark}</p>
+              )}
+
+              {order.delivery_phone && (
+                <p className="text-gray-600 mt-1">Phone: {order.delivery_phone}</p>
+              )}
 
               {order.delivery_notes && (
                 <p className="text-gray-600 mt-1">{order.delivery_notes}</p>
@@ -1102,5 +1123,4 @@ function LocationIcon() {
     </svg>
   );
 }
-
 

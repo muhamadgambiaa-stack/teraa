@@ -22,6 +22,17 @@ export const GAMBIA_CITIES = [
   "Gunjur",
   "Soma",
 ] as const;
+
+export const GAMBIA_DELIVERY_REGIONS = [
+  "Banjul",
+  "Kanifing",
+  "Brikama",
+  "Mansakonko",
+  "Kerewan",
+  "Kuntaur",
+  "Janjanbureh",
+  "Basse",
+] as const;
 export type OrderStatus =
   | "placed"
   | "confirmed"
@@ -63,6 +74,7 @@ export interface Seller {
   wave_number: string | null;
   shop_description: string | null;
   shop_banner_url: string | null;
+  delivery_regions: string[];
   rating_avg: number;
   total_sales: number;
   created_at: string;
@@ -104,7 +116,11 @@ export interface Order {
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   delivery_city: string | null;
+  delivery_region: string | null;
+  delivery_town: string | null;
+  delivery_address: string | null;
+  delivery_phone: string | null;
+  delivery_landmark: string | null;
   delivery_notes: string | null;
   created_at: string;
 }
-

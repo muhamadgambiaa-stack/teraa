@@ -15,7 +15,6 @@ export default function OnboardingPage() {
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -71,7 +70,6 @@ export default function OnboardingPage() {
 
     const cleanName = fullName.trim();
     const cleanPhone = phone.trim();
-    const cleanCity = city.trim();
 
     if (!cleanName) {
       setMessage("Please enter your full name.");
@@ -80,11 +78,6 @@ export default function OnboardingPage() {
 
     if (!cleanPhone) {
       setMessage("Please enter your phone number.");
-      return;
-    }
-
-    if (!cleanCity) {
-      setMessage("Please enter your city.");
       return;
     }
 
@@ -140,7 +133,6 @@ export default function OnboardingPage() {
         data: {
           full_name: cleanName,
           phone_number: cleanPhone,
-          city: cleanCity,
           role: "buyer",
           accepted_terms: true,
           terms_version: "2026-08-27",
@@ -155,7 +147,6 @@ export default function OnboardingPage() {
         id: user.id,
         full_name: cleanName,
         phone_number: cleanPhone,
-        city: cleanCity,
         role: "buyer",
       });
 
@@ -254,22 +245,6 @@ export default function OnboardingPage() {
             <p className="text-xs text-gray-500 mt-1">
               Used for delivery coordination.
             </p>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium block mb-1">
-              City
-            </label>
-
-            <input
-              required
-              autoComplete="address-level2"
-              placeholder="Serrekunda, Banjul, Brikama..."
-              value={city}
-              onChange={(event) => setCity(event.target.value)}
-              className="w-full rounded-lg border px-3 py-3 text-sm outline-none focus:ring-2"
-              style={{ borderColor: "var(--sand)" }}
-            />
           </div>
 
           <div

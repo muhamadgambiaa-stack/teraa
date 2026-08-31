@@ -175,6 +175,11 @@ export default async function SellerOrderDetailPage({
       payment_method,
       payment_status,
       delivery_city,
+      delivery_region,
+      delivery_town,
+      delivery_address,
+      delivery_phone,
+      delivery_landmark,
       delivery_notes,
       created_at,
 
@@ -640,7 +645,33 @@ export default async function SellerOrderDetailPage({
             <h2 className="text-sm font-semibold">Delivery</h2>
           </div>
 
-          <p className="text-sm">{order.delivery_city}</p>
+          <p className="text-sm font-medium">
+            {[order.delivery_town, order.delivery_region]
+              .filter(Boolean)
+              .join(", ") || order.delivery_city}
+          </p>
+
+          {order.delivery_address && (
+            <p className="text-sm text-gray-600 mt-2 whitespace-pre-wrap">
+              {order.delivery_address}
+            </p>
+          )}
+
+          {order.delivery_landmark && (
+            <p className="text-sm text-gray-500 mt-2">
+              Landmark: {order.delivery_landmark}
+            </p>
+          )}
+
+          {order.delivery_phone && (
+            <a
+              href={`tel:${order.delivery_phone}`}
+              className="text-sm font-medium mt-2 inline-block hover:underline"
+              style={{ color: "var(--indigo)" }}
+            >
+              Call {order.delivery_phone}
+            </a>
+          )}
 
           {order.delivery_notes && (
             <p className="text-sm text-gray-500 mt-2 whitespace-pre-wrap">

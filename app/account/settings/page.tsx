@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 
 import { SiteHeader } from "@/components/SiteHeader";
 import { createClient } from "@/lib/supabase/client";
-import { GAMBIA_CITIES } from "@/types/database";
 
 export default function AccountSettingsPage() {
   const router = useRouter();
@@ -14,7 +13,6 @@ export default function AccountSettingsPage() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,7 +36,7 @@ export default function AccountSettingsPage() {
 
       const { data, error: profileError } = await supabase
         .from("users")
-        .select("full_name, phone_number, city")
+        .select("full_name, phone_number")
         .eq("id", user.id)
         .single();
 
@@ -53,7 +51,6 @@ export default function AccountSettingsPage() {
       setEmail(user.email ?? "");
       setFullName(data.full_name ?? "");
       setPhone(data.phone_number ?? "");
-      setCity(data.city ?? "");
       setLoading(false);
     }
 
@@ -87,7 +84,6 @@ export default function AccountSettingsPage() {
       .update({
         full_name: fullName.trim(),
         phone_number: phone.trim(),
-        city,
       })
       .eq("id", user.id);
 
@@ -202,28 +198,6 @@ export default function AccountSettingsPage() {
                 className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
                 style={{ borderColor: "var(--sand)" }}
               />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium block mb-1">
-                City
-              </label>
-
-              <select
-                required
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2.5 text-sm bg-white outline-none"
-                style={{ borderColor: "var(--sand)" }}
-              >
-                <option value="">Select your city</option>
-
-                {GAMBIA_CITIES.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {error && (
