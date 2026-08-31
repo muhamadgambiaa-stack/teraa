@@ -16,7 +16,19 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(() => {
+    const error = searchParams.get("error");
+
+    if (error === "phone_in_use") {
+      return "That phone number already belongs to a Teraa account. Log in to the existing account or contact support.";
+    }
+
+    if (error === "profile_creation_failed") {
+      return "Your account could not be completed. Contact Teraa support.";
+    }
+
+    return null;
+  });
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const captchaRequired = isTurnstileConfigured();

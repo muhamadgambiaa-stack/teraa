@@ -115,8 +115,13 @@ export async function GET(request: Request) {
   if (profileInsertError) {
     console.error("Profile creation failed:", profileInsertError);
 
+    const errorCode =
+      profileInsertError.code === "23505"
+        ? "phone_in_use"
+        : "profile_creation_failed";
+
     return NextResponse.redirect(
-      `${origin}/login?error=profile_creation_failed`,
+      `${origin}/login?error=${errorCode}`,
     );
   }
 

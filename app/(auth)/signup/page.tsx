@@ -9,6 +9,7 @@ import GoogleAuthButton from "@/components/GoogleAuthButton";
 import AuthTurnstile, {
   isTurnstileConfigured,
 } from "@/components/AuthTurnstile";
+import { accountIdentityErrorMessage } from "@/lib/account-identity";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -224,8 +225,7 @@ export default function SignupPage() {
        */
       router.replace(`/check-email?email=${encodeURIComponent(cleanEmail)}`);
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Couldn't create your account.";
+      const errorMessage = accountIdentityErrorMessage(err);
 
       setMessage(errorMessage);
 

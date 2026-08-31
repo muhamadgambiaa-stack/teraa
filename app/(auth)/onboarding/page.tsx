@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import { accountIdentityErrorMessage } from "@/lib/account-identity";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -158,11 +159,7 @@ export default function OnboardingPage() {
 
       router.refresh();
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not finish setting up your account.",
-      );
+      setMessage(accountIdentityErrorMessage(error));
 
       setSaving(false);
     }

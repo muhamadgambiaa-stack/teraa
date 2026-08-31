@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { SiteHeader } from "@/components/SiteHeader";
+import { accountIdentityErrorMessage } from "@/lib/account-identity";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AccountSettingsPage() {
@@ -79,6 +80,22 @@ export default function AccountSettingsPage() {
       return;
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    const currentEmail = user.email?.toLowerCase() ?? "";
+
+    if (cleanEmail && cleanEmail !== currentEmail) {
+      const { error: emailUpdateError } = await supabase.auth.updateUser(
+        { email: cleanEmail },
+        { emailRedirectTo: `${window.location.origin}/callback` },
+      );
+
+      if (emailUpdateError) {
+        setSaving(false);
+        setError(accountIdentityErrorMessage(emailUpdateError));
+        return;
+      }
+    }
+
     const { error: updateError } = await supabase
       .from("users")
       .update({
@@ -90,7 +107,7 @@ export default function AccountSettingsPage() {
     setSaving(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(accountIdentityErrorMessage(updateError));
       return;
     }
 
@@ -163,11 +180,17 @@ export default function AccountSettingsPage() {
                 </label>
 
                 <input
-                  disabled
+                  type="email"
+                  required
                   value={email}
-                  className="w-full rounded-lg border px-3 py-2.5 text-sm bg-gray-50 text-gray-500"
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
                   style={{ borderColor: "var(--sand)" }}
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Changing your email requires confirmation from your new
+                  address.
+                </p>
               </div>
             )}
 
@@ -215,7 +238,7 @@ export default function AccountSettingsPage() {
 
             {saved && (
               <p className="text-sm" style={{ color: "var(--leaf)" }}>
-                Saved
+                Saved. Check your new email if you changed your address.
               </p>
             )}
           </form>

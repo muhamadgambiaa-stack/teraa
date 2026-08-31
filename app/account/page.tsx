@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import { accountIdentityErrorMessage } from "@/lib/account-identity";
 import { SiteHeader } from "@/components/SiteHeader";
 import { GAMBIA_CITIES } from "@/types/database";
 
@@ -195,7 +196,7 @@ export default function AccountPage() {
     setSaving(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(accountIdentityErrorMessage(updateError));
       return;
     }
 
@@ -1028,7 +1029,6 @@ function StatusPill({
     </span>
   );
 }
-
 
 
 
