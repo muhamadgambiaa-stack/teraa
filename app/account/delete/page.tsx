@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { SiteHeader } from "@/components/SiteHeader";
 import { createClient } from "@/lib/supabase/client";
+import { deleteAccountPermanently } from "./actions";
 
 export default function DeleteAccountPage() {
   const router = useRouter();
@@ -48,23 +49,15 @@ export default function DeleteAccountPage() {
     setDeleting(true);
     setError(null);
 
-    const supabase = createClient();
+    const result = await deleteAccountPermanently(confirmation);
 
-    const { error: deleteError } = await supabase.rpc(
-      "delete_my_account",
-      {
-        p_confirmation: confirmation,
-      },
-    );
-
-    if (deleteError) {
-      console.error(deleteError);
+    if (!result.success) {
       setDeleting(false);
-      setError(
-        "Couldn't delete your account. Please try again or contact support.",
-      );
+      setError(result.message);
       return;
     }
+
+    const supabase = createClient();
 
     try {
       await supabase.auth.signOut();
@@ -124,10 +117,23 @@ export default function DeleteAccountPage() {
               className="rounded-xl border bg-white p-5 mt-5"
               style={{ borderColor: "#efb4b4" }}
             >
-              <p className="text-sm text-gray-600 leading-6">
-                Your Teraa account and associated marketplace data will be
-                permanently removed.
-              </p>
+              <div className="text-sm text-gray-600 leading-6 space-y-2">
+                <p>
+                  Your login, personal information, messages, uploaded ID
+                  document and listing photos will be permanently removed.
+                </p>
+
+                <p>
+                  Completed and cancelled orders, settled commissions and
+                  resolved dispute records will be retained without your
+                  personal details for financial and safety records.
+                </p>
+
+                <p className="font-medium text-red-700">
+                  You cannot delete your account while an order, delivery
+                  issue, commission payment or report is unresolved.
+                </p>
+              </div>
 
               <p className="text-sm text-gray-600 mt-5">
                 Type{" "}
