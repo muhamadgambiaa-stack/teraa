@@ -76,6 +76,12 @@ export default async function OrderPage({
       delivery_fee,
       delivery_estimated_min_days,
       delivery_estimated_max_days,
+      delivery_handler,
+      delivery_contact_name,
+      delivery_contact_phone,
+      delivery_tracking_reference,
+      shipped_at,
+      delivered_at,
       delivery_notes,
       created_at,
       buyer_id,
@@ -551,6 +557,27 @@ export default async function OrderPage({
 
               {order.delivery_notes && (
                 <p className="text-gray-600 mt-1">{order.delivery_notes}</p>
+              )}
+
+              {order.delivery_contact_name && order.delivery_contact_phone && (
+                <div className="rounded-lg bg-gray-50 p-3 mt-3">
+                  <p className="font-medium">Delivery contact</p>
+                  <p className="text-gray-600 mt-1 capitalize">
+                    {order.delivery_handler} · {order.delivery_contact_name}
+                  </p>
+                  <a
+                    href={`tel:${order.delivery_contact_phone}`}
+                    className="font-medium mt-1 inline-block hover:underline"
+                    style={{ color: "var(--indigo)" }}
+                  >
+                    {order.delivery_contact_phone}
+                  </a>
+                  {order.delivery_tracking_reference && (
+                    <p className="text-gray-500 mt-1">
+                      Reference: {order.delivery_tracking_reference}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>

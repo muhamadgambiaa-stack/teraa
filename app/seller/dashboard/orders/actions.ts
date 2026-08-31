@@ -151,7 +151,7 @@ export async function messageBuyerFromOrder(orderId: string) {
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   placed: ["confirmed"],
 
-  confirmed: ["shipped"],
+  confirmed: [],
 
   shipped: ["delivered"],
 
@@ -161,6 +161,45 @@ const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
   cancelled: [],
 };
+
+export async function markOrderShipped(orderId: string, formData: FormData) {
+  const { supabase, order } = await requireSellerOwnsOrder(orderId);
+
+  if (order.status !== "confirmed") {
+    throw new Error("Only confirmed orders can be marked as shipped.");
+  }
+
+  const deliveryHandler = String(formData.get("deliveryHandler") ?? "");
+  const contactName = String(formData.get("contactName") ?? "").trim();
+  const contactPhone = String(formData.get("contactPhone") ?? "").trim();
+  const trackingReference = String(
+    formData.get("trackingReference") ?? "",
+  ).trim();
+
+  if (!contactName || !contactPhone) {
+    throw new Error("Enter the delivery contact name and phone number.");
+  }
+
+  const { error } = await supabase.rpc("seller_mark_order_shipped", {
+    p_order_id: orderId,
+    p_delivery_handler: deliveryHandler,
+    p_contact_name: contactName,
+    p_contact_phone: contactPhone,
+    p_tracking_reference: trackingReference || null,
+  });
+
+  if (error) {
+    console.error("Could not mark order as shipped:", error);
+    throw new Error(error.message || "Couldn't mark this order as shipped.");
+  }
+
+  revalidatePath(`/seller/dashboard/orders/${orderId}`);
+  revalidatePath("/seller/dashboard/orders");
+  revalidatePath("/seller/dashboard");
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/orders");
+  revalidatePath("/notifications");
+}
 
 /*
  * ============================================================

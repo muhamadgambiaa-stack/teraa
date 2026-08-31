@@ -8,6 +8,7 @@ import type { OrderStatus } from "@/types/database";
 
 import {
   cancelSellerOrder,
+  markOrderShipped,
   messageBuyerFromOrder,
   updateOrderStatus,
 } from "../actions";
@@ -183,6 +184,12 @@ export default async function SellerOrderDetailPage({
       delivery_fee,
       delivery_estimated_min_days,
       delivery_estimated_max_days,
+      delivery_handler,
+      delivery_contact_name,
+      delivery_contact_phone,
+      delivery_tracking_reference,
+      shipped_at,
+      delivered_at,
       delivery_notes,
       created_at,
 
@@ -702,6 +709,27 @@ export default async function SellerOrderDetailPage({
               {order.delivery_notes}
             </p>
           )}
+
+          {order.delivery_contact_name && order.delivery_contact_phone && (
+            <div className="rounded-lg bg-gray-50 p-3 mt-3 text-sm">
+              <p className="font-semibold">Delivery contact</p>
+              <p className="text-gray-600 mt-1 capitalize">
+                {order.delivery_handler} · {order.delivery_contact_name}
+              </p>
+              <a
+                href={`tel:${order.delivery_contact_phone}`}
+                className="font-medium mt-1 inline-block hover:underline"
+                style={{ color: "var(--indigo)" }}
+              >
+                {order.delivery_contact_phone}
+              </a>
+              {order.delivery_tracking_reference && (
+                <p className="text-gray-500 mt-1">
+                  Reference: {order.delivery_tracking_reference}
+                </p>
+              )}
+            </div>
+          )}
         </section>
 
         {/* PAYMENT */}
@@ -733,7 +761,7 @@ export default async function SellerOrderDetailPage({
 
         {/* ACTIONS */}
 
-        {(action || canCancel) && (
+        {(action || status === "confirmed" || canCancel) && (
           <section
             className="border-t mt-6 pt-5"
             style={{
@@ -743,7 +771,7 @@ export default async function SellerOrderDetailPage({
             <h2 className="text-sm font-semibold mb-3">Order actions</h2>
 
             <div className="flex flex-wrap gap-2">
-              {action && (
+              {action && status !== "confirmed" && (
                 <form
                   action={updateOrderStatus.bind(null, order.id, action.next)}
                 >
@@ -755,6 +783,76 @@ export default async function SellerOrderDetailPage({
                     }}
                   >
                     {action.label}
+                  </button>
+                </form>
+              )}
+
+
+              {status === "confirmed" && (
+                <form
+                  action={markOrderShipped.bind(null, order.id)}
+                  className="w-full rounded-xl border p-4 space-y-3"
+                  style={{ borderColor: "var(--sand)" }}
+                >
+                  <p className="text-sm font-semibold">Delivery details</p>
+
+                  <label className="block text-xs font-medium">
+                    Who is delivering?
+                    <select
+                      name="deliveryHandler"
+                      required
+                      defaultValue="seller"
+                      className="w-full rounded-lg border px-3 py-2.5 mt-1 bg-white"
+                      style={{ borderColor: "var(--sand)" }}
+                    >
+                      <option value="seller">Seller delivery</option>
+                      <option value="rider">Independent rider</option>
+                      <option value="courier">Courier company</option>
+                    </select>
+                  </label>
+
+                  <label className="block text-xs font-medium">
+                    Delivery contact name
+                    <input
+                      name="contactName"
+                      required
+                      minLength={2}
+                      maxLength={100}
+                      className="w-full rounded-lg border px-3 py-2.5 mt-1"
+                      style={{ borderColor: "var(--sand)" }}
+                    />
+                  </label>
+
+                  <label className="block text-xs font-medium">
+                    Delivery contact phone
+                    <input
+                      name="contactPhone"
+                      type="tel"
+                      required
+                      minLength={7}
+                      maxLength={30}
+                      className="w-full rounded-lg border px-3 py-2.5 mt-1"
+                      style={{ borderColor: "var(--sand)" }}
+                    />
+                  </label>
+
+                  <label className="block text-xs font-medium">
+                    Tracking or reference
+                    <span className="font-normal text-gray-400"> (optional)</span>
+                    <input
+                      name="trackingReference"
+                      maxLength={120}
+                      className="w-full rounded-lg border px-3 py-2.5 mt-1"
+                      style={{ borderColor: "var(--sand)" }}
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    className="w-full rounded-full px-5 py-2.5 text-white text-sm font-medium"
+                    style={{ background: "var(--indigo)" }}
+                  >
+                    Mark as shipped
                   </button>
                 </form>
               )}

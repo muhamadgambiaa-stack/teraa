@@ -341,7 +341,7 @@ export default async function SellerOrdersPage() {
                     <ArrowRightIcon />
                   </Link>
 
-                  {action && (
+                  {action && status !== "confirmed" && (
                     <form
                       action={updateOrderStatus.bind(
                         null,
@@ -359,6 +359,16 @@ export default async function SellerOrdersPage() {
                         {action.label}
                       </button>
                     </form>
+                  )}
+
+                  {status === "confirmed" && (
+                    <Link
+                      href={`/seller/dashboard/orders/${order.id}`}
+                      className="rounded-full px-4 py-1.5 text-xs font-medium text-white"
+                      style={{ background: "var(--indigo)" }}
+                    >
+                      Add delivery details
+                    </Link>
                   )}
 
                   {canCancel && (

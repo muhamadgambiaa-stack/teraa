@@ -124,6 +124,12 @@ export interface Order {
   delivery_fee: number;
   delivery_estimated_min_days: number | null;
   delivery_estimated_max_days: number | null;
+  delivery_handler: "seller" | "rider" | "courier" | null;
+  delivery_contact_name: string | null;
+  delivery_contact_phone: string | null;
+  delivery_tracking_reference: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
   delivery_notes: string | null;
   created_at: string;
 }

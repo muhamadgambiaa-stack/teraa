@@ -25,6 +25,12 @@ export default async function AdminOrderDetailPage({
       delivery_fee,
       delivery_estimated_min_days,
       delivery_estimated_max_days,
+      delivery_handler,
+      delivery_contact_name,
+      delivery_contact_phone,
+      delivery_tracking_reference,
+      shipped_at,
+      delivered_at,
       status,
       payment_method,
       payment_status,
@@ -592,6 +598,35 @@ export default async function AdminOrderDetailPage({
                 <strong>Notes:</strong>{" "}
                 {order.delivery_notes || "No delivery notes"}
               </p>
+
+              {order.delivery_contact_name && (
+                <p>
+                  <strong>Delivery contact:</strong>{" "}
+                  {order.delivery_handler} · {order.delivery_contact_name} ·{" "}
+                  {order.delivery_contact_phone}
+                </p>
+              )}
+
+              {order.delivery_tracking_reference && (
+                <p>
+                  <strong>Tracking/reference:</strong>{" "}
+                  {order.delivery_tracking_reference}
+                </p>
+              )}
+
+              {order.shipped_at && (
+                <p>
+                  <strong>Shipped:</strong>{" "}
+                  {new Date(order.shipped_at).toLocaleString()}
+                </p>
+              )}
+
+              {order.delivered_at && (
+                <p>
+                  <strong>Delivered:</strong>{" "}
+                  {new Date(order.delivered_at).toLocaleString()}
+                </p>
+              )}
             </div>
           </section>
         </div>
