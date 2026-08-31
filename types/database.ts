@@ -121,6 +121,9 @@ export interface Order {
   delivery_address: string | null;
   delivery_phone: string | null;
   delivery_landmark: string | null;
+  delivery_fee: number;
+  delivery_estimated_min_days: number | null;
+  delivery_estimated_max_days: number | null;
   delivery_notes: string | null;
   created_at: string;
 }

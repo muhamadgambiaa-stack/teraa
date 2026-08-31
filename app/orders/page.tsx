@@ -21,7 +21,7 @@ export default async function MyOrdersPage() {
   const { data: orders } = await supabase
     .from("orders")
     .select(
-      "id, status, payment_method, created_at, order_items(quantity, price_at_purchase, products(title)), sellers(business_name)"
+      "id, status, payment_method, delivery_fee, created_at, order_items(quantity, price_at_purchase, products(title)), sellers(business_name)"
     )
     .eq("buyer_id", user.id)
     .order("created_at", { ascending: false });
@@ -53,7 +53,7 @@ export default async function MyOrdersPage() {
             const items = (o as { order_items?: { quantity: number; price_at_purchase: number; products?: { title: string } | { title: string }[] }[] }).order_items ?? [];
             const sellerRaw = (o as { sellers?: { business_name: string } | { business_name: string }[] }).sellers;
             const seller = Array.isArray(sellerRaw) ? sellerRaw[0] : sellerRaw;
-            const total = items.reduce((sum, i) => sum + i.quantity * Number(i.price_at_purchase), 0);
+            const total = items.reduce((sum, i) => sum + i.quantity * Number(i.price_at_purchase), 0) + Number(o.delivery_fee ?? 0);
             const style = STATUS_STYLES[o.status as OrderStatus];
 
             return (

@@ -114,6 +114,7 @@ export default async function SellerOrdersPage() {
       payment_method,
       payment_status,
       delivery_city,
+      delivery_fee,
       delivery_notes,
       created_at,
 
@@ -247,7 +248,7 @@ export default async function SellerOrdersPage() {
               (sum, item) =>
                 sum + item.quantity * Number(item.price_at_purchase),
               0,
-            );
+            ) + Number(order.delivery_fee ?? 0);
 
             const status = order.status as OrderStatus;
 

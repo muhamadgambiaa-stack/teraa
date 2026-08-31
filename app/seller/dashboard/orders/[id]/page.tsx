@@ -180,6 +180,9 @@ export default async function SellerOrderDetailPage({
       delivery_address,
       delivery_phone,
       delivery_landmark,
+      delivery_fee,
+      delivery_estimated_min_days,
+      delivery_estimated_max_days,
       delivery_notes,
       created_at,
 
@@ -346,10 +349,12 @@ export default async function SellerOrderDetailPage({
    * ==========================================================
    */
 
-  const total = items.reduce(
+  const productSubtotal = items.reduce(
     (sum, item) => sum + item.quantity * Number(item.price_at_purchase),
     0,
   );
+  const deliveryFee = Number(order.delivery_fee ?? 0);
+  const total = productSubtotal + deliveryFee;
 
   const status = order.status as OrderStatus;
 
@@ -486,6 +491,16 @@ export default async function SellerOrderDetailPage({
                 </div>
               );
             })}
+
+            <div className="border-t pt-3 flex items-center justify-between text-sm" style={{ borderColor: "var(--sand)" }}>
+              <span className="text-gray-600">Product subtotal</span>
+              <span>GMD {productSubtotal.toLocaleString()}</span>
+            </div>
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Delivery</span>
+              <span>GMD {deliveryFee.toLocaleString()}</span>
+            </div>
 
             <div
               className="border-t pt-3 flex items-center justify-between text-sm font-bold"
@@ -672,6 +687,15 @@ export default async function SellerOrderDetailPage({
               Call {order.delivery_phone}
             </a>
           )}
+
+          {order.delivery_estimated_min_days !== null &&
+            order.delivery_estimated_max_days !== null && (
+              <p className="text-sm text-gray-500 mt-2">
+                Estimated delivery: {order.delivery_estimated_min_days === 0 && order.delivery_estimated_max_days === 0
+                  ? "Same day"
+                  : `${order.delivery_estimated_min_days}–${order.delivery_estimated_max_days} days`}
+              </p>
+            )}
 
           {order.delivery_notes && (
             <p className="text-sm text-gray-500 mt-2 whitespace-pre-wrap">

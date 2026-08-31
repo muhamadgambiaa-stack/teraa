@@ -73,6 +73,9 @@ export default async function OrderPage({
       delivery_address,
       delivery_phone,
       delivery_landmark,
+      delivery_fee,
+      delivery_estimated_min_days,
+      delivery_estimated_max_days,
       delivery_notes,
       created_at,
       buyer_id,
@@ -188,10 +191,12 @@ export default async function OrderPage({
     ? paymentMethodRaw[0]
     : paymentMethodRaw;
 
-  const total = items.reduce(
+  const productSubtotal = items.reduce(
     (sum, item) => sum + item.quantity * Number(item.price_at_purchase),
     0,
   );
+  const deliveryFee = Number(order.delivery_fee ?? 0);
+  const total = productSubtotal + deliveryFee;
 
   const canCancel = ["placed", "confirmed"].includes(order.status);
 
@@ -334,8 +339,18 @@ export default async function OrderPage({
             );
           })}
 
+          <div className="flex justify-between gap-4 text-sm pt-2 mt-2 border-t" style={{ borderColor: "var(--sand)" }}>
+            <span className="text-gray-600">Product subtotal</span>
+            <span>GMD {productSubtotal.toLocaleString()}</span>
+          </div>
+
+          <div className="flex justify-between gap-4 text-sm">
+            <span className="text-gray-600">Delivery</span>
+            <span>GMD {deliveryFee.toLocaleString()}</span>
+          </div>
+
           <div
-            className="flex justify-between text-sm font-bold pt-2 mt-2 border-t"
+            className="flex justify-between text-sm font-bold pt-2 border-t"
             style={{
               borderColor: "var(--sand)",
             }}
@@ -524,6 +539,15 @@ export default async function OrderPage({
               {order.delivery_phone && (
                 <p className="text-gray-600 mt-1">Phone: {order.delivery_phone}</p>
               )}
+
+              {order.delivery_estimated_min_days !== null &&
+                order.delivery_estimated_max_days !== null && (
+                  <p className="text-gray-600 mt-1">
+                    Estimated delivery: {order.delivery_estimated_min_days === 0 && order.delivery_estimated_max_days === 0
+                      ? "Same day"
+                      : `${order.delivery_estimated_min_days}–${order.delivery_estimated_max_days} days`}
+                  </p>
+                )}
 
               {order.delivery_notes && (
                 <p className="text-gray-600 mt-1">{order.delivery_notes}</p>
@@ -1123,4 +1147,3 @@ function LocationIcon() {
     </svg>
   );
 }
-

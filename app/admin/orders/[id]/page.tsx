@@ -22,6 +22,9 @@ export default async function AdminOrderDetailPage({
       id,
       buyer_id,
       seller_id,
+      delivery_fee,
+      delivery_estimated_min_days,
+      delivery_estimated_max_days,
       status,
       payment_method,
       payment_status,
@@ -215,10 +218,12 @@ export default async function AdminOrderDetailPage({
     ? commissionRaw[0]
     : commissionRaw;
 
-  const total = items.reduce(
+  const productSubtotal = items.reduce(
     (sum, item) => sum + item.quantity * Number(item.price_at_purchase),
     0,
   );
+  const deliveryFee = Number(order.delivery_fee ?? 0);
+  const total = productSubtotal + deliveryFee;
 
   return (
     <>
@@ -494,6 +499,16 @@ export default async function AdminOrderDetailPage({
               </div>
             );
           })}
+
+          <div className="flex justify-between px-5 pt-4 text-sm border-t" style={{ borderColor: "var(--sand)" }}>
+            <span className="text-gray-600">Product subtotal</span>
+            <span>GMD {productSubtotal.toLocaleString()}</span>
+          </div>
+
+          <div className="flex justify-between px-5 py-2 text-sm">
+            <span className="text-gray-600">Delivery</span>
+            <span>GMD {deliveryFee.toLocaleString()}</span>
+          </div>
 
           <div
             className="flex justify-between px-5 py-4 border-t font-semibold"

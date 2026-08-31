@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 
 import { createOrder } from "./actions";
+import {
+  CheckoutPricing,
+  type DeliveryCoverageOption,
+} from "./CheckoutPricing";
 
 async function getProduct(id: string) {
   const supabase = await createClient();
@@ -66,7 +70,7 @@ export default async function CheckoutPage({
   const [{ data: coverageRows }, { data: buyer }] = await Promise.all([
     supabase
       .from("seller_delivery_areas")
-      .select("region, area")
+      .select("region, area, delivery_fee, estimated_min_days, estimated_max_days")
       .eq("seller_id", product.seller_id)
       .order("region")
       .order("area"),
@@ -77,10 +81,15 @@ export default async function CheckoutPage({
       .maybeSingle(),
   ]);
 
-  const deliveryCoverage = (coverageRows ?? []) as {
-    region: string;
-    area: string;
-  }[];
+  const deliveryCoverage: DeliveryCoverageOption[] = (coverageRows ?? []).map(
+    (row) => ({
+      region: row.region,
+      area: row.area,
+      deliveryFee: Number(row.delivery_fee ?? 0),
+      estimatedMinDays: Number(row.estimated_min_days ?? 1),
+      estimatedMaxDays: Number(row.estimated_max_days ?? 3),
+    }),
+  );
   const buyerPhone = buyer?.phone_number ?? "";
 
   const photos =
@@ -236,31 +245,11 @@ export default async function CheckoutPage({
               </div>
             )}
 
-            {/* QUANTITY */}
-
-            <div>
-              <label className="text-sm font-medium block mb-1">Quantity</label>
-
-              <select
-                name="quantity"
-                defaultValue="1"
-                className="w-24 rounded-lg border px-3 py-2.5 text-sm outline-none bg-white"
-                style={{
-                  borderColor: "var(--sand)",
-                }}
-              >
-                {Array.from(
-                  {
-                    length: Math.min(product.stock_quantity, 10),
-                  },
-                  (_, index) => index + 1,
-                ).map((quantity) => (
-                  <option key={quantity} value={quantity}>
-                    {quantity}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <CheckoutPricing
+              productPrice={Number(product.price)}
+              stockQuantity={product.stock_quantity}
+              deliveryCoverage={deliveryCoverage}
+            />
 
             {/* PAYMENT */}
 
@@ -352,41 +341,6 @@ export default async function CheckoutPage({
             </div>
 
             {/* DELIVERY ADDRESS */}
-
-            <div>
-              <label className="text-sm font-medium block mb-1">
-                Delivery area
-              </label>
-
-              <select
-                name="deliveryCoverage"
-                required
-                defaultValue=""
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none bg-white"
-                style={{
-                  borderColor: "var(--sand)",
-                }}
-              >
-                <option value="">Select where you want delivery</option>
-
-                {Array.from(new Set(deliveryCoverage.map((item) => item.region))).map(
-                  (region) => (
-                    <optgroup key={region} label={region}>
-                      {deliveryCoverage
-                        .filter((item) => item.region === region)
-                        .map((item) => (
-                          <option
-                            key={`${item.region}:${item.area}`}
-                            value={JSON.stringify(item)}
-                          >
-                            {item.area}
-                          </option>
-                        ))}
-                    </optgroup>
-                  ),
-                )}
-              </select>
-            </div>
 
             <div>
               <label className="text-sm font-medium block mb-1">Full delivery address</label>

@@ -33,6 +33,7 @@ export default async function AdminOrdersPage({
       delivery_city,
       delivery_notes,
       created_at,
+      delivery_fee,
 
       users:buyer_id(
         full_name,
@@ -268,7 +269,7 @@ export default async function AdminOrdersPage({
               (sum, item) =>
                 sum + item.quantity * Number(item.price_at_purchase),
               0,
-            );
+            ) + Number(order.delivery_fee ?? 0);
 
             return (
               <Link
