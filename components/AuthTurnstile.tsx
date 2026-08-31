@@ -32,7 +32,7 @@ export default function AuthTurnstile({
         key={resetKey}
         siteKey={siteKey}
         options={{
-          appearance: "interaction-only",
+          appearance: "always",
           size: "flexible",
           theme: "light",
         }}
