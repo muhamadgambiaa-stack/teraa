@@ -4,6 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
+import AuthTurnstile, {
+  isTurnstileConfigured,
+} from "@/components/AuthTurnstile";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
@@ -14,21 +17,36 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
+  const captchaRequired = isTurnstileConfigured();
+
+  function resetCaptcha() {
+    setCaptchaToken(null);
+    setCaptchaResetKey((current) => current + 1);
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (captchaRequired && !captchaToken) {
+      setMessage("Complete the security check first.");
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: captchaToken ? { captchaToken } : undefined,
     });
 
     setLoading(false);
 
     if (error) {
       setMessage(error.message);
+      resetCaptcha();
       return;
     }
 
@@ -50,7 +68,18 @@ export default function LoginPage() {
           Log in
         </h1>
 
-        <GoogleAuthButton />
+        <AuthTurnstile
+          resetKey={captchaResetKey}
+          onTokenChange={setCaptchaToken}
+        />
+
+        <div className="mt-4">
+          <GoogleAuthButton
+            captchaRequired={captchaRequired}
+            captchaToken={captchaToken}
+            onCaptchaConsumed={resetCaptcha}
+          />
+        </div>
 
         <div className="flex items-center gap-3 my-5">
           <div
@@ -100,7 +129,7 @@ export default function LoginPage() {
           </div>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (captchaRequired && !captchaToken)}
             className="w-full rounded-lg py-2 text-white text-sm font-medium disabled:opacity-50"
             style={{ background: "var(--indigo)" }}
           >
@@ -137,4 +166,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

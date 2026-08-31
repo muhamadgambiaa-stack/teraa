@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import AuthTurnstile, {
+  isTurnstileConfigured,
+} from "@/components/AuthTurnstile";
 
 export default function ForgotPasswordPage() {
   const supabase = createClient();
@@ -10,20 +13,35 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
+  const captchaRequired = isTurnstileConfigured();
+
+  function resetCaptcha() {
+    setCaptchaToken(null);
+    setCaptchaResetKey((current) => current + 1);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (captchaRequired && !captchaToken) {
+      setMessage("Complete the security check first.");
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/callback?next=/reset-password`,
+      captchaToken: captchaToken ?? undefined,
     });
 
     setLoading(false);
 
     if (error) {
       setMessage(error.message);
+      resetCaptcha();
       return;
     }
 
@@ -69,10 +87,14 @@ export default function ForgotPasswordPage() {
                   style={{ borderColor: "var(--sand)" }}
                 />
               </div>
+              <AuthTurnstile
+                resetKey={captchaResetKey}
+                onTokenChange={setCaptchaToken}
+              />
               {message && <p className="text-sm text-red-600">{message}</p>}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (captchaRequired && !captchaToken)}
                 className="w-full rounded-lg py-2 text-white text-sm font-medium disabled:opacity-50"
                 style={{ background: "var(--indigo)" }}
               >

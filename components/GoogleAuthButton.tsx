@@ -1,17 +1,57 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 
 import { createClient } from "@/lib/supabase/client";
 
-export default function GoogleAuthButton() {
+type GoogleAuthButtonProps = {
+  captchaRequired?: boolean;
+  captchaToken?: string | null;
+  onCaptchaConsumed?: () => void;
+};
+
+type GoogleIdentityApi = {
+  accounts: {
+    id: {
+      initialize: (options: {
+        client_id: string;
+        callback: (response: { credential?: string }) => void;
+      }) => void;
+      renderButton: (
+        container: HTMLElement,
+        options: {
+          type: string;
+          theme: string;
+          size: string;
+          text: string;
+          shape: string;
+        },
+      ) => void;
+    };
+  };
+};
+
+export default function GoogleAuthButton({
+  captchaRequired = false,
+  captchaToken,
+  onCaptchaConsumed,
+}: GoogleAuthButtonProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const captchaTokenRef = useRef(captchaToken);
+  const captchaRequiredRef = useRef(captchaRequired);
+  const onCaptchaConsumedRef = useRef(onCaptchaConsumed);
+
+  useEffect(() => {
+    captchaTokenRef.current = captchaToken;
+    captchaRequiredRef.current = captchaRequired;
+    onCaptchaConsumedRef.current = onCaptchaConsumed;
+  }, [captchaRequired, captchaToken, onCaptchaConsumed]);
 
   async function finishLogin() {
     const {
@@ -57,7 +97,9 @@ export default function GoogleAuthButton() {
       return;
     }
 
-    const google = (window as any).google;
+    const google = (
+      window as typeof window & { google?: GoogleIdentityApi }
+    ).google;
     const container = document.getElementById("google-signin-button");
 
     if (!google || !container) {
@@ -68,6 +110,13 @@ export default function GoogleAuthButton() {
       client_id: clientId,
 
       callback: async (response: { credential?: string }) => {
+        const currentCaptchaToken = captchaTokenRef.current;
+
+        if (captchaRequiredRef.current && !currentCaptchaToken) {
+          setMessage("Complete the security check first.");
+          return;
+        }
+
         if (!response.credential) {
           setMessage("Google did not return a credential.");
           return;
@@ -80,6 +129,9 @@ export default function GoogleAuthButton() {
           const { error } = await supabase.auth.signInWithIdToken({
             provider: "google",
             token: response.credential,
+            options: currentCaptchaToken
+              ? { captchaToken: currentCaptchaToken }
+              : undefined,
           });
 
           if (error) {
@@ -97,6 +149,7 @@ export default function GoogleAuthButton() {
           );
 
           setLoading(false);
+          onCaptchaConsumedRef.current?.();
         }
       },
     });
@@ -122,8 +175,18 @@ export default function GoogleAuthButton() {
 
       <div
         id="google-signin-button"
-        className={loading ? "pointer-events-none opacity-50" : ""}
+        className={
+          loading || (captchaRequired && !captchaToken)
+            ? "pointer-events-none opacity-50"
+            : ""
+        }
       />
+
+      {captchaRequired && !captchaToken && (
+        <p className="mt-2 text-center text-xs text-gray-500">
+          Complete the security check to continue with Google.
+        </p>
+      )}
 
       {loading && (
         <p className="mt-2 text-center text-xs text-gray-500">

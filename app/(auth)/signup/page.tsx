@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
+import AuthTurnstile, {
+  isTurnstileConfigured,
+} from "@/components/AuthTurnstile";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -27,6 +30,18 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   const [message, setMessage] = useState<string | null>(null);
+
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
+
+  const captchaRequired = isTurnstileConfigured();
+
+  function resetCaptcha() {
+    setCaptchaToken(null);
+
+    setCaptchaResetKey((current) => current + 1);
+  }
 
   async function createDatabaseRecords(userId: string) {
     /*
@@ -118,6 +133,12 @@ export default function SignupPage() {
       return;
     }
 
+    if (captchaRequired && !captchaToken) {
+      setMessage("Complete the security check first.");
+
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -130,6 +151,8 @@ export default function SignupPage() {
 
         options: {
           emailRedirectTo: callbackUrl,
+
+          captchaToken: captchaToken ?? undefined,
 
           /*
            * Keep signup information in
@@ -206,6 +229,8 @@ export default function SignupPage() {
 
       setMessage(errorMessage);
 
+      resetCaptcha();
+
       setLoading(false);
     }
   }
@@ -241,7 +266,18 @@ export default function SignupPage() {
           Join Teraa to buy and sell across The Gambia.
         </p>
 
-        <GoogleAuthButton />
+        <AuthTurnstile
+          resetKey={captchaResetKey}
+          onTokenChange={setCaptchaToken}
+        />
+
+        <div className="mt-4">
+          <GoogleAuthButton
+            captchaRequired={captchaRequired}
+            captchaToken={captchaToken}
+            onCaptchaConsumed={resetCaptcha}
+          />
+        </div>
 
         <div className="flex items-center gap-3 my-5">
           <div
@@ -445,7 +481,11 @@ export default function SignupPage() {
 
           <button
             type="submit"
-            disabled={loading || !acceptedTerms}
+            disabled={
+              loading ||
+              !acceptedTerms ||
+              (captchaRequired && !captchaToken)
+            }
             className="w-full rounded-lg py-3 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               background: "var(--indigo)",
