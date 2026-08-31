@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { accountIdentityErrorMessage } from "@/lib/account-identity";
+import GambianPhoneInput from "@/components/GambianPhoneInput";
+import {
+  isValidGambianLocalNumber,
+  toGambianPhoneNumber,
+} from "@/lib/gambian-phone";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -70,15 +75,17 @@ export default function OnboardingPage() {
     setMessage(null);
 
     const cleanName = fullName.trim();
-    const cleanPhone = phone.trim();
+    const cleanPhone = toGambianPhoneNumber(phone);
 
     if (!cleanName) {
       setMessage("Please enter your full name.");
       return;
     }
 
-    if (!cleanPhone) {
-      setMessage("Please enter your phone number.");
+    if (!isValidGambianLocalNumber(phone)) {
+      setMessage(
+        "Enter exactly 7 digits after +220. The first digit cannot be zero.",
+      );
       return;
     }
 
@@ -228,16 +235,14 @@ export default function OnboardingPage() {
               Phone number
             </label>
 
-            <input
-              required
-              type="tel"
-              autoComplete="tel"
-              placeholder="+220 7XX XXXX"
+            <GambianPhoneInput
               value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              className="w-full rounded-lg border px-3 py-3 text-sm outline-none focus:ring-2"
-              style={{ borderColor: "var(--sand)" }}
+              onChange={setPhone}
             />
+
+            <p className="mt-1 text-xs text-gray-500">
+              Enter 7 digits. The number cannot begin with zero.
+            </p>
 
             <p className="text-xs text-gray-500 mt-1">
               Used for delivery coordination.

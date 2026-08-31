@@ -5,7 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { SiteHeader } from "@/components/SiteHeader";
+import GambianPhoneInput from "@/components/GambianPhoneInput";
 import { accountIdentityErrorMessage } from "@/lib/account-identity";
+import {
+  gambianLocalNumberFromStored,
+  isValidGambianLocalNumber,
+  toGambianPhoneNumber,
+} from "@/lib/gambian-phone";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AccountSettingsPage() {
@@ -51,7 +57,7 @@ export default function AccountSettingsPage() {
 
       setEmail(user.email ?? "");
       setFullName(data.full_name ?? "");
-      setPhone(data.phone_number ?? "");
+      setPhone(gambianLocalNumberFromStored(data.phone_number));
       setLoading(false);
     }
 
@@ -83,6 +89,14 @@ export default function AccountSettingsPage() {
     const cleanEmail = email.trim().toLowerCase();
     const currentEmail = user.email?.toLowerCase() ?? "";
 
+    if (!isValidGambianLocalNumber(phone)) {
+      setSaving(false);
+      setError(
+        "Enter exactly 7 digits after +220. The first digit cannot be zero.",
+      );
+      return;
+    }
+
     if (cleanEmail && cleanEmail !== currentEmail) {
       const { error: emailUpdateError } = await supabase.auth.updateUser(
         { email: cleanEmail },
@@ -100,7 +114,7 @@ export default function AccountSettingsPage() {
       .from("users")
       .update({
         full_name: fullName.trim(),
-        phone_number: phone.trim(),
+        phone_number: toGambianPhoneNumber(phone),
       })
       .eq("id", user.id);
 
@@ -213,14 +227,14 @@ export default function AccountSettingsPage() {
                 Phone number
               </label>
 
-              <input
-                type="tel"
-                required
+              <GambianPhoneInput
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
-                style={{ borderColor: "var(--sand)" }}
+                onChange={setPhone}
               />
+
+              <p className="mt-1 text-xs text-gray-500">
+                Enter 7 digits. The number cannot begin with zero.
+              </p>
             </div>
 
             {error && (

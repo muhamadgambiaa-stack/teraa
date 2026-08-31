@@ -6,10 +6,15 @@ import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
+import GambianPhoneInput from "@/components/GambianPhoneInput";
 import AuthTurnstile, {
   isTurnstileConfigured,
 } from "@/components/AuthTurnstile";
 import { accountIdentityErrorMessage } from "@/lib/account-identity";
+import {
+  isValidGambianLocalNumber,
+  toGambianPhoneNumber,
+} from "@/lib/gambian-phone";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -65,7 +70,7 @@ export default function SignupPage() {
 
         full_name: fullName.trim(),
 
-        phone_number: phone.trim(),
+        phone_number: toGambianPhoneNumber(phone),
 
         role: "buyer",
       });
@@ -86,7 +91,7 @@ export default function SignupPage() {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    const cleanPhone = phone.trim();
+    const cleanPhone = toGambianPhoneNumber(phone);
 
     if (!cleanName) {
       setMessage("Please enter your full name.");
@@ -120,8 +125,10 @@ export default function SignupPage() {
       return;
     }
 
-    if (!cleanPhone) {
-      setMessage("Please enter your phone number.");
+    if (!isValidGambianLocalNumber(phone)) {
+      setMessage(
+        "Enter exactly 7 digits after +220. The first digit cannot be zero.",
+      );
 
       return;
     }
@@ -378,21 +385,13 @@ export default function SignupPage() {
               Phone number
             </label>
 
-            <input
-              type="tel"
-              required
-              autoComplete="tel"
-              placeholder="+220 7XX XXXX"
+            <GambianPhoneInput
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-lg border px-3 py-3 text-sm outline-none focus:ring-2"
-              style={{
-                borderColor: "var(--sand)",
-              }}
+              onChange={setPhone}
             />
 
             <p className="text-xs text-gray-500 mt-1">
-              Used for delivery coordination.
+              Enter 7 digits. The number cannot begin with zero.
             </p>
           </div>
 

@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { accountIdentityErrorMessage } from "@/lib/account-identity";
+import {
+  gambianLocalNumberFromStored,
+  isValidGambianLocalNumber,
+  toGambianPhoneNumber,
+} from "@/lib/gambian-phone";
 import { SiteHeader } from "@/components/SiteHeader";
 import { GAMBIA_CITIES } from "@/types/database";
 
@@ -104,7 +109,7 @@ export default function AccountPage() {
       setEmail(user.email ?? null);
 
       setFullName(userProfile.full_name ?? "");
-      setPhone(userProfile.phone_number ?? "");
+      setPhone(gambianLocalNumberFromStored(userProfile.phone_number));
       setCity(userProfile.city ?? "");
 
       if (userProfile.role !== "admin") {
@@ -184,11 +189,19 @@ export default function AccountPage() {
       return;
     }
 
+    if (!isValidGambianLocalNumber(phone)) {
+      setSaving(false);
+      setError(
+        "Enter exactly 7 digits after +220. The first digit cannot be zero.",
+      );
+      return;
+    }
+
     const { error: updateError } = await supabase
       .from("users")
       .update({
         full_name: fullName.trim(),
-        phone_number: phone.trim(),
+        phone_number: toGambianPhoneNumber(phone),
         city,
       })
       .eq("id", user.id);
@@ -205,7 +218,7 @@ export default function AccountPage() {
         ? {
             ...current,
             full_name: fullName.trim(),
-            phone_number: phone.trim(),
+            phone_number: toGambianPhoneNumber(phone),
             city,
           }
         : current,
@@ -1029,7 +1042,6 @@ function StatusPill({
     </span>
   );
 }
-
 
 
 
