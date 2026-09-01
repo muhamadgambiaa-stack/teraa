@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
+import { SellerInviteCard } from "@/components/SellerInviteCard";
 import { SiteHeader } from "@/components/SiteHeader";
 
 type PublicSellerProfile = {
@@ -202,10 +203,31 @@ async function getCategories() {
   }
 }
 
+async function shouldInviteCurrentUserToSell() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return false;
+
+    const [{ data: profile }, { data: seller }] = await Promise.all([
+      supabase.from("users").select("role").eq("id", user.id).maybeSingle(),
+      supabase.from("sellers").select("id").eq("id", user.id).maybeSingle(),
+    ]);
+
+    return profile?.role === "buyer" && !seller;
+  } catch {
+    return false;
+  }
+}
+
 export default async function Home() {
-  const [{ products, error }, categories] = await Promise.all([
+  const [{ products, error }, categories, showSellerInvite] = await Promise.all([
     getProducts(),
     getCategories(),
+    shouldInviteCurrentUserToSell(),
   ]);
 
   return (
@@ -241,6 +263,8 @@ export default async function Home() {
       {/* MAIN */}
 
       <main className="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 w-full sm:pb-6">
+        {showSellerInvite && <SellerInviteCard />}
+
         {error === "not_configured" && (
           <div
             className="rounded-xl border p-5 mb-6 text-sm"
