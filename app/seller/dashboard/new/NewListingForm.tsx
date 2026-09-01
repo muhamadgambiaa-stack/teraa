@@ -15,14 +15,24 @@ interface CategoryOption {
   name: string;
 }
 
+type ListingField =
+  | "photos"
+  | "title"
+  | "description"
+  | "price"
+  | "stock"
+  | "category"
+  | "city";
+
 const MAX_PHOTOS = 6;
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 
 export function NewListingForm() {
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const photoPreviewsRef = useRef<string[]>([]);
 
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [title, setTitle] = useState("");
@@ -38,6 +48,14 @@ export function NewListingForm() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<{
+    field: ListingField;
+    message: string;
+  } | null>(null);
+
+  function clearFieldError(field: ListingField) {
+    setFieldError((current) => (current?.field === field ? null : current));
+  }
 
   useEffect(() => {
     supabase
@@ -54,10 +72,14 @@ export function NewListingForm() {
    * Clean up temporary browser preview URLs.
    */
   useEffect(() => {
-    return () => {
-      photoPreviews.forEach((url) => URL.revokeObjectURL(url));
-    };
+    photoPreviewsRef.current = photoPreviews;
   }, [photoPreviews]);
+
+  useEffect(() => {
+    return () => {
+      photoPreviewsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const selectedFiles = Array.from(e.target.files ?? []);
@@ -94,7 +116,10 @@ export function NewListingForm() {
     const remainingSlots = MAX_PHOTOS - photos.length;
 
     if (remainingSlots <= 0) {
-      setError(`You can add up to ${MAX_PHOTOS} photos.`);
+      setFieldError({
+        field: "photos",
+        message: `You can add up to ${MAX_PHOTOS} photos.`,
+      });
       return;
     }
 
@@ -110,31 +135,36 @@ export function NewListingForm() {
     }
 
     if (oversizedCount > 0) {
-      setError(
-        `${oversizedCount} photo${
+      setFieldError({
+        field: "photos",
+        message: `${oversizedCount} photo${
           oversizedCount === 1 ? " was" : "s were"
         } skipped because ${
           oversizedCount === 1 ? "it is" : "they are"
         } larger than 5MB.`,
-      );
+      });
 
       return;
     }
 
     if (newFiles.length > remainingSlots) {
-      setError(
-        `Only ${MAX_PHOTOS} photos are allowed. The first ${MAX_PHOTOS} were kept.`,
-      );
+      setFieldError({
+        field: "photos",
+        message: `Only ${MAX_PHOTOS} photos are allowed. The first ${MAX_PHOTOS} were kept.`,
+      });
 
       return;
     }
 
     if (newFiles.length === 0 && validFiles.length > 0) {
-      setError("That photo has already been added.");
+      setFieldError({
+        field: "photos",
+        message: "That photo has already been added.",
+      });
       return;
     }
 
-    setError(null);
+    setFieldError(null);
   }
 
   function removePhoto(index: number) {
@@ -150,7 +180,7 @@ export function NewListingForm() {
 
     setPhotos((current) => current.filter((_, i) => i !== index));
 
-    setError(null);
+    clearFieldError("photos");
   }
 
   function movePhotoToCover(index: number) {
@@ -181,6 +211,7 @@ export function NewListingForm() {
     e.preventDefault();
 
     setError(null);
+    setFieldError(null);
 
     const cleanTitle = title.trim();
     const cleanDescription = description.trim();
@@ -189,37 +220,46 @@ export function NewListingForm() {
     const numericStock = Number(stock);
 
     if (photos.length === 0) {
-      setError("Add at least one product photo.");
+      setFieldError({
+        field: "photos",
+        message: "Add at least one product photo.",
+      });
       return;
     }
 
     if (!cleanTitle) {
-      setError("Enter a product title.");
+      setFieldError({ field: "title", message: "Enter a product title." });
       return;
     }
 
     if (!cleanDescription) {
-      setError("Enter a product description.");
+      setFieldError({
+        field: "description",
+        message: "Enter a product description.",
+      });
       return;
     }
 
     if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
-      setError("Enter a valid price.");
+      setFieldError({ field: "price", message: "Enter a valid price." });
       return;
     }
 
     if (!Number.isInteger(numericStock) || numericStock < 1) {
-      setError("Stock quantity must be at least 1.");
+      setFieldError({
+        field: "stock",
+        message: "Quantity must be at least 1.",
+      });
       return;
     }
 
     if (!categoryId) {
-      setError("Select a category.");
+      setFieldError({ field: "category", message: "Select a category." });
       return;
     }
 
     if (!city) {
-      setError("Select your location.");
+      setFieldError({ field: "city", message: "Select your location." });
       return;
     }
 
@@ -419,9 +459,9 @@ export function NewListingForm() {
   }
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-6">
+    <main className="max-w-lg mx-auto px-4 py-4 sm:py-6">
       <h1
-        className="font-display text-xl mb-6"
+        className="font-display text-xl mb-4 sm:mb-6"
         style={{
           color: "var(--ink)",
         }}
@@ -429,7 +469,7 @@ export function NewListingForm() {
         New listing
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
         {/* PHOTOS */}
 
         <div>
@@ -497,7 +537,7 @@ export function NewListingForm() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full rounded-lg border border-dashed px-4 py-4 text-sm font-medium flex items-center justify-center gap-2"
+              className="w-full min-h-14 rounded-lg border border-dashed px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 bg-white"
               style={{
                 borderColor: "var(--sand)",
                 color: "var(--indigo)",
@@ -519,9 +559,10 @@ export function NewListingForm() {
           />
 
           <p className="text-xs text-gray-500 mt-2">
-            Add up to 6 photos. You can select several at once or add them one
-            by one. Tap a photo to make it the cover.
+            Up to 6 photos, 5MB each. Tap a photo to make it the cover.
           </p>
+
+          <FieldError field="photos" error={fieldError} />
         </div>
 
         {/* TITLE */}
@@ -533,13 +574,18 @@ export function NewListingForm() {
             required
             maxLength={150}
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              clearFieldError("title");
+            }}
             placeholder="e.g. Samsung Galaxy A15, 128GB, sealed box"
-            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+            className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
             style={{
               borderColor: "var(--sand)",
             }}
           />
+
+          <FieldError field="title" error={fieldError} />
         </div>
 
         {/* DESCRIPTION */}
@@ -551,14 +597,19 @@ export function NewListingForm() {
             required
             maxLength={5000}
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={4}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              clearFieldError("description");
+            }}
+            rows={3}
             placeholder="Describe the item: condition details, what's included, why you're selling…"
-            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 resize-none"
+            className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none resize-y"
             style={{
               borderColor: "var(--sand)",
             }}
           />
+
+          <FieldError field="description" error={fieldError} />
         </div>
 
         {/* PRICE + STOCK */}
@@ -576,12 +627,17 @@ export function NewListingForm() {
               step="0.01"
               inputMode="decimal"
               value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+              onChange={(e) => {
+                setPrice(e.target.value);
+                clearFieldError("price");
+              }}
+              className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
               style={{
                 borderColor: "var(--sand)",
               }}
             />
+
+            <FieldError field="price" error={fieldError} />
           </div>
 
           <div>
@@ -596,12 +652,17 @@ export function NewListingForm() {
               step="1"
               inputMode="numeric"
               value={stock}
-              onChange={(e) => setStock(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+              onChange={(e) => {
+                setStock(e.target.value);
+                clearFieldError("stock");
+              }}
+              className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
               style={{
                 borderColor: "var(--sand)",
               }}
             />
+
+            <FieldError field="stock" error={fieldError} />
           </div>
         </div>
 
@@ -613,8 +674,11 @@ export function NewListingForm() {
           <select
             required
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 bg-white"
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+              clearFieldError("category");
+            }}
+            className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none bg-white"
             style={{
               borderColor: "var(--sand)",
             }}
@@ -627,6 +691,8 @@ export function NewListingForm() {
               </option>
             ))}
           </select>
+
+          <FieldError field="category" error={fieldError} />
         </div>
 
         {/* CONDITION */}
@@ -641,7 +707,7 @@ export function NewListingForm() {
                   type="button"
                   key={option}
                   onClick={() => setCondition(option)}
-                  className="rounded-lg border py-2 text-xs"
+                  className="min-h-11 rounded-lg border px-2 py-2 text-xs font-medium"
                   style={{
                     borderColor:
                       condition === option ? "var(--indigo)" : "var(--sand)",
@@ -667,8 +733,11 @@ export function NewListingForm() {
           <select
             required
             value={city}
-            onChange={(e) => setCity(e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 bg-white"
+            onChange={(e) => {
+              setCity(e.target.value);
+              clearFieldError("city");
+            }}
+            className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none bg-white"
             style={{
               borderColor: "var(--sand)",
             }}
@@ -681,6 +750,8 @@ export function NewListingForm() {
               </option>
             ))}
           </select>
+
+          <FieldError field="city" error={fieldError} />
         </div>
 
         {/* ERROR */}
@@ -701,7 +772,7 @@ export function NewListingForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg py-2.5 text-white text-sm font-medium disabled:opacity-50"
+          className="w-full min-h-12 rounded-full py-3 text-white text-sm font-semibold disabled:opacity-50"
           style={{
             background: "var(--indigo)",
           }}
@@ -710,6 +781,22 @@ export function NewListingForm() {
         </button>
       </form>
     </main>
+  );
+}
+
+function FieldError({
+  field,
+  error,
+}: {
+  field: ListingField;
+  error: { field: ListingField; message: string } | null;
+}) {
+  if (error?.field !== field) return null;
+
+  return (
+    <p className="mt-1.5 text-xs font-medium text-red-700" role="alert">
+      {error.message}
+    </p>
   );
 }
 
