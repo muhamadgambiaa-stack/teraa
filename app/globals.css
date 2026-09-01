@@ -15,8 +15,35 @@
 body {
   background: var(--paper);
   color: var(--ink);
+  -webkit-text-size-adjust: 100%;
 }
 
 .font-display {
   font-family: Georgia, "Iowan Old Style", serif;
+}
+
+/* Keep supporting copy readable on small and lower-contrast phone screens. */
+.text-gray-400 {
+  color: #6b7280;
+}
+
+.text-gray-500 {
+  color: #4b5563;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
 }

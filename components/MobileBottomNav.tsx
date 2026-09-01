@@ -39,15 +39,22 @@ export function MobileBottomNav() {
 
       const { data: conversations, error: conversationError } = await supabase
         .from("conversations")
-        .select("id")
+        .select("id, buyer_id, buyer_deleted_at, seller_deleted_at")
         .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
 
       if (conversationError) {
         console.error("Could not load conversations:", conversationError);
       }
 
-      if (!conversationError && conversations && conversations.length > 0) {
-        const conversationIds = conversations.map(
+      const visibleConversations = (conversations ?? []).filter(
+        (conversation) =>
+          conversation.buyer_id === user.id
+            ? conversation.buyer_deleted_at === null
+            : conversation.seller_deleted_at === null,
+      );
+
+      if (!conversationError && visibleConversations.length > 0) {
+        const conversationIds = visibleConversations.map(
           (conversation) => conversation.id,
         );
 

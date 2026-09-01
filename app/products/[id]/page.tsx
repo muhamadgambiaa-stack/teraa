@@ -245,49 +245,7 @@ export default async function ProductDetailPage({
         <div className="grid md:grid-cols-[minmax(0,420px)_minmax(0,1fr)] gap-6 lg:gap-9 items-start">
           {/* PRODUCT PHOTOS */}
 
-          <section className="w-full max-w-[420px] mx-auto md:mx-0">
-            <div
-              className="w-full rounded-xl overflow-hidden flex items-center justify-center"
-              style={{
-                background: "var(--sand)",
-                aspectRatio: "4 / 3",
-              }}
-            >
-              {sortedPhotos[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={sortedPhotos[0].photo_url}
-                  alt={product.title}
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="w-full h-full min-h-[220px] flex flex-col items-center justify-center text-gray-400">
-                  <ImageIcon />
-
-                  <p className="text-xs mt-2">No photo provided</p>
-                </div>
-              )}
-            </div>
-
-            {/* THUMBNAILS */}
-
-            {sortedPhotos.length > 1 && (
-              <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-                {sortedPhotos.slice(1, 6).map((photo, index) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={index}
-                    src={photo.photo_url}
-                    alt={`${product.title} photo ${index + 2}`}
-                    className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-lg border shrink-0 bg-white"
-                    style={{
-                      borderColor: "var(--sand)",
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+          <ProductGallery photos={sortedPhotos} title={product.title} />
 
           {/* PRODUCT DETAILS */}
 
@@ -362,6 +320,32 @@ export default async function ProductDetailPage({
                 <span className="rounded-full px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700">
                   Out of stock
                 </span>
+              )}
+            </div>
+
+            {/* PRIMARY ACTION */}
+
+            <div className="mt-4">
+              {!isOwnListing ? (
+                <Link
+                  href={outOfStock ? "#" : `/products/${product.id}/checkout`}
+                  aria-disabled={outOfStock}
+                  className="block w-full text-center rounded-full py-3 text-white text-sm font-semibold transition-opacity"
+                  style={{
+                    background: outOfStock ? "#c9c9c0" : "var(--indigo)",
+                    pointerEvents: outOfStock ? "none" : "auto",
+                  }}
+                >
+                  {outOfStock ? "Out of stock" : "Buy now"}
+                </Link>
+              ) : (
+                <Link
+                  href={`/seller/dashboard/products/${product.id}`}
+                  className="block w-full text-center rounded-full py-3 text-white text-sm font-semibold"
+                  style={{ background: "var(--indigo)" }}
+                >
+                  Manage your listing
+                </Link>
               )}
             </div>
 
@@ -478,35 +462,6 @@ export default async function ProductDetailPage({
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* BUY */}
-
-            <div className="mt-5">
-              {!isOwnListing ? (
-                <Link
-                  href={outOfStock ? "#" : `/products/${product.id}/checkout`}
-                  aria-disabled={outOfStock}
-                  className="block w-full text-center rounded-full py-3 text-white text-sm font-semibold transition-opacity"
-                  style={{
-                    background: outOfStock ? "#c9c9c0" : "var(--indigo)",
-
-                    pointerEvents: outOfStock ? "none" : "auto",
-                  }}
-                >
-                  {outOfStock ? "Out of stock" : "Buy now"}
-                </Link>
-              ) : (
-                <Link
-                  href={`/seller/dashboard/products/${product.id}`}
-                  className="block w-full text-center rounded-full py-3 text-white text-sm font-semibold"
-                  style={{
-                    background: "var(--indigo)",
-                  }}
-                >
-                  Manage your listing
-                </Link>
-              )}
             </div>
 
             {/* DESCRIPTION */}
@@ -797,24 +752,6 @@ function LocationIcon() {
   );
 }
 
-function MessageIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
-    </svg>
-  );
-}
-
 function VerifiedIcon() {
   return (
     <svg
@@ -969,28 +906,6 @@ function CashIcon() {
   );
 }
 
-function ImageIcon() {
-  return (
-    <svg
-      width="28"
-      height="28"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-
-      <circle cx="8.5" cy="8.5" r="1.5" />
-
-      <path d="m21 15-5-5L5 21" />
-    </svg>
-  );
-}
-
 function ChevronRightIcon() {
   return (
     <svg
@@ -1048,4 +963,3 @@ function formatReviewDate(value: string) {
     year: "numeric",
   });
 }
-

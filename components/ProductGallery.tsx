@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type ProductPhoto = {
   photo_url: string;
@@ -16,23 +16,57 @@ export function ProductGallery({
   title: string;
 }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
 
   const selectedPhoto = photos[selectedIndex] ?? photos[0] ?? null;
+
+  function selectPrevious() {
+    setSelectedIndex((current) =>
+      current === 0 ? photos.length - 1 : current - 1,
+    );
+  }
+
+  function selectNext() {
+    setSelectedIndex((current) =>
+      current === photos.length - 1 ? 0 : current + 1,
+    );
+  }
+
+  function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    if (touchStartX.current === null || photos.length < 2) return;
+
+    const distance = event.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+
+    if (Math.abs(distance) < 45) return;
+
+    if (distance < 0) {
+      selectNext();
+    } else {
+      selectPrevious();
+    }
+  }
 
   return (
     <section className="w-full max-w-[420px] mx-auto md:mx-0">
       <div
-        className="w-full rounded-xl overflow-hidden flex items-center justify-center"
+        className="relative w-full rounded-xl overflow-hidden flex items-center justify-center select-none"
         style={{
           background: "var(--sand)",
           aspectRatio: "4 / 3",
+          touchAction: "pan-y",
         }}
+        onTouchStart={(event) => {
+          touchStartX.current = event.touches[0].clientX;
+        }}
+        onTouchEnd={handleTouchEnd}
       >
         {selectedPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={selectedPhoto.photo_url}
             alt={title}
+            draggable={false}
             className="w-full h-full object-contain"
           />
         ) : (
@@ -42,11 +76,39 @@ export function ProductGallery({
             <p className="text-xs mt-2">No photo provided</p>
           </div>
         )}
+
+        {photos.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={selectPrevious}
+              aria-label="View previous photo"
+              className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/90 shadow flex items-center justify-center text-xl"
+              style={{ color: "var(--indigo)" }}
+            >
+              ‹
+            </button>
+
+            <button
+              type="button"
+              onClick={selectNext}
+              aria-label="View next photo"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/90 shadow flex items-center justify-center text-xl"
+              style={{ color: "var(--indigo)" }}
+            >
+              ›
+            </button>
+
+            <span className="absolute right-2 bottom-2 rounded-full bg-black/65 px-2.5 py-1 text-xs font-medium text-white">
+              {selectedIndex + 1} / {photos.length}
+            </span>
+          </>
+        )}
       </div>
 
       {photos.length > 1 && (
         <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-          {photos.slice(0, 6).map((photo, index) => (
+          {photos.map((photo, index) => (
             <button
               key={`${photo.photo_url}-${index}`}
               type="button"
@@ -73,8 +135,8 @@ export function ProductGallery({
       )}
 
       {photos.length > 1 && (
-        <p className="text-[11px] text-gray-400 mt-1.5">
-          Tap a photo to view it.
+        <p className="text-xs text-gray-500 mt-1.5 text-center sm:text-left">
+          Swipe the large photo or tap a thumbnail.
         </p>
       )}
     </section>
