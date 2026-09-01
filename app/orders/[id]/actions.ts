@@ -195,8 +195,10 @@ export async function markOrderReceived(orderId: string) {
     throw new Error("Not authorized to update this order.");
   }
 
-  if (!["shipped", "delivered"].includes(order.status)) {
-    throw new Error("This order cannot be marked received yet.");
+  if (order.status !== "delivered") {
+    throw new Error(
+      "The seller must confirm delivery before you can mark this order received.",
+    );
   }
 
   const updateData =
@@ -213,7 +215,8 @@ export async function markOrderReceived(orderId: string) {
     .from("orders")
     .update(updateData)
     .eq("id", orderId)
-    .eq("buyer_id", user.id);
+    .eq("buyer_id", user.id)
+    .eq("status", "delivered");
 
   if (error) {
     console.error("Order completion failed:", error);

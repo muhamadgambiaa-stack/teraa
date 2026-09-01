@@ -208,7 +208,7 @@ export default async function OrderPage({
 
   const canCancel = ["placed", "confirmed"].includes(order.status);
 
-  const canMarkReceived = ["shipped", "delivered"].includes(order.status);
+  const canMarkReceived = order.status === "delivered";
 
   const canReportNotReceived = order.status === "delivered";
 
