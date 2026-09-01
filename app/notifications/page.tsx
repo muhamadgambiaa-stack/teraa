@@ -6,6 +6,16 @@ import { SiteHeader } from "@/components/SiteHeader";
 
 import { markAllNotificationsRead, markNotificationRead } from "./actions";
 
+type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  link: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+
 export default async function NotificationsPage() {
   const supabase = await createClient();
 
@@ -40,27 +50,38 @@ export default async function NotificationsPage() {
     console.error("Notification lookup failed:", error);
   }
 
-  const rows = notifications ?? [];
+  const rows = (notifications ?? []) as NotificationItem[];
 
   const unreadCount = rows.filter(
     (notification) => !notification.read_at,
   ).length;
+
+  const groups = groupNotifications(rows);
 
   return (
     <>
       <SiteHeader />
 
       <main className="max-w-2xl mx-auto px-4 py-5 sm:pb-6">
-        <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h1
-              className="font-display text-2xl"
-              style={{
-                color: "var(--ink)",
-              }}
-            >
-              Notifications
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1
+                className="font-display text-2xl"
+                style={{ color: "var(--ink)" }}
+              >
+                Notifications
+              </h1>
+
+              {unreadCount > 0 && (
+                <span
+                  className="min-w-6 h-6 rounded-full px-1.5 inline-flex items-center justify-center text-xs font-semibold text-white"
+                  style={{ background: "var(--clay)" }}
+                >
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </div>
 
             <p className="text-sm text-gray-500 mt-1">
               Updates about your orders, account and marketplace activity.
@@ -71,12 +92,13 @@ export default async function NotificationsPage() {
             <form action={markAllNotificationsRead}>
               <button
                 type="submit"
-                className="text-xs underline whitespace-nowrap"
+                className="rounded-full border px-3 py-2 text-xs font-medium whitespace-nowrap bg-white"
                 style={{
                   color: "var(--indigo)",
+                  borderColor: "var(--sand)",
                 }}
               >
-                Mark all read
+                Mark all as read
               </button>
             </form>
           )}
@@ -106,98 +128,26 @@ export default async function NotificationsPage() {
             </p>
           </div>
         ) : (
-          <div
-            className="rounded-xl border bg-white overflow-hidden"
-            style={{
-              borderColor: "var(--sand)",
-            }}
-          >
-            {rows.map((notification) => {
-              const unread = !notification.read_at;
+          <div className="space-y-5">
+            {groups.map((group) => (
+              <section key={group.label}>
+                <h2 className="text-xs uppercase tracking-wide font-semibold text-gray-500 mb-2 px-1">
+                  {group.label}
+                </h2>
 
-              const content = (
                 <div
-                  className={`flex gap-3 px-4 py-4 ${
-                    unread ? "bg-[#fffdf8]" : ""
-                  }`}
+                  className="rounded-xl border bg-white overflow-hidden"
+                  style={{ borderColor: "var(--sand)" }}
                 >
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                    style={{
-                      background: getNotificationBackground(notification.type),
-                      color: getNotificationColor(notification.type),
-                    }}
-                  >
-                    <NotificationIcon type={notification.type} />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between gap-3">
-                      <p
-                        className={`text-sm ${
-                          unread ? "font-semibold" : "font-medium"
-                        }`}
-                      >
-                        {notification.title}
-                      </p>
-
-                      {unread && (
-                        <span
-                          className="w-2 h-2 rounded-full shrink-0 mt-1.5"
-                          style={{
-                            background: "var(--clay)",
-                          }}
-                        />
-                      )}
-                    </div>
-
-                    {notification.message && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        {notification.message}
-                      </p>
-                    )}
-
-                    <p className="text-[10px] text-gray-400 mt-2">
-                      {formatNotificationTime(notification.created_at)}
-                    </p>
-                  </div>
+                  {group.items.map((notification) => (
+                    <NotificationRow
+                      key={notification.id}
+                      notification={notification}
+                    />
+                  ))}
                 </div>
-              );
-
-              return (
-                <div
-                  key={notification.id}
-                  className="border-b last:border-b-0"
-                  style={{
-                    borderColor: "var(--sand)",
-                  }}
-                >
-                  {notification.link ? (
-                    <form
-                      action={async () => {
-                        "use server";
-
-                        await markNotificationRead(notification.id);
-
-                        redirect(notification.link!);
-                      }}
-                    >
-                      <button type="submit" className="w-full text-left">
-                        {content}
-                      </button>
-                    </form>
-                  ) : (
-                    <form
-                      action={markNotificationRead.bind(null, notification.id)}
-                    >
-                      <button type="submit" className="w-full text-left">
-                        {content}
-                      </button>
-                    </form>
-                  )}
-                </div>
-              );
-            })}
+              </section>
+            ))}
           </div>
         )}
 
@@ -208,6 +158,157 @@ export default async function NotificationsPage() {
         </div>
       </main>
     </>
+  );
+}
+
+function NotificationRow({
+  notification,
+}: {
+  notification: NotificationItem;
+}) {
+  const unread = !notification.read_at;
+
+  const content = (
+    <div
+      className={`flex gap-3 px-3.5 py-3.5 transition-colors hover:bg-gray-50 ${
+        unread ? "bg-[#f5f8fb] border-l-[3px]" : "border-l-[3px] border-l-transparent"
+      }`}
+      style={unread ? { borderLeftColor: "var(--indigo)" } : undefined}
+    >
+      <div
+        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+        style={{
+          background: getNotificationBackground(notification.type),
+          color: getNotificationColor(notification.type),
+        }}
+      >
+        <NotificationIcon type={notification.type} size={17} />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <p
+            className={`text-sm leading-snug ${
+              unread ? "font-semibold" : "font-medium"
+            }`}
+          >
+            {notification.title}
+          </p>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {unread && (
+              <span
+                className="w-2 h-2 rounded-full mt-1"
+                style={{ background: "var(--clay)" }}
+                aria-label="Unread"
+              />
+            )}
+
+            {notification.link && <ChevronIcon />}
+          </div>
+        </div>
+
+        {notification.message && (
+          <p className="text-xs sm:text-sm text-gray-500 mt-1 leading-relaxed line-clamp-2">
+            {notification.message}
+          </p>
+        )}
+
+        <time
+          dateTime={notification.created_at}
+          className="block text-[11px] text-gray-400 mt-1.5"
+        >
+          {formatNotificationTime(notification.created_at)}
+        </time>
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      className="border-b last:border-b-0"
+      style={{ borderColor: "var(--sand)" }}
+    >
+      {notification.link ? (
+        <form
+          action={async () => {
+            "use server";
+
+            await markNotificationRead(notification.id);
+            redirect(notification.link!);
+          }}
+        >
+          <button
+            type="submit"
+            className="w-full text-left"
+            aria-label={`Open notification: ${notification.title}`}
+          >
+            {content}
+          </button>
+        </form>
+      ) : (
+        <form action={markNotificationRead.bind(null, notification.id)}>
+          <button
+            type="submit"
+            className="w-full text-left"
+            aria-label={`Mark notification as read: ${notification.title}`}
+          >
+            {content}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function groupNotifications(rows: NotificationItem[]) {
+  const groups = new Map<string, NotificationItem[]>([
+    ["Today", []],
+    ["Yesterday", []],
+    ["Earlier", []],
+  ]);
+
+  rows.forEach((notification) => {
+    groups.get(getNotificationGroup(notification.created_at))?.push(notification);
+  });
+
+  return Array.from(groups, ([label, items]) => ({ label, items })).filter(
+    (group) => group.items.length > 0,
+  );
+}
+
+function getNotificationGroup(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const notificationDay = Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+  );
+  const daysAgo = Math.floor((today - notificationDay) / 86_400_000);
+
+  if (daysAgo <= 0) return "Today";
+  if (daysAgo === 1) return "Yesterday";
+  return "Earlier";
+}
+
+function ChevronIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-gray-400 mt-0.5"
+      aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
   );
 }
 
