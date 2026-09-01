@@ -111,6 +111,17 @@ export async function messageSeller(productId: string) {
   }
 
   if (existingConversation) {
+    const { error: restoreError } = await supabase.rpc(
+      "restore_my_conversation",
+      {
+        p_conversation_id: existingConversation.id,
+      },
+    );
+
+    if (restoreError) {
+      throw new Error(restoreError.message || "Couldn't restore conversation.");
+    }
+
     redirect(`/messages/${existingConversation.id}`);
   }
 

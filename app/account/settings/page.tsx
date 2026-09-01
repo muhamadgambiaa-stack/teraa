@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { UserIdentity } from "@supabase/supabase-js";
 
 import { SiteHeader } from "@/components/SiteHeader";
 import GambianPhoneInput from "@/components/GambianPhoneInput";
@@ -18,6 +19,7 @@ export default function AccountSettingsPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
+  const [currentAuthEmail, setCurrentAuthEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
 
@@ -25,6 +27,10 @@ export default function AccountSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linkedIdentities, setLinkedIdentities] = useState<UserIdentity[]>([]);
+  const [unlinkingIdentityId, setUnlinkingIdentityId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     let active = true;
@@ -41,11 +47,15 @@ export default function AccountSettingsPage() {
         return;
       }
 
-      const { data, error: profileError } = await supabase
-        .from("users")
-        .select("full_name, phone_number")
-        .eq("id", user.id)
-        .single();
+      const [{ data, error: profileError }, identitiesResult] =
+        await Promise.all([
+          supabase
+            .from("users")
+            .select("full_name, phone_number")
+            .eq("id", user.id)
+            .single(),
+          supabase.auth.getUserIdentities(),
+        ]);
 
       if (!active) return;
 
@@ -56,8 +66,10 @@ export default function AccountSettingsPage() {
       }
 
       setEmail(user.email ?? "");
+      setCurrentAuthEmail(user.email ?? "");
       setFullName(data.full_name ?? "");
       setPhone(gambianLocalNumberFromStored(data.phone_number));
+      setLinkedIdentities(identitiesResult.data?.identities ?? []);
       setLoading(false);
     }
 
@@ -131,6 +143,46 @@ export default function AccountSettingsPage() {
       setSaved(false);
     }, 2500);
   }
+
+  async function handleUnlinkIdentity(identity: UserIdentity) {
+    const identityEmail = String(identity.identity_data?.email ?? "");
+    const confirmed = window.confirm(
+      `Release ${identityEmail}? You will no longer be able to log in to this account with that Google address.`,
+    );
+
+    if (!confirmed) return;
+
+    setUnlinkingIdentityId(identity.id);
+    setError(null);
+
+    const supabase = createClient();
+    const { error: unlinkError } = await supabase.auth.unlinkIdentity(identity);
+
+    if (unlinkError) {
+      setError(
+        "Couldn't release that email. Make sure this account has another login method, then try again.",
+      );
+      setUnlinkingIdentityId(null);
+      return;
+    }
+
+    setLinkedIdentities((current) =>
+      current.filter((item) => item.id !== identity.id),
+    );
+    setUnlinkingIdentityId(null);
+  }
+
+  const oldGoogleIdentities = linkedIdentities.filter((identity) => {
+    const identityEmail = String(identity.identity_data?.email ?? "")
+      .trim()
+      .toLowerCase();
+
+    return (
+      identity.provider === "google" &&
+      Boolean(identityEmail) &&
+      identityEmail !== currentAuthEmail.trim().toLowerCase()
+    );
+  });
 
   if (loading) {
     return (
@@ -257,6 +309,53 @@ export default function AccountSettingsPage() {
             )}
           </form>
         </section>
+
+        {oldGoogleIdentities.length > 0 && (
+          <section
+            className="rounded-xl border bg-white p-4 mt-4"
+            style={{ borderColor: "var(--sand)" }}
+          >
+            <h2 className="font-semibold" style={{ color: "var(--ink)" }}>
+              Old Google login
+            </h2>
+
+            <p className="text-sm text-gray-500 mt-1">
+              Google is still reserving the old email for this account. Release
+              it before using that email to create another account.
+            </p>
+
+            <div className="space-y-3 mt-4">
+              {oldGoogleIdentities.map((identity) => (
+                <div
+                  key={identity.id}
+                  className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border p-3"
+                  style={{ borderColor: "var(--sand)" }}
+                >
+                  <p className="text-sm flex-1 break-all">
+                    {String(identity.identity_data?.email ?? "Google account")}
+                  </p>
+
+                  <button
+                    type="button"
+                    disabled={unlinkingIdentityId === identity.id}
+                    onClick={() => handleUnlinkIdentity(identity)}
+                    className="rounded-full border px-4 py-2 text-sm font-medium disabled:opacity-50"
+                    style={{ borderColor: "#b42318", color: "#b42318" }}
+                  >
+                    {unlinkingIdentityId === identity.id
+                      ? "Releasing..."
+                      : "Release old email"}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-gray-500 mt-3">
+              After releasing it, this Google address can no longer log in to
+              your current account.
+            </p>
+          </section>
+        )}
       </main>
     </>
   );

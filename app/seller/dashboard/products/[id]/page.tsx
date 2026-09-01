@@ -3,10 +3,12 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
+import { ConfirmDeleteForm } from "@/components/ConfirmDeleteForm";
 import { GAMBIA_CITIES } from "@/types/database";
 
 import {
   hideListing,
+  deleteListing,
   reactivateListing,
   requestListingReview,
   updateListing,
@@ -53,6 +55,7 @@ export default async function ManageListingPage({
       `,
     )
     .eq("id", id)
+    .is("seller_deleted_at", null)
     .maybeSingle();
 
   if (error || !product) {
@@ -690,6 +693,28 @@ export default async function ManageListingPage({
             </div>
           </section>
         )}
+
+        <section
+          className="border-t mt-8 pt-6"
+          style={{
+            borderColor: "var(--sand)",
+          }}
+        >
+          <h2 className="font-semibold text-red-700 mb-2">Delete listing</h2>
+
+          <p className="text-sm text-gray-500 mb-4">
+            This removes the listing from your dashboard and the marketplace.
+            Order and dispute history will be retained where legally or
+            operationally required.
+          </p>
+
+          <ConfirmDeleteForm
+            action={deleteListing.bind(null, product.id)}
+            confirmMessage="Delete this listing? Buyers will no longer see it and this cannot be undone from your dashboard."
+            label="Delete listing"
+            className="rounded-full border border-red-600 px-5 py-2 text-sm font-medium text-red-700"
+          />
+        </section>
       </main>
     </>
   );

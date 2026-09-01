@@ -4,6 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 
+import { ConfirmDeleteForm } from "@/components/ConfirmDeleteForm";
+import { removeConversation } from "../actions";
 import { sendMessage } from "./actions";
 
 export default async function ConversationPage({
@@ -34,6 +36,8 @@ export default async function ConversationPage({
       buyer_id,
       seller_id,
       product_id,
+      buyer_deleted_at,
+      seller_deleted_at,
 
       products(
         id,
@@ -61,6 +65,15 @@ export default async function ConversationPage({
    */
   if (conversation.buyer_id !== user.id && conversation.seller_id !== user.id) {
     notFound();
+  }
+
+  const removedByCurrentUser =
+    conversation.buyer_id === user.id
+      ? conversation.buyer_deleted_at !== null
+      : conversation.seller_deleted_at !== null;
+
+  if (removedByCurrentUser) {
+    redirect("/messages");
   }
 
   const otherUserId =
@@ -242,15 +255,12 @@ export default async function ConversationPage({
               </p>
             </Link>
 
-            <Link
-              href={`/profile/${otherUserId}`}
-              className="text-xs font-medium shrink-0"
-              style={{
-                color: "var(--indigo)",
-              }}
-            >
-              View profile
-            </Link>
+            <ConfirmDeleteForm
+              action={removeConversation.bind(null, conversation.id)}
+              confirmMessage={`Remove your conversation with ${displayName}? It will return if a new message is sent.`}
+              label="Delete"
+              className="text-xs font-medium text-red-600 hover:underline shrink-0"
+            />
           </div>
 
           {/* PRODUCT */}

@@ -68,6 +68,17 @@ export async function messageSellerFromOrder(orderId: string) {
     throw new Error("Couldn't open a conversation with this seller.");
   }
 
+  const { error: restoreError } = await supabase.rpc(
+    "restore_my_conversation",
+    {
+      p_conversation_id: conversationId,
+    },
+  );
+
+  if (restoreError) {
+    throw new Error(restoreError.message || "Couldn't restore conversation.");
+  }
+
   redirect(`/messages/${conversationId}`);
 }
 

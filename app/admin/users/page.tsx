@@ -127,6 +127,8 @@ export default async function AdminUsersPage({
             <option value="suspended">Suspended</option>
 
             <option value="banned">Banned</option>
+
+            <option value="deleted">Deleted</option>
           </select>
 
           <button
@@ -254,6 +256,11 @@ function UserStatusBadge({ status }: { status: string }) {
     banned: {
       bg: "#eee",
       color: "#555",
+    },
+
+    deleted: {
+      bg: "#f3f4f6",
+      color: "#6b7280",
     },
   };
 

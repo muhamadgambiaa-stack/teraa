@@ -377,6 +377,7 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
       `,
     )
     .eq("seller_id", sellerId)
+    .is("seller_deleted_at", null)
     .order("created_at", {
       ascending: false,
     });

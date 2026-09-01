@@ -28,7 +28,7 @@ async function requireConversation(conversationId: string) {
 
   const { data: conversation, error } = await supabase
     .from("conversations")
-    .select("id, buyer_id, seller_id")
+    .select("id, buyer_id, seller_id, buyer_deleted_at, seller_deleted_at")
     .eq("id", conversationId)
     .maybeSingle();
 
@@ -38,6 +38,15 @@ async function requireConversation(conversationId: string) {
 
   if (conversation.buyer_id !== user.id && conversation.seller_id !== user.id) {
     throw new Error("You cannot access this conversation.");
+  }
+
+  const removedByCurrentUser =
+    conversation.buyer_id === user.id
+      ? conversation.buyer_deleted_at !== null
+      : conversation.seller_deleted_at !== null;
+
+  if (removedByCurrentUser) {
+    throw new Error("This conversation was removed from your inbox.");
   }
 
   return {

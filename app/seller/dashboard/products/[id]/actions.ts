@@ -59,6 +59,7 @@ async function requireOwnProduct(productId: string) {
       `,
     )
     .eq("id", productId)
+    .is("seller_deleted_at", null)
     .maybeSingle();
 
   if (error || !product) {
@@ -350,6 +351,27 @@ export async function reactivateListing(productId: string) {
 
   revalidatePath("/");
 
+  revalidatePath("/search");
+
+  redirect("/seller/dashboard");
+}
+
+export async function deleteListing(productId: string) {
+  const { supabase } = await requireOwnProduct(productId);
+
+  const { error } = await supabase.rpc("seller_delete_listing", {
+    p_product_id: productId,
+  });
+
+  if (error) {
+    console.error("Listing deletion failed:", error);
+    throw new Error(error.message || "Couldn't delete listing.");
+  }
+
+  revalidatePath("/seller/dashboard");
+  revalidatePath(`/seller/dashboard/products/${productId}`);
+  revalidatePath(`/products/${productId}`);
+  revalidatePath("/");
   revalidatePath("/search");
 
   redirect("/seller/dashboard");

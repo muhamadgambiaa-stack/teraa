@@ -2,7 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { ConfirmDeleteForm } from "@/components/ConfirmDeleteForm";
 import { SiteHeader } from "@/components/SiteHeader";
+
+import { removeConversation } from "./actions";
 
 type UserSummary = {
   id: string;
@@ -39,6 +42,8 @@ export default async function MessagesPage() {
       seller_id,
       product_id,
       created_at,
+      buyer_deleted_at,
+      seller_deleted_at,
       products(
         id,
         title,
@@ -56,7 +61,11 @@ export default async function MessagesPage() {
     console.error("Conversation lookup failed:", error);
   }
 
-  const rows = conversations ?? [];
+  const rows = (conversations ?? []).filter((conversation) =>
+    conversation.buyer_id === user.id
+      ? conversation.buyer_deleted_at === null
+      : conversation.seller_deleted_at === null,
+  );
 
   const participantIds = [
     ...new Set(
@@ -374,13 +383,20 @@ export default async function MessagesPage() {
 
                     {/* PROFILE SHORTCUT */}
 
-                    <div className="px-4 pb-2 -mt-1 flex justify-end">
+                    <div className="px-4 pb-2 -mt-1 flex items-center justify-end gap-4">
                       <Link
                         href={`/profile/${otherUserId}`}
                         className="text-[11px] text-gray-400 hover:underline"
                       >
                         View profile
                       </Link>
+
+                      <ConfirmDeleteForm
+                        action={removeConversation.bind(null, conversation.id)}
+                        confirmMessage={`Remove your conversation with ${displayName}? It will return if a new message is sent.`}
+                        label="Delete conversation"
+                        className="text-[11px] text-red-600 hover:underline"
+                      />
                     </div>
                   </div>
                 );
