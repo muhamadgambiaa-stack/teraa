@@ -3,6 +3,10 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import {
+  isValidGambianLocalNumber,
+  toGambianPhoneNumber,
+} from "@/lib/gambian-phone";
 
 export async function createOrder(formData: FormData) {
   const supabase = await createClient();
@@ -43,7 +47,9 @@ export async function createOrder(formData: FormData) {
 
   const deliveryAddress = String(formData.get("deliveryAddress") ?? "").trim();
 
-  const deliveryPhone = String(formData.get("deliveryPhone") ?? "").trim();
+  const deliveryPhoneLocal = String(
+    formData.get("deliveryPhone") ?? "",
+  ).trim();
 
   const deliveryLandmark = String(formData.get("deliveryLandmark") ?? "").trim();
 
@@ -72,9 +78,15 @@ export async function createOrder(formData: FormData) {
     redirect(`/products/${productId}/checkout?error=missing_address`);
   }
 
-  if (!deliveryPhone) {
+  if (!deliveryPhoneLocal) {
     redirect(`/products/${productId}/checkout?error=missing_phone`);
   }
+
+  if (!isValidGambianLocalNumber(deliveryPhoneLocal)) {
+    redirect(`/products/${productId}/checkout?error=invalid_phone`);
+  }
+
+  const deliveryPhone = toGambianPhoneNumber(deliveryPhoneLocal);
 
   /*
    * Secure marketplace RPC handles:

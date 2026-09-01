@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { gambianLocalNumberFromStored } from "@/lib/gambian-phone";
 import { SiteHeader } from "@/components/SiteHeader";
 
 import { createOrder } from "./actions";
+import { PlaceOrderButton } from "./PlaceOrderButton";
 import {
   CheckoutPricing,
   type DeliveryCoverageOption,
@@ -90,7 +92,7 @@ export default async function CheckoutPage({
       estimatedMaxDays: Number(row.estimated_max_days ?? 3),
     }),
   );
-  const buyerPhone = buyer?.phone_number ?? "";
+  const buyerPhone = gambianLocalNumberFromStored(buyer?.phone_number);
 
   const photos =
     (
@@ -117,6 +119,8 @@ export default async function CheckoutPage({
 
     missing_phone: "Enter a phone number for delivery coordination.",
 
+    invalid_phone: "Enter a valid 7-digit Gambian phone number.",
+
     delivery_unavailable: "This seller does not deliver to that region.",
 
     missing_payment:
@@ -137,8 +141,8 @@ export default async function CheckoutPage({
     <>
       <SiteHeader />
 
-      <main className="max-w-lg mx-auto px-4 py-6 pb-24 sm:pb-8">
-        <div className="mb-5">
+      <main className="max-w-lg mx-auto px-4 py-4 sm:py-6 pb-24 sm:pb-8">
+        <div className="mb-4">
           <h1
             className="font-display text-xl"
             style={{
@@ -156,7 +160,7 @@ export default async function CheckoutPage({
         {/* PRODUCT */}
 
         <div
-          className="flex gap-3 rounded-xl border p-3 mb-6 bg-white"
+          className="flex gap-3 rounded-xl border p-3 mb-4 bg-white"
           style={{
             borderColor: "var(--sand)",
           }}
@@ -228,7 +232,7 @@ export default async function CheckoutPage({
             </Link>
           </div>
         ) : (
-          <form action={createOrder} className="space-y-5">
+          <form action={createOrder} className="space-y-4 sm:space-y-5">
             <input type="hidden" name="productId" value={product.id} />
 
             <input type="hidden" name="paymentMethod" value="cod" />
@@ -258,7 +262,7 @@ export default async function CheckoutPage({
                 Payment method
               </label>
 
-              <div className="space-y-3">
+              <div>
                 <div
                   className="rounded-xl border p-4 bg-white"
                   style={{
@@ -294,49 +298,12 @@ export default async function CheckoutPage({
                       </div>
 
                       <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                        Pay when you receive the item. Inspect the product
-                        before handing over the cash.
+                        Inspect the item, then pay the seller when it arrives.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* ONLINE PAYMENT DISABLED */}
-
-                <div
-                  className="rounded-xl border p-4 opacity-60"
-                  style={{
-                    borderColor: "var(--sand)",
-                    background: "#f7f7f5",
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-                      style={{
-                        background: "#eeeeee",
-                        color: "#777",
-                      }}
-                    >
-                      <CardIcon />
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium">Online payment</p>
-
-                        <span className="rounded-full px-2 py-1 text-[10px] font-semibold bg-white text-gray-500">
-                          Coming soon
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                        Mobile money and bank transfer payments will be
-                        introduced in a future Teraa update.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -358,17 +325,31 @@ export default async function CheckoutPage({
 
             <div>
               <label className="text-sm font-medium block mb-1">Delivery phone number</label>
-              <input
-                name="deliveryPhone"
-                type="tel"
-                required
-                maxLength={40}
-                autoComplete="tel"
-                defaultValue={buyerPhone}
-                placeholder="+220 7XX XXXX"
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+              <div
+                className="flex overflow-hidden rounded-lg border bg-white"
                 style={{ borderColor: "var(--sand)" }}
-              />
+              >
+                <span
+                  className="flex items-center border-r bg-gray-50 px-3 text-sm font-medium text-gray-600"
+                  style={{ borderColor: "var(--sand)" }}
+                >
+                  +220
+                </span>
+                <input
+                  name="deliveryPhone"
+                  type="tel"
+                  required
+                  minLength={7}
+                  maxLength={7}
+                  pattern="[1-9][0-9]{6}"
+                  title="Enter exactly 7 digits. The first digit cannot be zero."
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  defaultValue={buyerPhone}
+                  placeholder="7123456"
+                  className="min-w-0 flex-1 px-3 py-2.5 text-sm outline-none"
+                />
+              </div>
             </div>
 
             <div>
@@ -407,7 +388,7 @@ export default async function CheckoutPage({
             {/* SAFETY */}
 
             <div
-              className="rounded-xl border p-4"
+              className="rounded-xl border p-3"
               style={{
                 borderColor: "var(--sand)",
                 background: "#fbfaf7",
@@ -429,15 +410,7 @@ export default async function CheckoutPage({
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full rounded-full py-3 text-white text-sm font-semibold"
-              style={{
-                background: "var(--indigo)",
-              }}
-            >
-              Place COD order
-            </button>
+            <PlaceOrderButton />
 
             <p className="text-[11px] text-gray-400 text-center leading-relaxed">
               Teraa does not currently process or hold customer payments.
@@ -467,26 +440,6 @@ function CashIcon() {
       <circle cx="12" cy="12" r="2.5" />
 
       <path d="M7 9H5v2M17 15h2v-2" />
-    </svg>
-  );
-}
-
-function CardIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-
-      <path d="M3 10h18" />
     </svg>
   );
 }
