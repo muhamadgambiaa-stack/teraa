@@ -148,9 +148,9 @@ export default async function SellerOrdersPage() {
     <>
       <SiteHeader />
 
-      <main className="max-w-3xl mx-auto px-4 py-6 pb-24 sm:pb-8">
+      <main className="max-w-3xl mx-auto px-4 py-5 pb-24 sm:pb-8">
         <h1
-          className="font-display text-2xl mb-6"
+          className="font-display text-2xl mb-4"
           style={{
             color: "var(--ink)",
           }}
@@ -261,9 +261,10 @@ export default async function SellerOrdersPage() {
             return (
               <div
                 key={order.id}
-                className="rounded-xl border p-4 bg-white"
+                className="rounded-xl border border-l-[3px] p-3.5 sm:p-4 bg-white"
                 style={{
                   borderColor: "var(--sand)",
+                  borderLeftColor: style.color,
                 }}
               >
                 <div className="flex items-center justify-between gap-3 mb-2">
@@ -328,10 +329,10 @@ export default async function SellerOrdersPage() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2 mt-4">
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-4">
                   <Link
                     href={`/seller/dashboard/orders/${order.id}`}
-                    className="rounded-full px-4 py-1.5 text-xs font-medium border inline-flex items-center gap-1.5"
+                    className="min-h-10 rounded-full px-4 py-2 text-xs font-medium border inline-flex items-center justify-center gap-1.5"
                     style={{
                       borderColor: "var(--indigo)",
                       color: "var(--indigo)",
@@ -343,6 +344,7 @@ export default async function SellerOrdersPage() {
 
                   {action && status !== "confirmed" && (
                     <form
+                      className="contents sm:block"
                       action={updateOrderStatus.bind(
                         null,
                         order.id,
@@ -351,7 +353,7 @@ export default async function SellerOrdersPage() {
                     >
                       <button
                         type="submit"
-                        className="rounded-full px-4 py-1.5 text-xs font-medium text-white"
+                        className="w-full min-h-10 rounded-full px-4 py-2 text-xs font-medium text-white"
                         style={{
                           background: "var(--indigo)",
                         }}
@@ -364,7 +366,7 @@ export default async function SellerOrdersPage() {
                   {status === "confirmed" && (
                     <Link
                       href={`/seller/dashboard/orders/${order.id}`}
-                      className="rounded-full px-4 py-1.5 text-xs font-medium text-white"
+                      className="min-h-10 rounded-full px-4 py-2 text-xs font-medium text-white inline-flex items-center justify-center"
                       style={{ background: "var(--indigo)" }}
                     >
                       Add delivery details
@@ -372,10 +374,13 @@ export default async function SellerOrdersPage() {
                   )}
 
                   {canCancel && (
-                    <form action={cancelSellerOrder.bind(null, order.id)}>
+                    <form
+                      action={cancelSellerOrder.bind(null, order.id)}
+                      className="contents sm:block"
+                    >
                       <button
                         type="submit"
-                        className="rounded-full px-4 py-1.5 text-xs font-medium border"
+                        className="w-full min-h-10 rounded-full px-4 py-2 text-xs font-medium border"
                         style={{
                           borderColor: "var(--clay)",
                           color: "var(--clay)",

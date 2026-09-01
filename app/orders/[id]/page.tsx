@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { MessageSellerButton } from "@/components/MessageSellerButton";
 import { StarRatingInput } from "@/components/StarRatingInput";
+import { OrderProgress } from "@/components/OrderProgress";
+import type { OrderStatus } from "@/types/database";
 
 import {
   cancelOrder,
@@ -283,7 +285,7 @@ export default async function OrderPage({
       <main className="max-w-lg mx-auto px-4 py-6 pb-24 sm:py-8 sm:pb-8">
         {/* ORDER HEADER */}
 
-        <div className="text-center mb-6">
+        <div className="text-center mb-5">
           <div
             className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center text-white"
             style={{
@@ -309,6 +311,13 @@ export default async function OrderPage({
           <p className="text-sm text-gray-500">Order #{order.id.slice(0, 8)}</p>
 
           <OrderStatus status={order.status} />
+        </div>
+
+        <div
+          className="rounded-xl border bg-white px-3 py-4 mb-4"
+          style={{ borderColor: "var(--sand)" }}
+        >
+          <OrderProgress status={order.status as OrderStatus} />
         </div>
 
         {/* ORDER ITEMS */}
@@ -975,24 +984,6 @@ function StaticStarRating({ rating }: { rating: number }) {
  * ICONS
  * ============================================================
  */
-function MessageIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
-    </svg>
-  );
-}
-
 function VerifiedIcon() {
   return (
     <svg

@@ -29,10 +29,15 @@ export default async function MyOrdersPage() {
   return (
     <>
       <SiteHeader />
-      <main className="max-w-2xl mx-auto px-4 py-6">
-        <h1 className="font-display text-2xl mb-6" style={{ color: "var(--ink)" }}>
-          My orders
-        </h1>
+      <main className="max-w-2xl mx-auto px-4 py-5 pb-24 sm:pb-8">
+        <div className="mb-4">
+          <h1 className="font-display text-2xl" style={{ color: "var(--ink)" }}>
+            My orders
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Track purchases and confirm when deliveries arrive.
+          </p>
+        </div>
 
         {(!orders || orders.length === 0) && (
           <div className="rounded-xl border p-10 text-center" style={{ borderColor: "var(--sand)" }}>
@@ -60,8 +65,11 @@ export default async function MyOrdersPage() {
               <Link
                 key={o.id}
                 href={`/orders/${o.id}`}
-                className="block rounded-xl border p-4 bg-white hover:shadow-sm transition-shadow"
-                style={{ borderColor: "var(--sand)" }}
+                className="block rounded-xl border border-l-[3px] p-3.5 bg-white hover:shadow-sm transition-shadow"
+                style={{
+                  borderColor: "var(--sand)",
+                  borderLeftColor: style.color,
+                }}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs text-gray-400">
@@ -79,11 +87,19 @@ export default async function MyOrdersPage() {
                     </p>
                   );
                 })}
-                <div className="flex items-center justify-between mt-1">
+                <div className="flex items-center justify-between mt-2">
                   <span className="text-xs text-gray-500">{seller?.business_name}</span>
                   <span className="text-sm font-bold" style={{ color: "var(--clay)" }}>
                     GMD {total.toLocaleString()}
                   </span>
+                </div>
+
+                <div
+                  className="flex items-center justify-end gap-1 mt-3 pt-2 border-t text-xs font-medium"
+                  style={{ borderColor: "var(--sand)", color: "var(--indigo)" }}
+                >
+                  View order
+                  <span aria-hidden="true">→</span>
                 </div>
               </Link>
             );

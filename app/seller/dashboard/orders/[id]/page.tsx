@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
+import { OrderProgress } from "@/components/OrderProgress";
 
 import type { OrderStatus } from "@/types/database";
 
@@ -388,7 +389,7 @@ export default async function SellerOrderDetailPage({
 
         {/* HEADER */}
 
-        <div className="flex items-start justify-between gap-4 mt-5 mb-6">
+        <div className="flex items-start justify-between gap-4 mt-4 mb-4">
           <div>
             <p className="text-xs text-gray-500">Order</p>
 
@@ -416,6 +417,13 @@ export default async function SellerOrderDetailPage({
             {style.label}
           </span>
         </div>
+
+        <section
+          className="rounded-xl border bg-white px-3 py-4 mb-4"
+          style={{ borderColor: "var(--sand)" }}
+        >
+          <OrderProgress status={status} />
+        </section>
 
         {/* ORDER ITEMS */}
 
