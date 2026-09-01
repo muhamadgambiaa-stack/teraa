@@ -13,17 +13,49 @@ type Issue = {
   seller_response: string | null;
   seller_responded_at: string | null;
   auto_restricted_at: string | null;
+  resolved_at: string | null;
+  resolution_reason: string | null;
 };
 
-export default async function AdminDisputesPage() {
+export default async function AdminDisputesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const params = await searchParams;
+  const selectedStatus = ["open", "resolved", "all"].includes(
+    params.status ?? "",
+  )
+    ? (params.status as "open" | "resolved" | "all")
+    : "open";
   const { supabase } = await requireAdmin();
-  const { data, error } = await supabase
+  let request = supabase
     .from("order_delivery_issues")
     .select(
-      "order_id, buyer_id, seller_id, status, reported_at, response_deadline, seller_response, seller_responded_at, auto_restricted_at",
+      "order_id, buyer_id, seller_id, status, reported_at, response_deadline, seller_response, seller_responded_at, auto_restricted_at, resolved_at, resolution_reason",
     )
     .order("reported_at", { ascending: false })
     .limit(200);
+
+  if (selectedStatus !== "all") {
+    request = request.eq("status", selectedStatus);
+  }
+
+  const [
+    { data, error },
+    { count: openCount },
+    { count: resolvedCount },
+  ] = await Promise.all([
+    request,
+    supabase
+      .from("order_delivery_issues")
+      .select("order_id", { count: "exact", head: true })
+      .eq("status", "open"),
+    supabase
+      .from("order_delivery_issues")
+      .select("order_id", { count: "exact", head: true })
+      .eq("status", "resolved"),
+  ]);
 
   const issues = (data ?? []) as Issue[];
   const now = Date.now();
@@ -46,6 +78,24 @@ export default async function AdminDisputesPage() {
           </p>
         </div>
 
+        <nav className="flex flex-wrap gap-2 mb-6" aria-label="Dispute status">
+          <FilterLink
+            href="/admin/disputes?status=open"
+            active={selectedStatus === "open"}
+            label={`Open (${openCount ?? 0})`}
+          />
+          <FilterLink
+            href="/admin/disputes?status=resolved"
+            active={selectedStatus === "resolved"}
+            label={`Resolved (${resolvedCount ?? 0})`}
+          />
+          <FilterLink
+            href="/admin/disputes?status=all"
+            active={selectedStatus === "all"}
+            label={`All (${(openCount ?? 0) + (resolvedCount ?? 0)})`}
+          />
+        </nav>
+
         {error && (
           <div className="rounded-xl border p-5 text-sm bg-red-50 border-red-200">
             Couldn&apos;t load delivery disputes.
@@ -54,7 +104,7 @@ export default async function AdminDisputesPage() {
 
         {!error && issues.length === 0 && (
           <div className="rounded-xl border bg-white p-10 text-center text-sm text-gray-500" style={{ borderColor: "var(--sand)" }}>
-            No delivery disputes have been reported.
+            No {selectedStatus === "all" ? "" : selectedStatus} delivery disputes found.
           </div>
         )}
 
@@ -109,6 +159,20 @@ export default async function AdminDisputesPage() {
                       {new Date(issue.auto_restricted_at).toLocaleString()}
                     </p>
                   )}
+                  {issue.status === "resolved" && (
+                    <>
+                      <p className="sm:col-span-2 text-green-800">
+                        <strong>Resolution:</strong>{" "}
+                        {issue.resolution_reason ?? "Reason not recorded."}
+                      </p>
+                      <p className="sm:col-span-2 text-gray-500">
+                        <strong>Resolved:</strong>{" "}
+                        {issue.resolved_at
+                          ? new Date(issue.resolved_at).toLocaleString()
+                          : "Date was not recorded for this older dispute"}
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 {issue.seller_response && (
@@ -134,5 +198,29 @@ export default async function AdminDisputesPage() {
         </div>
       </main>
     </>
+  );
+}
+
+function FilterLink({
+  href,
+  active,
+  label,
+}: {
+  href: string;
+  active: boolean;
+  label: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-full border px-4 py-2 text-sm font-medium"
+      style={{
+        borderColor: active ? "var(--indigo)" : "var(--sand)",
+        background: active ? "var(--indigo)" : "white",
+        color: active ? "white" : "var(--ink)",
+      }}
+    >
+      {label}
+    </Link>
   );
 }
