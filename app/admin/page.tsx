@@ -16,6 +16,7 @@ export default async function AdminHomePage() {
     { count: commissionRequests },
     { count: proofsToReview },
     { count: overdueCommissions },
+    { count: openDeliveryDisputes },
   ] = await Promise.all([
     supabase
       .from("sellers")
@@ -86,9 +87,21 @@ export default async function AdminHomePage() {
         head: true,
       })
       .eq("status", "overdue"),
+
+    supabase
+      .from("order_delivery_issues")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "open"),
   ]);
 
   const stats = [
+    {
+      label: "Open delivery disputes",
+      value: openDeliveryDisputes ?? 0,
+      href: "/admin/disputes",
+      urgent: (openDeliveryDisputes ?? 0) > 0,
+    },
+
     {
       label: "Payment detail requests",
       value: commissionRequests ?? 0,
@@ -247,6 +260,12 @@ export default async function AdminHomePage() {
             />
 
             <AdminLink
+              href="/admin/disputes"
+              title="Delivery disputes"
+              description="Review seller responses and automatic restrictions"
+            />
+
+            <AdminLink
               href="/admin/commissions"
               title="Commissions"
               description="Payment instructions, proof review and overdue balances"
@@ -291,4 +310,3 @@ function AdminLink({
     </Link>
   );
 }
-

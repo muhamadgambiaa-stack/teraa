@@ -146,6 +146,34 @@ export async function messageBuyerFromOrder(orderId: string) {
   redirect(`/messages/${conversationId}`);
 }
 
+export async function respondToDeliveryIssue(
+  orderId: string,
+  formData: FormData,
+) {
+  const { supabase } = await requireSellerOwnsOrder(orderId);
+  const response = String(formData.get("response") ?? "").trim();
+
+  if (response.length < 20 || response.length > 2000) {
+    throw new Error("Your response must be between 20 and 2,000 characters.");
+  }
+
+  const { error } = await supabase.rpc("seller_respond_to_delivery_issue", {
+    p_order_id: orderId,
+    p_response: response,
+  });
+
+  if (error) {
+    console.error("Could not submit delivery dispute response:", error);
+    throw new Error(error.message || "Couldn't submit your response.");
+  }
+
+  revalidatePath(`/seller/dashboard/orders/${orderId}`);
+  revalidatePath("/seller/dashboard/orders");
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/notifications");
+  revalidatePath("/admin/disputes");
+}
+
 /*
  * ============================================================
  * ALLOWED SELLER ORDER TRANSITIONS

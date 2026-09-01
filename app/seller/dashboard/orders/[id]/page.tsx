@@ -11,6 +11,7 @@ import {
   cancelSellerOrder,
   markOrderShipped,
   messageBuyerFromOrder,
+  respondToDeliveryIssue,
   updateOrderStatus,
 } from "../actions";
 
@@ -112,6 +113,10 @@ type BuyerContact = {
 type DeliveryIssue = {
   status: string;
   reported_at: string;
+  response_deadline: string | null;
+  seller_response: string | null;
+  seller_responded_at: string | null;
+  auto_restricted_at: string | null;
 };
 
 export default async function SellerOrderDetailPage({
@@ -276,7 +281,11 @@ export default async function SellerOrderDetailPage({
     .select(
       `
       status,
-      reported_at
+      reported_at,
+      response_deadline,
+      seller_response,
+      seller_responded_at,
+      auto_restricted_at
       `,
     )
     .eq("order_id", order.id)
@@ -637,9 +646,48 @@ export default async function SellerOrderDetailPage({
                 </p>
 
                 <p className="text-xs text-gray-500 mt-2">
-                  The buyer must confirm receipt when the item arrives. You
-                  cannot mark this issue as resolved on their behalf.
+                  {deliveryIssue.seller_responded_at
+                    ? `Response submitted ${new Date(deliveryIssue.seller_responded_at).toLocaleString()}. Teraa can now review the case.`
+                    : deliveryIssue.auto_restricted_at
+                      ? "The response deadline passed and your account was automatically restricted. Contact Teraa support."
+                      : `Submit a formal response before ${new Date(deliveryIssue.response_deadline ?? deliveryIssue.reported_at).toLocaleString()} to avoid an automatic account restriction.`}
                 </p>
+
+                {deliveryIssue.seller_response && (
+                  <div className="rounded-lg border bg-white p-3 mt-3 text-sm whitespace-pre-wrap" style={{ borderColor: "var(--sand)" }}>
+                    <strong>Your response:</strong> {deliveryIssue.seller_response}
+                  </div>
+                )}
+
+                {!deliveryIssue.seller_responded_at &&
+                  !deliveryIssue.auto_restricted_at && (
+                    <form
+                      action={respondToDeliveryIssue.bind(null, order.id)}
+                      className="mt-4"
+                    >
+                      <label htmlFor="dispute-response" className="block text-sm font-medium mb-2">
+                        Respond to dispute
+                      </label>
+                      <textarea
+                        id="dispute-response"
+                        name="response"
+                        required
+                        minLength={20}
+                        maxLength={2000}
+                        rows={4}
+                        placeholder="Explain the delivery and provide the rider, courier or tracking details..."
+                        className="w-full rounded-xl border bg-white px-3 py-3 text-sm"
+                        style={{ borderColor: "var(--sand)" }}
+                      />
+                      <button
+                        type="submit"
+                        className="mt-3 inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-white"
+                        style={{ background: "var(--clay)" }}
+                      >
+                        Submit response
+                      </button>
+                    </form>
+                  )}
 
                 <form
                   action={messageBuyerFromOrder.bind(null, order.id)}
