@@ -4,7 +4,6 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { requireAdmin } from "@/lib/require-admin";
 
 type Issue = {
-  id: string;
   order_id: string;
   buyer_id: string;
   seller_id: string;
@@ -21,7 +20,7 @@ export default async function AdminDisputesPage() {
   const { data, error } = await supabase
     .from("order_delivery_issues")
     .select(
-      "id, order_id, buyer_id, seller_id, status, reported_at, response_deadline, seller_response, seller_responded_at, auto_restricted_at",
+      "order_id, buyer_id, seller_id, status, reported_at, response_deadline, seller_response, seller_responded_at, auto_restricted_at",
     )
     .order("reported_at", { ascending: false })
     .limit(200);
@@ -81,7 +80,7 @@ export default async function AdminDisputesPage() {
 
             return (
               <section
-                key={issue.id}
+                key={issue.order_id}
                 className="rounded-xl border bg-white p-4"
                 style={{ borderColor: issue.status === "open" ? "var(--clay)" : "var(--sand)" }}
               >

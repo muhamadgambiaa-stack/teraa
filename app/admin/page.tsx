@@ -90,7 +90,7 @@ export default async function AdminHomePage() {
 
     supabase
       .from("order_delivery_issues")
-      .select("id", { count: "exact", head: true })
+      .select("order_id", { count: "exact", head: true })
       .eq("status", "open"),
   ]);
 
