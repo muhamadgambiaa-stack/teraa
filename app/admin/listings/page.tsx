@@ -67,12 +67,13 @@ export default async function AdminListingsPage({
     id: string;
     business_name: string;
     verification_status: string;
+    account_status: string;
   }[] = [];
 
   if (sellerIds.length > 0) {
     const { data } = await supabase
       .from("sellers")
-      .select("id, business_name, verification_status")
+      .select("id, business_name, verification_status, account_status")
       .in("id", sellerIds);
 
     sellers = data ?? [];
@@ -225,7 +226,14 @@ export default async function AdminListingsPage({
                       <>
                         <p>Seller: {seller.business_name}</p>
 
-                        <p>Verification: {seller.verification_status}</p>
+                        <p>
+                          Verification:{" "}
+                          {seller.account_status === "deleted"
+                            ? "Deleted account"
+                            : seller.verification_status}
+                        </p>
+
+                        <p>Account: {seller.account_status}</p>
                       </>
                     )}
 

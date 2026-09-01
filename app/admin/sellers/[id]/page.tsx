@@ -62,11 +62,17 @@ export default async function AdminSellerDetailPage({
       full_name,
       phone_number,
       city,
-      role
+      role,
+      account_status
       `,
     )
     .eq("id", seller.id)
     .maybeSingle();
+
+  const effectiveAccountStatus =
+    profile?.account_status === "deleted"
+      ? "deleted"
+      : seller.account_status;
 
   const { data: matchingDocuments } = seller.document_sha256
     ? await supabase
@@ -166,11 +172,14 @@ export default async function AdminSellerDetailPage({
 
           <div className="text-right">
             <p className="text-sm font-medium capitalize">
-              Verification: {seller.verification_status}
+              Verification:{" "}
+              {effectiveAccountStatus === "deleted"
+                ? "Deleted account"
+                : seller.verification_status}
             </p>
 
             <p className="text-sm font-medium capitalize">
-              Account: {seller.account_status}
+              Account: {effectiveAccountStatus}
             </p>
           </div>
         </div>
@@ -290,6 +299,11 @@ export default async function AdminSellerDetailPage({
               </div>
             )}
 
+            {effectiveAccountStatus === "deleted" ? (
+              <p className="rounded-lg bg-gray-100 p-3 text-sm text-gray-600">
+                This account was deleted. Verification actions are disabled.
+              </p>
+            ) : (
             <div className="flex flex-wrap gap-2">
               {seller.verification_status !== "approved" && (
                 <form action={approveSeller.bind(null, seller.id)}>
@@ -374,6 +388,7 @@ export default async function AdminSellerDetailPage({
                 </form>
               </details>
             </div>
+            )}
           </div>
 
           <div
@@ -384,7 +399,11 @@ export default async function AdminSellerDetailPage({
           >
             <h2 className="font-semibold mb-4">Account moderation</h2>
 
-            {seller.account_status === "active" ? (
+            {effectiveAccountStatus === "deleted" ? (
+              <p className="rounded-lg bg-gray-100 p-3 text-sm text-gray-600">
+                Deleted seller accounts cannot be reinstated or moderated.
+              </p>
+            ) : seller.account_status === "active" ? (
               <div className="space-y-3">
                 <details>
                   <summary
@@ -601,5 +620,4 @@ function Stat({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
-
 

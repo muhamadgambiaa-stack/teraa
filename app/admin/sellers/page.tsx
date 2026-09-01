@@ -14,6 +14,7 @@ type UserInfo = {
   full_name: string | null;
   phone_number: string | null;
   city: string | null;
+  account_status: string;
 };
 
 export default async function AdminSellersPage({
@@ -79,6 +80,7 @@ export default async function AdminSellersPage({
         full_name,
         phone_number,
         city
+        ,account_status
         `,
       )
       .in("id", sellerIds);
@@ -156,6 +158,8 @@ export default async function AdminSellersPage({
             <option value="suspended">Suspended</option>
 
             <option value="banned">Banned</option>
+
+            <option value="deleted">Deleted</option>
           </select>
 
           <button
@@ -195,6 +199,10 @@ export default async function AdminSellersPage({
           {(sellers ?? []).map((seller) => {
             const profile =
               users.find((entry) => entry.id === seller.id) ?? null;
+            const effectiveStatus =
+              profile?.account_status === "deleted"
+                ? "deleted"
+                : seller.account_status;
 
             return (
               <Link
@@ -203,8 +211,9 @@ export default async function AdminSellersPage({
                 className="block rounded-xl border bg-white p-4 hover:shadow-sm transition"
                 style={{
                   borderColor:
-                    seller.account_status === "banned" ||
-                    seller.account_status === "suspended"
+                    effectiveStatus === "banned" ||
+                    effectiveStatus === "suspended" ||
+                    effectiveStatus === "deleted"
                       ? "var(--clay)"
                       : "var(--sand)",
                 }}
@@ -233,9 +242,15 @@ export default async function AdminSellersPage({
                   </div>
 
                   <div className="flex flex-col items-end gap-1">
-                    <VerificationBadge status={seller.verification_status} />
+                    <VerificationBadge
+                      status={
+                        effectiveStatus === "deleted"
+                          ? "deleted"
+                          : seller.verification_status
+                      }
+                    />
 
-                    <AccountBadge status={seller.account_status} />
+                    <AccountBadge status={effectiveStatus} />
                   </div>
                 </div>
 
@@ -284,6 +299,12 @@ function VerificationBadge({ status }: { status: string }) {
       bg: "#fdf0f0",
       color: "var(--clay)",
     },
+
+    deleted: {
+      label: "Deleted account",
+      bg: "#eeeeee",
+      color: "#666666",
+    },
   };
 
   const selected = styles[status] ?? styles.pending;
@@ -326,6 +347,12 @@ function AccountBadge({ status }: { status: string }) {
       label: "Banned",
       bg: "#fdf0f0",
       color: "var(--clay)",
+    },
+
+    deleted: {
+      label: "Deleted",
+      bg: "#eeeeee",
+      color: "#666666",
     },
   };
 
