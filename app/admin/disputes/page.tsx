@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { SiteHeader } from "@/components/SiteHeader";
 import { requireAdmin } from "@/lib/require-admin";
+import { resolveDeliveryDispute } from "./actions";
 
 type Issue = {
   order_id: string;
@@ -179,6 +180,65 @@ export default async function AdminDisputesPage({
                   <div className="rounded-lg border p-3 mt-4 text-sm whitespace-pre-wrap" style={{ borderColor: "var(--sand)", background: "var(--cream)" }}>
                     <strong>Seller response:</strong> {issue.seller_response}
                   </div>
+                )}
+
+                {issue.status === "open" && (
+                  <details className="rounded-xl border p-4 mt-4" style={{ borderColor: "var(--sand)" }}>
+                    <summary className="cursor-pointer text-sm font-semibold">
+                      Resolve this dispute
+                    </summary>
+                    <form
+                      action={resolveDeliveryDispute.bind(null, issue.order_id)}
+                      className="mt-4 space-y-3"
+                    >
+                      <label className="block text-sm font-medium">
+                        Decision
+                        <select
+                          name="decision"
+                          required
+                          defaultValue=""
+                          className="mt-1 w-full rounded-lg border bg-white px-3 py-2.5"
+                          style={{ borderColor: "var(--sand)" }}
+                        >
+                          <option value="" disabled>Select a decision</option>
+                          <option value="complete_order">Confirm delivery and complete order</option>
+                          <option value="cancel_order">Confirm non-delivery and cancel order</option>
+                          <option value="dismiss_report">Dismiss report without changing order</option>
+                        </select>
+                      </label>
+
+                      <label className="block text-sm font-medium">
+                        Decision note
+                        <textarea
+                          name="note"
+                          required
+                          minLength={10}
+                          maxLength={500}
+                          rows={4}
+                          placeholder="Explain the evidence and why this decision was made..."
+                          className="mt-1 w-full rounded-lg border px-3 py-2.5"
+                          style={{ borderColor: "var(--sand)" }}
+                        />
+                      </label>
+
+                      {issue.auto_restricted_at && (
+                        <label className="flex items-start gap-2 text-sm">
+                          <input type="checkbox" name="restoreSeller" className="mt-1" />
+                          <span>
+                            Restore the seller only if this dispute was their sole automatic restriction.
+                          </span>
+                        </label>
+                      )}
+
+                      <button
+                        type="submit"
+                        className="rounded-full px-5 py-2.5 text-sm font-medium text-white"
+                        style={{ background: "var(--indigo)" }}
+                      >
+                        Save final decision
+                      </button>
+                    </form>
+                  </details>
                 )}
 
                 <div className="flex flex-wrap gap-4 mt-4 text-sm">
