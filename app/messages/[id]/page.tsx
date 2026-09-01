@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 
 import { ConfirmDeleteForm } from "@/components/ConfirmDeleteForm";
+import {
+  ScrollToLatestMessage,
+  SendMessageButton,
+} from "@/components/MessageEnhancements";
 import { removeConversation } from "../actions";
 import { sendMessage } from "./actions";
 
@@ -321,7 +325,7 @@ export default async function ConversationPage({
 
         {/* MESSAGES */}
 
-        <section className="px-4 py-5 pb-36 sm:pb-5 space-y-3 min-h-[52vh]">
+        <section className="px-4 py-4 pb-40 sm:pb-5 space-y-3 min-h-[52vh]">
           {(messages ?? []).length === 0 && (
             <div className="text-center py-14">
               <div
@@ -414,6 +418,8 @@ export default async function ConversationPage({
               </div>
             );
           })}
+
+          <ScrollToLatestMessage messageCount={(messages ?? []).length} />
         </section>
 
         {/* MESSAGE COMPOSER */}
@@ -423,7 +429,7 @@ export default async function ConversationPage({
             fixed
             left-0
             right-0
-            bottom-[calc(4rem+env(safe-area-inset-bottom))]
+            bottom-[calc(4.25rem+env(safe-area-inset-bottom))]
             z-40
             border-t
             bg-white
@@ -457,15 +463,7 @@ export default async function ConversationPage({
                   className="flex-1 resize-none outline-none text-sm px-2 py-2 max-h-32 bg-transparent"
                 />
 
-                <button
-                  type="submit"
-                  className="rounded-full px-5 py-2 text-sm text-white font-medium shrink-0"
-                  style={{
-                    background: "var(--indigo)",
-                  }}
-                >
-                  Send
-                </button>
+                <SendMessageButton />
               </div>
             </form>
           </div>

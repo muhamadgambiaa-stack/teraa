@@ -198,20 +198,34 @@ export default async function MessagesPage() {
       (a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime(),
     );
 
+  const totalUnread = prepared.reduce(
+    (total, conversation) => total + conversation.unreadCount,
+    0,
+  );
+
   return (
     <>
       <SiteHeader />
 
       <main className="max-w-2xl mx-auto px-4 py-5">
-        <div className="mb-5">
-          <h1
-            className="font-display text-2xl"
-            style={{
-              color: "var(--ink)",
-            }}
-          >
-            Messages
-          </h1>
+        <div className="mb-4">
+          <div className="flex items-center gap-2">
+            <h1
+              className="font-display text-2xl"
+              style={{ color: "var(--ink)" }}
+            >
+              Messages
+            </h1>
+
+            {totalUnread > 0 && (
+              <span
+                className="min-w-6 h-6 rounded-full px-1.5 inline-flex items-center justify-center text-xs font-semibold text-white"
+                style={{ background: "var(--clay)" }}
+              >
+                {totalUnread > 99 ? "99+" : totalUnread}
+              </span>
+            )}
+          </div>
 
           <p className="text-sm text-gray-500 mt-1">
             Chat with buyers and sellers about marketplace listings.
@@ -275,9 +289,16 @@ export default async function MessagesPage() {
                   >
                     <Link
                       href={`/messages/${conversation.id}`}
-                      className={`flex items-center gap-3 px-3 sm:px-4 py-4 hover:bg-gray-50 transition ${
-                        unreadCount > 0 ? "bg-[#fffdf8]" : ""
+                      className={`flex items-center gap-3 px-3 py-3.5 hover:bg-gray-50 transition border-l-[3px] ${
+                        unreadCount > 0
+                          ? "bg-[#f5f8fb]"
+                          : "border-l-transparent"
                       }`}
+                      style={
+                        unreadCount > 0
+                          ? { borderLeftColor: "var(--indigo)" }
+                          : undefined
+                      }
                     >
                       {/* USER AVATAR */}
 
@@ -287,14 +308,14 @@ export default async function MessagesPage() {
                           <img
                             src={otherUser.profile_photo_url}
                             alt={displayName}
-                            className="w-12 h-12 rounded-full object-cover border"
+                            className="w-11 h-11 rounded-full object-cover border"
                             style={{
                               borderColor: "var(--sand)",
                             }}
                           />
                         ) : (
                           <div
-                            className="w-12 h-12 rounded-full flex items-center justify-center font-semibold text-white"
+                            className="w-11 h-11 rounded-full flex items-center justify-center font-semibold text-white"
                             style={{
                               background: "var(--indigo)",
                             }}
@@ -383,7 +404,7 @@ export default async function MessagesPage() {
 
                     {/* PROFILE SHORTCUT */}
 
-                    <div className="px-4 pb-2 -mt-1 flex items-center justify-end gap-4">
+                    <div className="px-4 pb-2 -mt-0.5 flex items-center justify-end gap-4">
                       <Link
                         href={`/profile/${otherUserId}`}
                         className="text-[11px] text-gray-400 hover:underline"
