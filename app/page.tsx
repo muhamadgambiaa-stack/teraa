@@ -1,9 +1,39 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { SellerInviteCard } from "@/components/SellerInviteCard";
 import { SiteHeader } from "@/components/SiteHeader";
+
+const HOME_URL = "https://www.getteraa.com/";
+const HOME_TITLE = "Teraa | Buy and Sell Online in The Gambia";
+const HOME_DESCRIPTION =
+  "Buy and sell products online across The Gambia. Discover trusted local sellers, list products for free and connect with buyers on Teraa.";
+
+export const metadata: Metadata = {
+  title: HOME_TITLE,
+  description: HOME_DESCRIPTION,
+  alternates: {
+    canonical: HOME_URL,
+  },
+  openGraph: {
+    type: "website",
+    url: HOME_URL,
+    siteName: "Teraa",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+  },
+};
+
+const websiteStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${HOME_URL}#website`,
+  name: "Teraa",
+  alternateName: "Teraa Marketplace",
+  url: HOME_URL,
+};
 
 type PublicSellerProfile = {
   id: string;
@@ -232,6 +262,13 @@ export default async function Home() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(websiteStructuredData).replace(/</g, "\\u003c"),
+        }}
+      />
+
       <SiteHeader />
 
       {/* CATEGORY BAR */}
