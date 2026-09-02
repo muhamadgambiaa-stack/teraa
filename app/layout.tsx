@@ -24,8 +24,15 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   icons: {
-    icon: "/branding/teraa-icon.svg",
-    apple: "/branding/teraa-icon.svg",
+    icon: [
+      {
+        url: "/teraa-favicon.png",
+        type: "image/png",
+        sizes: "512x512",
+      },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/teraa-favicon.png",
   },
 };
 
