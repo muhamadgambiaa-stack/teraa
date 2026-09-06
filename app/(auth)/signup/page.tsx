@@ -127,7 +127,7 @@ export default function SignupPage() {
 
     if (!isValidGambianLocalNumber(phone)) {
       setMessage(
-        "Enter exactly 7 digits after +220. The first digit cannot be zero.",
+        "Enter your 7-digit legacy number or 9-digit number after +220. A 9-digit number must begin with 83, 86 or 87.",
       );
 
       return;
@@ -391,7 +391,7 @@ export default function SignupPage() {
             />
 
             <p className="text-xs text-gray-500 mt-1">
-              Enter 7 digits. The number cannot begin with zero.
+              Enter your 7-digit legacy number or new 9-digit number.
             </p>
           </div>
 

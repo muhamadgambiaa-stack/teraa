@@ -119,7 +119,7 @@ export default async function CheckoutPage({
 
     missing_phone: "Enter a phone number for delivery coordination.",
 
-    invalid_phone: "Enter a valid 7-digit Gambian phone number.",
+    invalid_phone: "Enter a valid 7-digit legacy or 9-digit Gambian phone number.",
 
     delivery_unavailable: "This seller does not deliver to that region.",
 
@@ -340,13 +340,13 @@ export default async function CheckoutPage({
                   type="tel"
                   required
                   minLength={7}
-                  maxLength={7}
-                  pattern="[1-9][0-9]{6}"
-                  title="Enter exactly 7 digits. The first digit cannot be zero."
+                  maxLength={9}
+                  pattern="(?:[1-9][0-9]{6}|(?:83|86|87)[1-9][0-9]{6})"
+                  title="Enter 7 digits, or the new 9-digit number beginning with 83, 86 or 87."
                   inputMode="numeric"
                   autoComplete="tel-national"
                   defaultValue={buyerPhone}
-                  placeholder="7123456"
+                  placeholder="831234567"
                   className="min-w-0 flex-1 px-3 py-2.5 text-sm outline-none"
                 />
               </div>

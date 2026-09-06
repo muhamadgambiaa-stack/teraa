@@ -192,7 +192,7 @@ export default function AccountPage() {
     if (!isValidGambianLocalNumber(phone)) {
       setSaving(false);
       setError(
-        "Enter exactly 7 digits after +220. The first digit cannot be zero.",
+        "Enter your 7-digit legacy number or 9-digit number after +220. A 9-digit number must begin with 83, 86 or 87.",
       );
       return;
     }
@@ -1042,6 +1042,5 @@ function StatusPill({
     </span>
   );
 }
-
 
 

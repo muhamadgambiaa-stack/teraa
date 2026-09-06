@@ -2,6 +2,8 @@
 
 import {
   GAMBIA_CALLING_CODE,
+  GAMBIA_LOCAL_NUMBER_MAX_LENGTH,
+  GAMBIA_LOCAL_NUMBER_MIN_LENGTH,
   sanitizeGambianLocalNumber,
 } from "@/lib/gambian-phone";
 
@@ -33,11 +35,11 @@ export default function GambianPhoneInput({
         inputMode="numeric"
         autoComplete="tel-national"
         required
-        minLength={7}
-        maxLength={7}
-        pattern="[1-9][0-9]{6}"
-        title="Enter exactly 7 digits. The first digit cannot be zero."
-        placeholder="7123456"
+        minLength={GAMBIA_LOCAL_NUMBER_MIN_LENGTH}
+        maxLength={GAMBIA_LOCAL_NUMBER_MAX_LENGTH}
+        pattern="(?:[1-9][0-9]{6}|(?:83|86|87)[1-9][0-9]{6})"
+        title="Enter 7 digits, or the new 9-digit number beginning with 83, 86 or 87."
+        placeholder="831234567"
         value={value}
         onChange={(event) =>
           onChange(sanitizeGambianLocalNumber(event.target.value))
