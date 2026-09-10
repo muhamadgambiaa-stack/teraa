@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { getActiveMarketplaceCategories } from "@/lib/active-marketplace-categories";
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -21,40 +22,12 @@ interface SearchParams {
 
 const PAGE_SIZE = 30;
 
-type Category = {
-  id: string;
-  name: string;
-};
-
 type PublicSellerProfile = {
   id: string;
   public_role: "buyer" | "seller";
   business_name: string | null;
   verification_status: string | null;
 };
-
-async function getCategories(): Promise<Category[]> {
-  try {
-    const supabase = await createClient();
-
-    const { data, error } = await supabase
-      .from("categories")
-      .select("id, name")
-      .is("parent_category_id", null)
-      .order("name", {
-        ascending: true,
-      });
-
-    if (error) {
-      console.error("Could not load categories:", error);
-      return [];
-    }
-
-    return data ?? [];
-  } catch {
-    return [];
-  }
-}
 
 async function searchProducts(params: SearchParams): Promise<{
   products: ProductCardData[];
@@ -310,7 +283,7 @@ export default async function SearchPage({
 
   const [{ products, total, error }, categories] = await Promise.all([
     searchProducts(params),
-    getCategories(),
+    getActiveMarketplaceCategories(),
   ]);
 
   const selectedCategory =

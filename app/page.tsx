@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { getActiveMarketplaceCategories } from "@/lib/active-marketplace-categories";
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { SellerInviteCard } from "@/components/SellerInviteCard";
@@ -25,6 +26,8 @@ export const metadata: Metadata = {
     description: HOME_DESCRIPTION,
   },
 };
+
+export const dynamic = "force-dynamic";
 
 const websiteStructuredData = {
   "@context": "https://schema.org",
@@ -217,22 +220,6 @@ async function getProducts(): Promise<{
   }
 }
 
-async function getCategories() {
-  try {
-    const supabase = await createClient();
-
-    const { data } = await supabase
-      .from("categories")
-      .select("id, name")
-      .is("parent_category_id", null)
-      .order("name");
-
-    return data ?? [];
-  } catch {
-    return [];
-  }
-}
-
 async function shouldInviteCurrentUserToSell() {
   try {
     const supabase = await createClient();
@@ -256,7 +243,7 @@ async function shouldInviteCurrentUserToSell() {
 export default async function Home() {
   const [{ products, error }, categories, showSellerInvite] = await Promise.all([
     getProducts(),
-    getCategories(),
+    getActiveMarketplaceCategories(),
     shouldInviteCurrentUserToSell(),
   ]);
 
@@ -281,6 +268,14 @@ export default async function Home() {
           }}
         >
           <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
+            <Link
+              href="/search"
+              className="whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] sm:text-xs hover:bg-gray-50 transition"
+              style={{ borderColor: "var(--sand)" }}
+            >
+              All
+            </Link>
+
             {categories.map((category) => (
               <Link
                 key={category.id}

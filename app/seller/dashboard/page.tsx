@@ -4,8 +4,23 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SellerNav } from "@/components/SellerNav";
+import { ShareShopButton } from "@/components/ShareShopButton";
 
 import { CONDITION_LABELS, type ProductCondition } from "@/types/database";
+
+type SellerListing = {
+  id: string;
+  title: string;
+  price: number;
+  status: string;
+  condition: string;
+  stock_quantity: number;
+  moderation_reason: string | null;
+  product_photos?: {
+    photo_url: string;
+    is_cover: boolean;
+  }[];
+};
 
 export default async function SellerDashboardPage() {
   const supabase = await createClient();
@@ -101,6 +116,59 @@ export default async function SellerDashboardPage() {
     seller.verification_status === "pending" &&
     Boolean(seller.verification_request_reason);
 
+  let hasDeliveryAreas = false;
+  let hasListing = false;
+  let sellerListings: SellerListing[] = [];
+  let sellerListingsError: string | null = null;
+
+  if (
+    seller.verification_status === "approved" &&
+    seller.account_status === "active"
+  ) {
+    const [deliveryResult, listingResult] = await Promise.all([
+      supabase
+        .from("seller_delivery_areas")
+        .select("seller_id", { count: "exact", head: true })
+        .eq("seller_id", seller.id),
+      supabase
+        .from("products")
+        .select(
+          `
+          id,
+          title,
+          price,
+          status,
+          condition,
+          stock_quantity,
+          moderation_reason,
+          product_photos(
+            photo_url,
+            is_cover
+          )
+          `,
+        )
+        .eq("seller_id", seller.id)
+        .is("seller_deleted_at", null)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    if (deliveryResult.error) {
+      console.error(
+        "Could not check seller delivery setup:",
+        deliveryResult.error,
+      );
+    }
+
+    if (listingResult.error) {
+      console.error("Could not check seller listings:", listingResult.error);
+      sellerListingsError = listingResult.error.message;
+    }
+
+    hasDeliveryAreas = (deliveryResult.count ?? 0) > 0;
+    sellerListings = (listingResult.data ?? []) as SellerListing[];
+    hasListing = sellerListings.length > 0;
+  }
+
   return (
     <>
       <SiteHeader />
@@ -188,11 +256,182 @@ export default async function SellerDashboardPage() {
             <>
               <SellerNav active="listings" />
 
-              <SellerListings sellerId={seller.id} />
+              <SellerSetupChecklist
+                sellerId={seller.id}
+                businessName={seller.business_name}
+                hasDeliveryAreas={hasDeliveryAreas}
+                hasListing={hasListing}
+              />
+
+              <SellerListings
+                products={sellerListings}
+                error={sellerListingsError}
+              />
             </>
           )}
       </main>
     </>
+  );
+}
+
+function SellerSetupChecklist({
+  sellerId,
+  businessName,
+  hasDeliveryAreas,
+  hasListing,
+}: {
+  sellerId: string;
+  businessName: string;
+  hasDeliveryAreas: boolean;
+  hasListing: boolean;
+}) {
+  const steps = [
+    {
+      label: "Seller verification",
+      description: "Your seller identity is approved.",
+      complete: true,
+      href: null,
+      action: null,
+    },
+    {
+      label: "Delivery areas and fees",
+      description: hasDeliveryAreas
+        ? "Buyers can see where you deliver."
+        : "Add at least one delivery area before accepting orders.",
+      complete: hasDeliveryAreas,
+      href: "/seller/dashboard/settings",
+      action: "Add delivery",
+    },
+    {
+      label: "First product listing",
+      description: hasListing
+        ? "Your shop has at least one product."
+        : "Publish a product so buyers can discover your shop.",
+      complete: hasListing,
+      href: "/seller/dashboard/new",
+      action: "Post a product",
+    },
+  ];
+
+  const completedCount = steps.filter((step) => step.complete).length;
+  const setupComplete = completedCount === steps.length;
+  const progress = Math.round((completedCount / steps.length) * 100);
+
+  return (
+    <section
+      className="rounded-xl border bg-white p-4 sm:p-5 mb-6"
+      style={{ borderColor: "var(--sand)" }}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-semibold">
+            {setupComplete ? "Your shop is ready" : "Finish setting up your shop"}
+          </h2>
+          <p className="text-xs text-gray-500 mt-1">
+            {completedCount} of {steps.length} setup steps completed
+          </p>
+        </div>
+
+        <span
+          className="rounded-full px-2.5 py-1 text-xs font-semibold shrink-0"
+          style={{
+            background: setupComplete ? "#e3f0e8" : "#fbf3df",
+            color: setupComplete ? "var(--leaf)" : "var(--gold)",
+          }}
+        >
+          {progress}%
+        </span>
+      </div>
+
+      <div
+        className="h-2 rounded-full overflow-hidden mt-4"
+        style={{ background: "var(--sand)" }}
+        role="progressbar"
+        aria-label="Seller shop setup progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+      >
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${progress}%`,
+            background: setupComplete ? "var(--leaf)" : "var(--indigo)",
+          }}
+        />
+      </div>
+
+      <div className="mt-4 divide-y" style={{ borderColor: "var(--sand)" }}>
+        {steps.map((step) => (
+          <div
+            key={step.label}
+            className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+          >
+            <SetupStatusIcon complete={step.complete} />
+
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">{step.label}</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {step.description}
+              </p>
+            </div>
+
+            {!step.complete && step.href && step.action && (
+              <Link
+                href={step.href}
+                className="text-xs font-semibold shrink-0 hover:underline"
+                style={{ color: "var(--indigo)" }}
+              >
+                {step.action}
+              </Link>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {setupComplete && (
+        <div
+          className="border-t mt-4 pt-4"
+          style={{ borderColor: "var(--sand)" }}
+        >
+          <p className="text-sm font-medium mb-1">Bring buyers to your shop</p>
+          <p className="text-xs text-gray-500 mb-3">
+            Share your Teraa shop on WhatsApp, Facebook or TikTok.
+          </p>
+          <ShareShopButton sellerId={sellerId} businessName={businessName} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SetupStatusIcon({ complete }: { complete: boolean }) {
+  return (
+    <span
+      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+      style={{
+        background: complete ? "#e3f0e8" : "#f1efe8",
+        color: complete ? "var(--leaf)" : "#77776f",
+      }}
+      aria-hidden="true"
+    >
+      {complete ? (
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m5 12 4 4L19 6" />
+        </svg>
+      ) : (
+        <span className="w-2 h-2 rounded-full bg-current" />
+      )}
+    </span>
   );
 }
 
@@ -356,32 +595,13 @@ function VerificationRejected({ reason }: { reason: string | null }) {
   );
 }
 
-async function SellerListings({ sellerId }: { sellerId: string }) {
-  const supabase = await createClient();
-
-  const { data: products, error } = await supabase
-    .from("products")
-    .select(
-      `
-      id,
-      title,
-      price,
-      status,
-      condition,
-      stock_quantity,
-      moderation_reason,
-      product_photos(
-        photo_url,
-        is_cover
-      )
-      `,
-    )
-    .eq("seller_id", sellerId)
-    .is("seller_deleted_at", null)
-    .order("created_at", {
-      ascending: false,
-    });
-
+function SellerListings({
+  products,
+  error,
+}: {
+  products: SellerListing[];
+  error: string | null;
+}) {
   if (error) {
     return (
       <div className="rounded-xl border p-8 text-center">
@@ -390,7 +610,7 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
     );
   }
 
-  if (!products || products.length === 0) {
+  if (products.length === 0) {
     return (
       <div
         className="rounded-xl border p-10 text-center"
@@ -398,7 +618,19 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
           borderColor: "var(--sand)",
         }}
       >
-        <p className="font-medium">No listings yet</p>
+        <p className="font-medium">Post your first product</p>
+
+        <p className="text-sm text-gray-500 mt-1 mb-4">
+          Add clear photos, the price, available sizes and delivery details.
+        </p>
+
+        <Link
+          href="/seller/dashboard/new"
+          className="inline-block rounded-full px-5 py-2.5 text-white text-sm font-medium"
+          style={{ background: "var(--indigo)" }}
+        >
+          Create listing
+        </Link>
       </div>
     );
   }
@@ -406,15 +638,7 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
   return (
     <div className="space-y-2">
       {products.map((product) => {
-        const photos =
-          (
-            product as {
-              product_photos?: {
-                photo_url: string;
-                is_cover: boolean;
-              }[];
-            }
-          ).product_photos ?? [];
+        const photos = product.product_photos ?? [];
 
         const cover =
           photos.find((photo) => photo.is_cover)?.photo_url ??
@@ -454,9 +678,9 @@ async function SellerListings({ sellerId }: { sellerId: string }) {
 
                 <p className="text-xs text-gray-500">
                   GMD {Number(product.price).toLocaleString()}
-                  {" Â· "}
+                  {" · "}
                   {CONDITION_LABELS[product.condition as ProductCondition]}
-                  {" Â· Stock: "}
+                  {" · Stock: "}
                   {product.stock_quantity}
                 </p>
               </div>
