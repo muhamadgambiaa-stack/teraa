@@ -23,10 +23,14 @@ function money(value: number) {
 export function CheckoutPricing({
   productPrice,
   stockQuantity,
+  availableSizes,
+  availableColors,
   deliveryCoverage,
 }: {
   productPrice: number;
   stockQuantity: number;
+  availableSizes: string[];
+  availableColors: string[];
   deliveryCoverage: DeliveryCoverageOption[];
 }) {
   const [quantity, setQuantity] = useState(1);
@@ -48,6 +52,50 @@ export function CheckoutPricing({
 
   return (
     <div className="space-y-5">
+      {(availableSizes.length > 0 || availableColors.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {availableSizes.length > 0 && (
+            <div>
+              <label className="text-sm font-medium block mb-1">Size</label>
+              <select
+                name="selectedSize"
+                required
+                defaultValue=""
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none bg-white"
+                style={{ borderColor: "var(--sand)" }}
+              >
+                <option value="">Choose a size</option>
+                {availableSizes.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {availableColors.length > 0 && (
+            <div>
+              <label className="text-sm font-medium block mb-1">Colour</label>
+              <select
+                name="selectedColor"
+                required
+                defaultValue=""
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none bg-white"
+                style={{ borderColor: "var(--sand)" }}
+              >
+                <option value="">Choose a colour</option>
+                {availableColors.map((color) => (
+                  <option key={color} value={color}>
+                    {color}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
+
       <div>
         <label className="text-sm font-medium block mb-1">Quantity</label>
         <select

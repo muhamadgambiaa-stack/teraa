@@ -68,6 +68,8 @@ export default async function AdminOrderDetailPage({
         id,
         quantity,
         price_at_purchase,
+        selected_size,
+        selected_color,
         product_id,
         products(
           id,
@@ -174,6 +176,8 @@ export default async function AdminOrderDetailPage({
           id: string;
           quantity: number;
           price_at_purchase: number;
+          selected_size: string | null;
+          selected_color: string | null;
           product_id: string;
           products?:
             | {
@@ -487,6 +491,15 @@ export default async function AdminOrderDetailPage({
                   <p className="text-xs text-gray-500 mt-1">
                     Quantity: {item.quantity}
                   </p>
+
+                  {(item.selected_size || item.selected_color) && (
+                    <p className="text-xs text-gray-500">
+                      {[item.selected_size && `Size: ${item.selected_size}`,
+                        item.selected_color && `Colour: ${item.selected_color}`]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  )}
 
                   <p className="text-xs text-gray-500">
                     Purchase price: GMD{" "}

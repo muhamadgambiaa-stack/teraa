@@ -55,6 +55,10 @@ export async function createOrder(formData: FormData) {
 
   const deliveryNotes = String(formData.get("deliveryNotes") ?? "").trim();
 
+  const selectedSize = String(formData.get("selectedSize") ?? "").trim();
+
+  const selectedColor = String(formData.get("selectedColor") ?? "").trim();
+
   if (!Number.isInteger(quantity) || quantity < 1) {
     redirect(`/products/${productId}/checkout?error=invalid_quantity`);
   }
@@ -118,6 +122,10 @@ export async function createOrder(formData: FormData) {
       p_delivery_landmark: deliveryLandmark || null,
 
       p_delivery_notes: deliveryNotes || null,
+
+      p_selected_size: selectedSize || null,
+
+      p_selected_color: selectedColor || null,
     },
   );
 
@@ -135,6 +143,15 @@ export async function createOrder(formData: FormData) {
 
     if (message.includes("buyer account is not active")) {
       redirect("/account/status");
+    }
+
+    if (
+      message.includes("product size") ||
+      message.includes("product colour") ||
+      message.includes("size choices") ||
+      message.includes("colour choices")
+    ) {
+      redirect(`/products/${productId}/checkout?error=missing_option`);
     }
 
     if (message.includes("seller does not deliver")) {

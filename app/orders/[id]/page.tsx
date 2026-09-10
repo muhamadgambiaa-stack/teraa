@@ -93,6 +93,8 @@ export default async function OrderPage({
         product_id,
         quantity,
         price_at_purchase,
+        selected_size,
+        selected_color,
 
         products(
           id,
@@ -158,6 +160,8 @@ export default async function OrderPage({
           product_id: string;
           quantity: number;
           price_at_purchase: number;
+          selected_size: string | null;
+          selected_color: string | null;
 
           products?:
             | {
@@ -341,7 +345,17 @@ export default async function OrderPage({
                 className="flex justify-between gap-4 text-sm py-1"
               >
                 <span className="min-w-0">
-                  {item.quantity} &times; {product?.title ?? "Product"}
+                  <span className="block">
+                    {item.quantity} &times; {product?.title ?? "Product"}
+                  </span>
+                  {(item.selected_size || item.selected_color) && (
+                    <span className="block text-xs text-gray-500 mt-1">
+                      {[item.selected_size && `Size: ${item.selected_size}`,
+                        item.selected_color && `Colour: ${item.selected_color}`]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  )}
                 </span>
 
                 <span className="shrink-0">

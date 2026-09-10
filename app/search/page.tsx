@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { SiteHeader } from "@/components/SiteHeader";
+import { CollapsibleSearchFilters } from "@/components/CollapsibleSearchFilters";
 import { GAMBIA_CITIES } from "@/types/database";
 
 import type { ProductCondition } from "@/types/database";
@@ -350,6 +351,15 @@ export default async function SearchPage({
     params.sort,
   );
 
+  const activeFilterCount = [
+    params.category,
+    params.city,
+    params.condition,
+    params.min,
+    params.max,
+    params.sort && params.sort !== "newest" ? params.sort : undefined,
+  ].filter(Boolean).length;
+
   return (
     <>
       <SiteHeader />
@@ -401,6 +411,7 @@ export default async function SearchPage({
             />
           </div>
 
+          <CollapsibleSearchFilters activeCount={activeFilterCount}>
           {/* FILTER GRID */}
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
@@ -510,6 +521,7 @@ export default async function SearchPage({
               }}
             />
           </div>
+          </CollapsibleSearchFilters>
 
           {/* BUTTONS */}
 

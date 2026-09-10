@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { parseProductOptions } from "@/lib/product-options";
 import { createClient } from "@/lib/supabase/client";
 import {
   GAMBIA_CITIES,
@@ -21,6 +22,8 @@ type ListingField =
   | "description"
   | "price"
   | "stock"
+  | "sizes"
+  | "colors"
   | "category"
   | "city";
 
@@ -39,6 +42,8 @@ export function NewListingForm() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("1");
+  const [sizes, setSizes] = useState("");
+  const [colors, setColors] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [condition, setCondition] = useState<ProductCondition>("new");
   const [city, setCity] = useState("");
@@ -218,6 +223,8 @@ export function NewListingForm() {
 
     const numericPrice = Number(price);
     const numericStock = Number(stock);
+    let availableSizes: string[];
+    let availableColors: string[];
 
     if (photos.length === 0) {
       setFieldError({
@@ -249,6 +256,32 @@ export function NewListingForm() {
       setFieldError({
         field: "stock",
         message: "Quantity must be at least 1.",
+      });
+      return;
+    }
+
+    try {
+      availableSizes = parseProductOptions(sizes);
+    } catch (optionError) {
+      setFieldError({
+        field: "sizes",
+        message:
+          optionError instanceof Error
+            ? optionError.message
+            : "Check the available sizes.",
+      });
+      return;
+    }
+
+    try {
+      availableColors = parseProductOptions(colors);
+    } catch (optionError) {
+      setFieldError({
+        field: "colors",
+        message:
+          optionError instanceof Error
+            ? optionError.message
+            : "Check the available colours.",
       });
       return;
     }
@@ -361,6 +394,8 @@ export function NewListingForm() {
         description: cleanDescription,
         price: numericPrice,
         stock_quantity: numericStock,
+        available_sizes: availableSizes,
+        available_colors: availableColors,
         condition,
         location_city: city,
         status: "active",
@@ -663,6 +698,54 @@ export function NewListingForm() {
             />
 
             <FieldError field="stock" error={fieldError} />
+          </div>
+        </div>
+
+        {/* PRODUCT OPTIONS */}
+
+        <div>
+          <div className="mb-2">
+            <p className="text-sm font-medium">Product choices (optional)</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Separate each choice with a comma. Buyers will select these at
+              checkout.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium block mb-1">
+                Available sizes
+              </label>
+              <input
+                value={sizes}
+                onChange={(event) => {
+                  setSizes(event.target.value);
+                  clearFieldError("sizes");
+                }}
+                placeholder="e.g. 38, 39, 40, 41"
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+                style={{ borderColor: "var(--sand)" }}
+              />
+              <FieldError field="sizes" error={fieldError} />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">
+                Available colours
+              </label>
+              <input
+                value={colors}
+                onChange={(event) => {
+                  setColors(event.target.value);
+                  clearFieldError("colors");
+                }}
+                placeholder="e.g. Black, White, Blue"
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+                style={{ borderColor: "var(--sand)" }}
+              />
+              <FieldError field="colors" error={fieldError} />
+            </div>
           </div>
         </div>
 

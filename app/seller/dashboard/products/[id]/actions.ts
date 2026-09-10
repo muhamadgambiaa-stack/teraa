@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { parseProductOptions } from "@/lib/product-options";
 import { createClient } from "@/lib/supabase/server";
 
 async function requireOwnProduct(productId: string) {
@@ -151,6 +152,14 @@ export async function updateListing(productId: string, formData: FormData) {
 
   const stockQuantity = Number(formData.get("stock_quantity"));
 
+  const availableSizes = parseProductOptions(
+    String(formData.get("available_sizes") ?? ""),
+  );
+
+  const availableColors = parseProductOptions(
+    String(formData.get("available_colors") ?? ""),
+  );
+
   /*
    * VALIDATION
    */
@@ -246,6 +255,10 @@ export async function updateListing(productId: string, formData: FormData) {
       price,
 
       stock_quantity: stockQuantity,
+
+      available_sizes: availableSizes,
+
+      available_colors: availableColors,
 
       status: nextStatus,
     })

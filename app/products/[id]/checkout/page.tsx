@@ -23,6 +23,8 @@ async function getProduct(id: string) {
       title,
       price,
       stock_quantity,
+      available_sizes,
+      available_colors,
       status,
       location_city,
       seller_id,
@@ -127,6 +129,8 @@ export default async function CheckoutPage({
       "Cash on delivery is currently the only available payment method.",
 
     invalid_quantity: "Choose a valid quantity.",
+
+    missing_option: "Choose the available size and colour for this item.",
 
     order_failed: "Something went wrong placing your order. Try again.",
 
@@ -252,6 +256,8 @@ export default async function CheckoutPage({
             <CheckoutPricing
               productPrice={Number(product.price)}
               stockQuantity={product.stock_quantity}
+              availableSizes={product.available_sizes}
+              availableColors={product.available_colors}
               deliveryCoverage={deliveryCoverage}
             />
 

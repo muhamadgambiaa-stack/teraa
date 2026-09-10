@@ -44,6 +44,14 @@ type PublicSellerProfile = {
   member_since: string | null;
 };
 
+type DeliveryArea = {
+  region: string;
+  area: string;
+  delivery_fee: number;
+  estimated_min_days: number;
+  estimated_max_days: number;
+};
+
 async function getProduct(id: string) {
   const supabase = await createClient();
 
@@ -64,6 +72,8 @@ async function getProduct(id: string) {
       description,
       price,
       stock_quantity,
+      available_sizes,
+      available_colors,
       status,
       condition,
       location_city,
@@ -161,6 +171,44 @@ export default async function ProductDetailPage({
   const isVerified = seller?.verification_status === "approved";
 
   const sellerSales = Number(seller?.total_sales ?? 0);
+
+  const { data: deliveryData, error: deliveryError } = await supabase
+    .from("seller_delivery_areas")
+    .select(
+      "region, area, delivery_fee, estimated_min_days, estimated_max_days",
+    )
+    .eq("seller_id", product.seller_id)
+    .order("delivery_fee", { ascending: true });
+
+  if (deliveryError) {
+    console.error("Could not load seller delivery options:", deliveryError);
+  }
+
+  const deliveryAreas = (deliveryData ?? []) as DeliveryArea[];
+  const deliveryRegionCount = new Set(
+    deliveryAreas.map((deliveryArea) => deliveryArea.region),
+  ).size;
+  const lowestDeliveryFee = deliveryAreas.length
+    ? Math.min(
+        ...deliveryAreas.map((deliveryArea) =>
+          Number(deliveryArea.delivery_fee),
+        ),
+      )
+    : 0;
+  const fastestDeliveryDays = deliveryAreas.length
+    ? Math.min(
+        ...deliveryAreas.map((deliveryArea) =>
+          Number(deliveryArea.estimated_min_days),
+        ),
+      )
+    : 0;
+  const slowestDeliveryDays = deliveryAreas.length
+    ? Math.max(
+        ...deliveryAreas.map((deliveryArea) =>
+          Number(deliveryArea.estimated_max_days),
+        ),
+      )
+    : 0;
 
   /*
    * ----------------------------------------------------------
@@ -322,6 +370,65 @@ export default async function ProductDetailPage({
                 </span>
               )}
             </div>
+
+            {(product.available_sizes.length > 0 ||
+              product.available_colors.length > 0) && (
+              <div
+                className="rounded-xl border p-4 mt-4 bg-white space-y-4"
+                style={{ borderColor: "var(--sand)" }}
+              >
+                {product.available_sizes.length > 0 && (
+                  <ProductChoices
+                    label="Available sizes"
+                    choices={product.available_sizes}
+                  />
+                )}
+
+                {product.available_colors.length > 0 && (
+                  <ProductChoices
+                    label="Available colours"
+                    choices={product.available_colors}
+                  />
+                )}
+
+                <p className="text-xs text-gray-500">
+                  You will choose your size and colour during checkout.
+                </p>
+              </div>
+            )}
+
+            {deliveryAreas.length > 0 && (
+              <div
+                className="rounded-xl border p-4 mt-4 bg-white"
+                style={{ borderColor: "var(--sand)" }}
+              >
+                <div className="flex items-start gap-3">
+                  <span style={{ color: "var(--indigo)" }}>
+                    <DeliveryIcon />
+                  </span>
+                  <div>
+                    <h2 className="text-sm font-semibold">Delivery available</h2>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {deliveryAreas.length} delivery {deliveryAreas.length === 1 ? "area" : "areas"}
+                      {deliveryRegionCount > 0
+                        ? ` across ${deliveryRegionCount} ${deliveryRegionCount === 1 ? "region" : "regions"}`
+                        : ""}
+                      .
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {lowestDeliveryFee === 0
+                        ? "Free delivery available"
+                        : `Delivery from GMD ${lowestDeliveryFee.toLocaleString()}`}
+                      {" · "}
+                      Estimated {deliveryTimeRangeLabel(
+                        fastestDeliveryDays,
+                        slowestDeliveryDays,
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* PRIMARY ACTION */}
 
@@ -651,6 +758,63 @@ export default async function ProductDetailPage({
       </main>
     </>
   );
+}
+
+function ProductChoices({
+  label,
+  choices,
+}: {
+  label: string;
+  choices: string[];
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold text-gray-600 mb-2">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {choices.map((choice) => (
+          <span
+            key={choice}
+            className="rounded-full border px-3 py-1.5 text-xs font-medium"
+            style={{ borderColor: "var(--sand)" }}
+          >
+            {choice}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DeliveryIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 6h11v10H3zM14 10h4l3 3v3h-7z" />
+      <circle cx="7" cy="18" r="2" />
+      <circle cx="18" cy="18" r="2" />
+    </svg>
+  );
+}
+
+function deliveryTimeRangeLabel(minDays: number, maxDays: number) {
+  if (minDays === 0 && maxDays === 0) {
+    return "same day";
+  }
+
+  if (minDays === maxDays) {
+    return `${minDays} ${minDays === 1 ? "day" : "days"}`;
+  }
+
+  return `${minDays}–${maxDays} days`;
 }
 
 /* --------------------------------

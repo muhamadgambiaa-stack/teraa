@@ -94,6 +94,8 @@ export interface Product {
   description: string | null;
   price: number;
   stock_quantity: number;
+  available_sizes: string[];
+  available_colors: string[];
   status: ProductStatus;
   condition: ProductCondition;
   location_city: string;

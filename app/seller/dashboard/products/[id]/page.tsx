@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ConfirmDeleteForm } from "@/components/ConfirmDeleteForm";
+import { productOptionsInputValue } from "@/lib/product-options";
 import { GAMBIA_CITIES } from "@/types/database";
 
 import {
@@ -42,6 +43,8 @@ export default async function ManageListingPage({
       description,
       price,
       stock_quantity,
+      available_sizes,
+      available_colors,
       status,
       condition,
       location_city,
@@ -381,6 +384,48 @@ export default async function ManageListingPage({
                   borderColor: "var(--sand)",
                 }}
               />
+            </div>
+
+            <div>
+              <div className="mb-2">
+                <p className="text-sm font-medium">Product choices</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Separate each choice with a comma. Leave blank when the
+                  product has no size or colour choices.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Available sizes
+                  </label>
+                  <input
+                    name="available_sizes"
+                    defaultValue={productOptionsInputValue(
+                      product.available_sizes,
+                    )}
+                    placeholder="e.g. 38, 39, 40, 41"
+                    className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+                    style={{ borderColor: "var(--sand)" }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Available colours
+                  </label>
+                  <input
+                    name="available_colors"
+                    defaultValue={productOptionsInputValue(
+                      product.available_colors,
+                    )}
+                    placeholder="e.g. Black, White, Blue"
+                    className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+                    style={{ borderColor: "var(--sand)" }}
+                  />
+                </div>
+              </div>
             </div>
 
             <div>
