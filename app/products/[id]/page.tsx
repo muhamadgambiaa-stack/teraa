@@ -1,5 +1,7 @@
 ﻿import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -53,7 +55,7 @@ type DeliveryArea = {
   estimated_max_days: number;
 };
 
-async function getProduct(id: string) {
+const getProduct = cache(async function getProduct(id: string) {
   const supabase = await createClient();
 
   /*
@@ -95,15 +97,67 @@ async function getProduct(id: string) {
   }
 
   return data;
+});
+
+type ProductPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export async function generateMetadata({
+  params,
+}: ProductPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const product = await getProduct(id);
+
+  if (!product) {
+    return { title: "Product not found | Teraa" };
+  }
+
+  const photos =
+    (
+      product as {
+        product_photos?: {
+          photo_url: string;
+          is_cover: boolean;
+          sort_order: number;
+        }[];
+      }
+    ).product_photos ?? [];
+  const coverPhoto = [...photos].sort(
+    (a, b) =>
+      (b.is_cover ? 1 : 0) - (a.is_cover ? 1 : 0) ||
+      a.sort_order - b.sort_order,
+  )[0];
+  const description = product.description?.trim()
+    ? `GMD ${Number(product.price).toLocaleString()}. ${product.description.trim()}`
+    : `Buy ${product.title} for GMD ${Number(product.price).toLocaleString()} on Teraa.`;
+  const previewImages = coverPhoto
+    ? [{ url: coverPhoto.photo_url, alt: product.title }]
+    : [];
+
+  return {
+    title: `${product.title} | Teraa`,
+    description: description.slice(0, 160),
+    alternates: { canonical: `/products/${product.id}` },
+    openGraph: {
+      type: "website",
+      title: product.title,
+      description: description.slice(0, 160),
+      url: `/products/${product.id}`,
+      images: previewImages,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.title,
+      description: description.slice(0, 160),
+      images: previewImages.map((image) => image.url),
+    },
+  };
 }
 
 export default async function ProductDetailPage({
   params,
-}: {
-  params: Promise<{
-    id: string;
-  }>;
-}) {
+}: ProductPageProps) {
   const { id } = await params;
 
   const product = await getProduct(id);
