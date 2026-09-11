@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { ReportButton } from "@/components/ReportButton";
 import { ProductGallery } from "@/components/ProductGallery";
 import { MessageSellerButton } from "@/components/MessageSellerButton";
+import { ShareProductButton } from "@/components/ShareProductButton";
 
 import { CONDITION_LABELS, type ProductCondition } from "@/types/database";
 
@@ -432,28 +433,36 @@ export default async function ProductDetailPage({
 
             {/* PRIMARY ACTION */}
 
-            <div className="mt-4">
-              {!isOwnListing ? (
-                <Link
-                  href={outOfStock ? "#" : `/products/${product.id}/checkout`}
-                  aria-disabled={outOfStock}
-                  className="block w-full text-center rounded-full py-3 text-white text-sm font-semibold transition-opacity"
-                  style={{
-                    background: outOfStock ? "#c9c9c0" : "var(--indigo)",
-                    pointerEvents: outOfStock ? "none" : "auto",
-                  }}
-                >
-                  {outOfStock ? "Out of stock" : "Buy now"}
-                </Link>
-              ) : (
-                <Link
-                  href={`/seller/dashboard/products/${product.id}`}
-                  className="block w-full text-center rounded-full py-3 text-white text-sm font-semibold"
-                  style={{ background: "var(--indigo)" }}
-                >
-                  Manage your listing
-                </Link>
-              )}
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
+              <div className="min-w-0">
+                {!isOwnListing ? (
+                  <Link
+                    href={outOfStock ? "#" : `/products/${product.id}/checkout`}
+                    aria-disabled={outOfStock}
+                    className="block w-full truncate rounded-full py-3 text-center text-sm font-semibold text-white transition-opacity"
+                    style={{
+                      background: outOfStock ? "#c9c9c0" : "var(--indigo)",
+                      pointerEvents: outOfStock ? "none" : "auto",
+                    }}
+                  >
+                    {outOfStock ? "Out of stock" : "Buy now"}
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/seller/dashboard/products/${product.id}`}
+                    className="block w-full truncate rounded-full py-3 text-center text-sm font-semibold text-white"
+                    style={{ background: "var(--indigo)" }}
+                  >
+                    Manage listing
+                  </Link>
+                )}
+              </div>
+
+              <ShareProductButton
+                productId={product.id}
+                productTitle={product.title}
+                price={Number(product.price)}
+              />
             </div>
 
             {/* SELLER */}
