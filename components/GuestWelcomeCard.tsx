@@ -1,15 +1,40 @@
-import Link from "next/link";
+"use client";
 
-const benefits = [
-  "Browse before joining",
-  "Verified seller badges",
-  "Orders recorded in Teraa",
-];
+import Link from "next/link";
+import { useState, useSyncExternalStore } from "react";
+
+const DISMISSED_KEY = "teraa:guest-welcome-dismissed";
 
 export function GuestWelcomeCard() {
+  const [dismissed, setDismissed] = useState(false);
+  const storedAsVisible = useSyncExternalStore(
+    () => () => undefined,
+    () => {
+      try {
+        return window.localStorage.getItem(DISMISSED_KEY) !== "1";
+      } catch {
+        return true;
+      }
+    },
+    () => false,
+  );
+  const visible = storedAsVisible && !dismissed;
+
+  function dismissWelcome() {
+    setDismissed(true);
+
+    try {
+      window.localStorage.setItem(DISMISSED_KEY, "1");
+    } catch {
+      // The notice still closes when browser storage is unavailable.
+    }
+  }
+
+  if (!visible) return null;
+
   return (
     <section
-      className="mb-5 overflow-hidden rounded-2xl border bg-white sm:mb-7"
+      className="relative mb-4 overflow-hidden rounded-xl border bg-white"
       style={{ borderColor: "var(--sand)" }}
       aria-labelledby="guest-welcome-title"
     >
@@ -21,60 +46,56 @@ export function GuestWelcomeCard() {
         }}
       />
 
-      <div className="p-4 sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-6">
+      <button
+        type="button"
+        onClick={dismissWelcome}
+        className="absolute right-2 top-2.5 flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
+        aria-label="Dismiss welcome message"
+      >
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="m6 6 12 12" />
+          <path d="m18 6-12 12" />
+        </svg>
+      </button>
+
+      <div className="p-3.5 pr-12 sm:flex sm:items-center sm:justify-between sm:gap-5 sm:p-4 sm:pr-14">
         <div className="min-w-0">
           <p
-            className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em]"
-            style={{ color: "var(--clay)" }}
-          >
-            Made for The Gambia
-          </p>
-
-          <h1
             id="guest-welcome-title"
-            className="font-display text-2xl font-semibold leading-tight sm:text-3xl"
+            className="text-sm font-semibold"
             style={{ color: "var(--ink)" }}
           >
-            Find local products. Buy with more confidence.
-          </h1>
-
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-            Browse freely, then create a free account when you are ready to
-            save products, contact sellers or place an order.
+            New to Teraa?
           </p>
 
-          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
-            {benefits.map((benefit) => (
-              <li
-                key={benefit}
-                className="flex items-center gap-1.5 text-xs text-gray-600"
-              >
-                <span
-                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                  style={{ background: "var(--leaf)" }}
-                  aria-hidden="true"
-                >
-                  ✓
-                </span>
-                {benefit}
-              </li>
-            ))}
-          </ul>
+          <p className="mt-1 text-xs leading-5 text-gray-600 sm:text-sm">
+            Browse local products freely. Join when you are ready to save items,
+            contact sellers or place an order.
+          </p>
         </div>
 
-        <div className="mt-4 grid shrink-0 grid-cols-2 gap-2 sm:mt-0 sm:flex sm:w-44 sm:flex-col">
+        <div className="mt-3 flex shrink-0 items-center gap-3 sm:mt-0">
           <Link
             href="/signup"
-            className="inline-flex items-center justify-center rounded-full px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:opacity-90"
+            className="inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 sm:text-sm"
             style={{ background: "var(--indigo)" }}
           >
-            Join Teraa free
+            Join free
           </Link>
 
           <Link
             href="/login"
-            className="inline-flex items-center justify-center rounded-full border px-4 py-2.5 text-center text-sm font-semibold transition hover:bg-gray-50"
-            style={{ borderColor: "var(--sand)", color: "var(--indigo)" }}
+            className="text-xs font-semibold hover:underline sm:text-sm"
+            style={{ color: "var(--indigo)" }}
           >
             Log in
           </Link>

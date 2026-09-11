@@ -236,7 +236,7 @@ export default async function CheckoutPage({
             </Link>
           </div>
         ) : (
-          <form action={createOrder} className="space-y-4 sm:space-y-5">
+          <form action={createOrder} className="space-y-3 sm:space-y-4">
             <input type="hidden" name="productId" value={product.id} />
 
             <input type="hidden" name="paymentMethod" value="cod" />
@@ -261,58 +261,6 @@ export default async function CheckoutPage({
               deliveryCoverage={deliveryCoverage}
             />
 
-            {/* PAYMENT */}
-
-            <div>
-              <label className="text-sm font-medium block mb-2">
-                Payment method
-              </label>
-
-              <div>
-                <div
-                  className="rounded-xl border p-4 bg-white"
-                  style={{
-                    borderColor: "var(--indigo)",
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-                      style={{
-                        background: "#e6edf3",
-                        color: "var(--indigo)",
-                      }}
-                    >
-                      <CashIcon />
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold">
-                          Cash on delivery
-                        </p>
-
-                        <span
-                          className="rounded-full px-2 py-1 text-[10px] font-semibold"
-                          style={{
-                            background: "#e3f0e8",
-                            color: "var(--leaf)",
-                          }}
-                        >
-                          Available
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                        Inspect the item, then pay the seller when it arrives.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
             {/* DELIVERY ADDRESS */}
 
             <div>
@@ -320,10 +268,10 @@ export default async function CheckoutPage({
               <textarea
                 name="deliveryAddress"
                 required
-                rows={3}
+                rows={2}
                 maxLength={500}
                 autoComplete="street-address"
-                placeholder="Street, neighbourhood, compound or building details"
+                placeholder="Street, neighbourhood and a nearby landmark"
                 className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none resize-none"
                 style={{ borderColor: "var(--sand)" }}
               />
@@ -358,39 +306,6 @@ export default async function CheckoutPage({
               </div>
             </div>
 
-            <div>
-              <label className="text-sm font-medium block mb-1">
-                Nearby landmark <span className="font-normal text-gray-400">(optional)</span>
-              </label>
-              <input
-                name="deliveryLandmark"
-                maxLength={200}
-                placeholder="A school, mosque, shop or other easy-to-find place"
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
-                style={{ borderColor: "var(--sand)" }}
-              />
-            </div>
-
-            {/* NOTES */}
-
-            <div>
-              <label className="text-sm font-medium block mb-1">
-                Delivery notes{" "}
-                <span className="font-normal text-gray-400">(optional)</span>
-              </label>
-
-              <textarea
-                name="deliveryNotes"
-                rows={3}
-                maxLength={500}
-                placeholder="Preferred time or other delivery instructions"
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none resize-none"
-                style={{
-                  borderColor: "var(--sand)",
-                }}
-              />
-            </div>
-
             {/* SAFETY */}
 
             <div
@@ -404,13 +319,11 @@ export default async function CheckoutPage({
                 <ShieldIcon />
 
                 <div>
-                  <p className="text-xs font-semibold">
-                    Pay only after receiving the item
-                  </p>
+                  <p className="text-xs font-semibold">Cash on delivery</p>
 
                   <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                    Inspect the product before paying. For in-person exchanges,
-                    use a safe public meeting place.
+                    Inspect the product before paying the seller. For in-person
+                    exchanges, use a safe public meeting place.
                   </p>
                 </div>
               </div>
@@ -425,28 +338,6 @@ export default async function CheckoutPage({
         )}
       </main>
     </>
-  );
-}
-
-function CashIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="6" width="18" height="12" rx="2" />
-
-      <circle cx="12" cy="12" r="2.5" />
-
-      <path d="M7 9H5v2M17 15h2v-2" />
-    </svg>
   );
 }
 

@@ -51,9 +51,9 @@ export function CheckoutPricing({
   );
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 sm:space-y-4">
       {(availableSizes.length > 0 || availableColors.length > 0) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {availableSizes.length > 0 && (
             <div>
               <label className="text-sm font-medium block mb-1">Size</label>
@@ -142,7 +142,7 @@ export function CheckoutPricing({
 
                   return (
                     <option key={value} value={value}>
-                      {option.area} — {feeLabel} — {deliveryTimeLabel(
+                      {option.area} · {feeLabel} · {deliveryTimeLabel(
                         option.estimatedMinDays,
                         option.estimatedMaxDays,
                       )}
@@ -155,7 +155,7 @@ export function CheckoutPricing({
       </div>
 
       <div
-        className="rounded-xl border p-4 space-y-2 text-sm"
+        className="rounded-xl border p-3 space-y-2 text-sm"
         style={{ borderColor: "var(--sand)", background: "#fbfaf7" }}
       >
         <div className="flex justify-between gap-4">
@@ -172,7 +172,7 @@ export function CheckoutPricing({
         >
           <span>Total payable</span>
           <span style={{ color: "var(--clay)" }}>
-            {selectedCoverage ? money(total) : "—"}
+            {selectedCoverage ? money(total) : "Select area"}
           </span>
         </div>
         {selectedCoverage && (
