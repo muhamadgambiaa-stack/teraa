@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { getActiveMarketplaceCategories } from "@/lib/active-marketplace-categories";
 import { createClient } from "@/lib/supabase/server";
+import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { SellerInviteCard } from "@/components/SellerInviteCard";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -220,31 +221,41 @@ async function getProducts(): Promise<{
   }
 }
 
-async function shouldInviteCurrentUserToSell() {
+type HomepageAccountState = {
+  isGuest: boolean;
+  showSellerInvite: boolean;
+};
+
+async function getHomepageAccountState(): Promise<HomepageAccountState> {
   try {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return false;
+    if (!user) {
+      return { isGuest: true, showSellerInvite: false };
+    }
 
     const [{ data: profile }, { data: seller }] = await Promise.all([
       supabase.from("users").select("role").eq("id", user.id).maybeSingle(),
       supabase.from("sellers").select("id").eq("id", user.id).maybeSingle(),
     ]);
 
-    return profile?.role === "buyer" && !seller;
+    return {
+      isGuest: false,
+      showSellerInvite: profile?.role === "buyer" && !seller,
+    };
   } catch {
-    return false;
+    return { isGuest: true, showSellerInvite: false };
   }
 }
 
 export default async function Home() {
-  const [{ products, error }, categories, showSellerInvite] = await Promise.all([
+  const [{ products, error }, categories, accountState] = await Promise.all([
     getProducts(),
     getActiveMarketplaceCategories(),
-    shouldInviteCurrentUserToSell(),
+    getHomepageAccountState(),
   ]);
 
   return (
@@ -295,7 +306,9 @@ export default async function Home() {
       {/* MAIN */}
 
       <main className="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 w-full sm:pb-6">
-        {showSellerInvite && <SellerInviteCard />}
+        {accountState.isGuest && <GuestWelcomeCard />}
+
+        {accountState.showSellerInvite && <SellerInviteCard />}
 
         {error === "not_configured" && (
           <div

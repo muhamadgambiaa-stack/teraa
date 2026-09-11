@@ -214,7 +214,7 @@ export function HeaderAuthActions() {
 
       {role === "buyer" && (
         <Link
-          href="/signup"
+          href="/seller/register"
           className="rounded-full px-4 py-2 text-white text-sm font-medium whitespace-nowrap"
           style={{
             background: "var(--indigo)",
