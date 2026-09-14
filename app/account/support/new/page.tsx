@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PendingSubmitButton } from "@/components/PendingSubmitButton";
 
 import { createSupportThread, createSupportThreadFromAnswer } from "../actions";
 
@@ -214,15 +215,12 @@ export default async function NewSupportPage() {
               }}
             />
 
-            <button
-              type="submit"
+            <PendingSubmitButton
+              label="Send question"
+              pendingLabel="Sending…"
               className="rounded-full px-5 py-2.5 text-sm font-semibold text-white"
-              style={{
-                background: "var(--indigo)",
-              }}
-            >
-              Send question
-            </button>
+              style={{ background: "var(--indigo)" }}
+            />
           </form>
         </section>
 

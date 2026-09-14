@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PendingSubmitButton } from "@/components/PendingSubmitButton";
 import { SupportAutoRefresh } from "@/components/support/SupportAutoRefresh";
 
 import {
@@ -105,7 +106,7 @@ export default async function AdminSupportThreadPage({
 
       <SupportAutoRefresh />
 
-      <main className="max-w-3xl mx-auto px-4 py-5 pb-32 sm:pb-8">
+      <main className="max-w-3xl mx-auto px-4 py-5 pb-5 sm:pb-8">
         <Link
           href="/admin/support"
           className="inline-flex items-center gap-1 text-xs text-gray-500 hover:underline"
@@ -220,45 +221,38 @@ export default async function AdminSupportThreadPage({
         <div className="flex flex-wrap gap-2 mb-5">
           {canTakeConversation && (
             <form action={claimSupportThread.bind(null, thread.id)}>
-              <button
-                type="submit"
+              <PendingSubmitButton
+                label={
+                  thread.status === "bot_handling"
+                    ? "Take over conversation"
+                    : "Take conversation"
+                }
+                pendingLabel="Taking…"
                 className="rounded-full px-4 py-2 text-sm font-medium text-white"
-                style={{
-                  background: "var(--indigo)",
-                }}
-              >
-                {thread.status === "bot_handling"
-                  ? "Take over conversation"
-                  : "Take conversation"}
-              </button>
+                style={{ background: "var(--indigo)" }}
+              />
             </form>
           )}
 
           {thread.status !== "resolved" && (
             <form action={resolveSupportThread.bind(null, thread.id)}>
-              <button
-                type="submit"
+              <PendingSubmitButton
+                label="Mark resolved"
+                pendingLabel="Resolving…"
                 className="rounded-full border px-4 py-2 text-sm font-medium"
-                style={{
-                  borderColor: "var(--leaf)",
-                  color: "var(--leaf)",
-                }}
-              >
-                Mark resolved
-              </button>
+                style={{ borderColor: "var(--leaf)", color: "var(--leaf)" }}
+              />
             </form>
           )}
         </div>
 
         {/* MESSAGES */}
 
-        <section className="space-y-3 min-h-[45vh]">
+        <section className="space-y-3">
           {(messages ?? []).map((message) => {
             const fromAgent = message.sender_type === "agent";
 
             const fromBot = message.sender_type === "bot";
-
-            const fromCustomer = message.sender_type === "user";
 
             const label = fromAgent
               ? "Human support"
@@ -316,7 +310,7 @@ export default async function AdminSupportThreadPage({
 
         <form
           action={sendAdminSupportMessage.bind(null, thread.id)}
-          className="sticky bottom-0 mt-5 border-t bg-white py-3"
+          className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 mt-4 border-t bg-white py-3 sm:bottom-0"
           style={{
             borderColor: "var(--sand)",
           }}
@@ -341,15 +335,12 @@ export default async function AdminSupportThreadPage({
               }}
             />
 
-            <button
-              type="submit"
+            <PendingSubmitButton
+              label="Send"
+              pendingLabel="Sending…"
               className="rounded-full px-5 py-3 text-sm font-semibold text-white shrink-0"
-              style={{
-                background: "var(--indigo)",
-              }}
-            >
-              Send
-            </button>
+              style={{ background: "var(--indigo)" }}
+            />
           </div>
         </form>
       </main>

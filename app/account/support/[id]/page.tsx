@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PendingSubmitButton } from "@/components/PendingSubmitButton";
 import { SupportAutoRefresh } from "@/components/support/SupportAutoRefresh";
 
 import {
@@ -86,7 +87,7 @@ export default async function SupportThreadPage({
 
       <SupportAutoRefresh />
 
-      <main className="max-w-2xl mx-auto px-4 py-5 pb-32 sm:pb-8">
+      <main className="max-w-2xl mx-auto px-4 py-5 pb-5 sm:pb-8">
         <Link
           href="/account/support"
           className="inline-flex items-center gap-1 text-xs text-gray-500 hover:underline"
@@ -186,16 +187,12 @@ export default async function SupportThreadPage({
                   thread.id,
                 )}
               >
-                <button
-                  type="submit"
+                <PendingSubmitButton
+                  label="This solved my problem"
+                  pendingLabel="Closing…"
                   className="w-full rounded-full px-4 py-2.5 text-sm font-semibold"
-                  style={{
-                    background: "#e3f0e8",
-                    color: "var(--leaf)",
-                  }}
-                >
-                  This solved my problem
-                </button>
+                  style={{ background: "#e3f0e8", color: "var(--leaf)" }}
+                />
               </form>
 
               <form
@@ -204,16 +201,12 @@ export default async function SupportThreadPage({
                   thread.id,
                 )}
               >
-                <button
-                  type="submit"
+                <PendingSubmitButton
+                  label="I still need help"
+                  pendingLabel="Requesting…"
                   className="w-full rounded-full border px-4 py-2.5 text-sm font-semibold"
-                  style={{
-                    borderColor: "var(--indigo)",
-                    color: "var(--indigo)",
-                  }}
-                >
-                  I still need help
-                </button>
+                  style={{ borderColor: "var(--indigo)", color: "var(--indigo)" }}
+                />
               </form>
             </div>
           </div>
@@ -228,16 +221,12 @@ export default async function SupportThreadPage({
                     value="I want to talk to a support agent."
                   />
 
-                  <button
-                    type="submit"
+                  <PendingSubmitButton
+                    label="Talk to a person"
+                    pendingLabel="Requesting…"
                     className="rounded-full border px-4 py-2 text-xs font-semibold"
-                    style={{
-                      borderColor: "var(--indigo)",
-                      color: "var(--indigo)",
-                    }}
-                  >
-                    Talk to a person
-                  </button>
+                    style={{ borderColor: "var(--indigo)", color: "var(--indigo)" }}
+                  />
                 </form>
               </div>
             </div>
@@ -330,7 +319,7 @@ export default async function SupportThreadPage({
 
         {/* MESSAGES */}
 
-        <section className="space-y-3 min-h-[45vh]">
+        <section className="space-y-3">
           {(messages ?? []).map((message) => {
             const fromUser = message.sender_type === "user";
 
@@ -392,7 +381,7 @@ export default async function SupportThreadPage({
 
         <form
           action={sendSupportMessage.bind(null, thread.id)}
-          className="sticky bottom-0 mt-5 border-t bg-white py-3"
+          className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 mt-4 border-t bg-white py-3 sm:bottom-0"
           style={{
             borderColor: "var(--sand)",
           }}
@@ -416,15 +405,12 @@ export default async function SupportThreadPage({
               }}
             />
 
-            <button
-              type="submit"
+            <PendingSubmitButton
+              label="Send"
+              pendingLabel="Sending…"
               className="rounded-full px-5 py-3 text-sm font-semibold text-white shrink-0"
-              style={{
-                background: "var(--indigo)",
-              }}
-            >
-              Send
-            </button>
+              style={{ background: "var(--indigo)" }}
+            />
           </div>
         </form>
       </main>
