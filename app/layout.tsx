@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import "./globals.css";
 
+import { AppShell } from "@/components/AppShell";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { InstallTeraa } from "@/components/InstallTeraa";
 import { PushNotifications } from "@/components/PushNotifications";
@@ -43,8 +44,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">
-        <div className="flex-1 pb-20 sm:pb-0">{children}</div>
+      <body className="min-h-full">
+        <div className="min-h-full pb-20 sm:pb-0">
+          <AppShell>{children}</AppShell>
+        </div>
 
         <InstallTeraa />
         <PushNotifications />

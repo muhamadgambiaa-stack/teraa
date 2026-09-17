@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -18,18 +19,18 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
         borderColor: "var(--sand)",
       }}
     >
-      {/* DESKTOP HEADER */}
-      <div className="hidden sm:flex max-w-6xl mx-auto px-4 py-3 items-center gap-4">
+      {/* TABLET HEADER */}
+      <div className="hidden sm:flex lg:hidden max-w-6xl mx-auto px-4 py-3 items-center gap-4">
         <Link
           href="/"
           aria-label="Teraa home"
           className="shrink-0 flex items-center"
         >
-          <img
+          <Image
             src="/branding/teraa-logo.svg"
             alt="Teraa"
-            width="760"
-            height="180"
+            width={760}
+            height={180}
             className="h-8 w-auto"
           />
         </Link>
@@ -45,6 +46,15 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
         </nav>
       </div>
 
+      {/* DESKTOP SEARCH: the logo and account navigation live in the sidebar. */}
+      {showSearch && (
+        <div className="mx-auto hidden w-full max-w-[1460px] items-center px-6 py-3 lg:flex">
+          <div className="w-full max-w-3xl">
+            <SearchBar initialQuery={searchQuery} />
+          </div>
+        </div>
+      )}
+
       {/* MOBILE HEADER */}
       <div className="sm:hidden">
         <div
@@ -57,11 +67,11 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
             aria-label="Teraa home"
             className="flex items-center"
           >
-            <img
+            <Image
               src="/branding/teraa-logo.svg"
               alt="Teraa"
-              width="760"
-              height="180"
+              width={760}
+              height={180}
               className="h-7 w-auto"
             />
           </Link>

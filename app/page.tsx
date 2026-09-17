@@ -4,6 +4,10 @@ import Link from "next/link";
 import { getActiveMarketplaceCategories } from "@/lib/active-marketplace-categories";
 import { createClient } from "@/lib/supabase/server";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
+import {
+  DesktopHomeAside,
+  type MarketplaceRole,
+} from "@/components/DesktopHomeAside";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { SellerInviteCard } from "@/components/SellerInviteCard";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -224,6 +228,7 @@ async function getProducts(): Promise<{
 type HomepageAccountState = {
   isGuest: boolean;
   showSellerInvite: boolean;
+  role: MarketplaceRole;
 };
 
 async function getHomepageAccountState(): Promise<HomepageAccountState> {
@@ -234,7 +239,7 @@ async function getHomepageAccountState(): Promise<HomepageAccountState> {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return { isGuest: true, showSellerInvite: false };
+      return { isGuest: true, showSellerInvite: false, role: "guest" };
     }
 
     const [{ data: profile }, { data: seller }] = await Promise.all([
@@ -245,9 +250,13 @@ async function getHomepageAccountState(): Promise<HomepageAccountState> {
     return {
       isGuest: false,
       showSellerInvite: profile?.role === "buyer" && !seller,
+      role:
+        profile?.role === "admin" || profile?.role === "seller"
+          ? profile.role
+          : "buyer",
     };
   } catch {
-    return { isGuest: true, showSellerInvite: false };
+    return { isGuest: true, showSellerInvite: false, role: "guest" };
   }
 }
 
@@ -278,7 +287,7 @@ export default async function Home() {
             borderColor: "var(--sand)",
           }}
         >
-          <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
+          <div className="max-w-[1460px] mx-auto px-3 sm:px-4 lg:px-6 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
             <Link
               href="/search"
               className="whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] sm:text-xs hover:bg-gray-50 transition"
@@ -305,12 +314,13 @@ export default async function Home() {
 
       {/* MAIN */}
 
-      <main className="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 w-full sm:pb-6">
-        {accountState.isGuest && <GuestWelcomeCard />}
+      <div className="mx-auto grid w-full max-w-[1460px] gap-5 px-3 py-4 sm:px-4 sm:py-6 lg:px-6 min-[1380px]:grid-cols-[minmax(0,1fr)_280px]">
+        <main className="min-w-0 sm:pb-6">
+          {accountState.isGuest && <GuestWelcomeCard />}
 
-        {accountState.showSellerInvite && <SellerInviteCard />}
+          {accountState.showSellerInvite && <SellerInviteCard />}
 
-        {error === "not_configured" && (
+          {error === "not_configured" && (
           <div
             className="rounded-xl border p-5 mb-6 text-sm"
             style={{
@@ -327,9 +337,9 @@ export default async function Home() {
               variables, then restart the development server.
             </p>
           </div>
-        )}
+          )}
 
-        {error && error !== "not_configured" && (
+          {error && error !== "not_configured" && (
           <div
             className="rounded-xl border p-5 mb-6 text-sm"
             style={{
@@ -341,9 +351,9 @@ export default async function Home() {
 
             <p className="text-gray-600">{error}. Try refreshing the page.</p>
           </div>
-        )}
+          )}
 
-        <div className="flex items-center justify-between gap-4 mb-3 sm:mb-4">
+          <div className="flex items-center justify-between gap-4 mb-3 sm:mb-4">
           <div>
             <h1
               className="font-display text-xl sm:text-2xl"
@@ -368,9 +378,9 @@ export default async function Home() {
           >
             View all
           </Link>
-        </div>
+          </div>
 
-        {products.length === 0 && error !== "not_configured" && !error && (
+          {products.length === 0 && error !== "not_configured" && !error && (
           <div
             className="rounded-xl border p-10 text-center bg-white"
             style={{
@@ -393,14 +403,16 @@ export default async function Home() {
               Start selling
             </Link>
           </div>
-        )}
+          )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-4">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </main>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </main>
+        <DesktopHomeAside role={accountState.role} />
+      </div>
     </>
   );
 }
