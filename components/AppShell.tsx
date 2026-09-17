@@ -26,7 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-full">
       <DesktopSidebar />
-      <div className="min-h-full min-w-0 lg:pl-[252px]">{children}</div>
+      <div className="min-h-full min-w-0 lg:pl-[220px]">{children}</div>
     </div>
   );
 }

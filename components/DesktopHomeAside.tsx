@@ -42,7 +42,7 @@ export function DesktopHomeAside({ role }: { role: MarketplaceRole }) {
   return (
     <aside className="sticky top-[84px] hidden h-fit space-y-4 xl:block">
       <section
-        className="overflow-hidden rounded-2xl p-5 text-white"
+        className="overflow-hidden rounded-2xl p-4 text-white"
         style={{
           background:
             "linear-gradient(145deg, var(--indigo) 0%, #17324d 68%, #244f71 100%)",
@@ -51,11 +51,11 @@ export function DesktopHomeAside({ role }: { role: MarketplaceRole }) {
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">
           {action.eyebrow}
         </p>
-        <h2 className="mt-2 font-display text-xl font-semibold">{action.title}</h2>
+        <h2 className="mt-2 font-display text-lg font-semibold">{action.title}</h2>
         <p className="mt-2 text-xs leading-5 text-white/75">{action.body}</p>
         <Link
           href={action.href}
-          className="mt-4 flex w-full items-center justify-center rounded-full px-4 py-2.5 text-xs font-bold text-white transition hover:brightness-105"
+          className="mt-3 flex w-full items-center justify-center rounded-full px-4 py-2 text-xs font-bold text-white transition hover:brightness-105"
           style={{ background: "var(--clay)" }}
         >
           {action.label}
