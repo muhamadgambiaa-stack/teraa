@@ -40,7 +40,7 @@ export function DesktopHomeAside({ role }: { role: MarketplaceRole }) {
   const action = roleActions[role];
 
   return (
-    <aside className="sticky top-[84px] hidden h-fit space-y-4 min-[1380px]:block">
+    <aside className="sticky top-[84px] hidden h-fit space-y-4 xl:block">
       <section
         className="overflow-hidden rounded-2xl p-5 text-white"
         style={{

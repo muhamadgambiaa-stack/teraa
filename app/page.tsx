@@ -314,7 +314,7 @@ export default async function Home() {
 
       {/* MAIN */}
 
-      <div className="mx-auto grid w-full max-w-[1460px] gap-5 px-3 py-4 sm:px-4 sm:py-6 lg:px-6 min-[1380px]:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="mx-auto grid w-full max-w-[1460px] gap-5 px-3 py-4 sm:px-4 sm:py-6 lg:px-6 xl:grid-cols-[minmax(0,1fr)_260px]">
         <main className="min-w-0 sm:pb-6">
           {accountState.isGuest && <GuestWelcomeCard />}
 
@@ -405,7 +405,7 @@ export default async function Home() {
           </div>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-3 2xl:grid-cols-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
