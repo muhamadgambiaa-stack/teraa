@@ -129,12 +129,15 @@ export async function deleteAccountPermanently(
 
   let sellerDocumentPaths: string[];
   let productPhotoPaths: string[];
+  let profilePhotoPaths: string[];
 
   try {
-    [sellerDocumentPaths, productPhotoPaths] = await Promise.all([
-      listStorageFiles(admin, "seller-documents", user.id),
-      listStorageFiles(admin, "product-photos", user.id),
-    ]);
+    [sellerDocumentPaths, productPhotoPaths, profilePhotoPaths] =
+      await Promise.all([
+        listStorageFiles(admin, "seller-documents", user.id),
+        listStorageFiles(admin, "product-photos", user.id),
+        listStorageFiles(admin, "profile-photos", user.id),
+      ]);
   } catch (error) {
     console.error("Could not prepare account file cleanup:", error);
     return {
@@ -159,6 +162,7 @@ export async function deleteAccountPermanently(
     await Promise.all([
       removeFiles(admin, "seller-documents", sellerDocumentPaths),
       removeFiles(admin, "product-photos", productPhotoPaths),
+      removeFiles(admin, "profile-photos", profilePhotoPaths),
     ]);
   } catch (error) {
     console.error("Account deleted, but file cleanup needs attention:", error);

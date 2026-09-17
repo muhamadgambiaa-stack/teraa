@@ -5,12 +5,19 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import {
+  PROFILE_PHOTO_UPDATED_EVENT,
+  type ProfilePhotoUpdatedDetail,
+} from "@/lib/profile-photo";
+import { UserAvatar } from "@/components/UserAvatar";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
 
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
+  const [fullName, setFullName] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -26,6 +33,8 @@ export function MobileBottomNav() {
         if (active) {
           setUnreadMessages(0);
           setUnreadNotifications(0);
+          setProfilePhotoUrl(null);
+          setFullName(null);
         }
 
         return;
@@ -37,10 +46,36 @@ export function MobileBottomNav() {
        * ----------------------------
        */
 
-      const { data: conversations, error: conversationError } = await supabase
-        .from("conversations")
-        .select("id, buyer_id, buyer_deleted_at, seller_deleted_at")
-        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
+      const [
+        { data: profile, error: profileError },
+        { data: conversations, error: conversationError },
+        { count: notificationCount, error: notificationError },
+      ] = await Promise.all([
+        supabase
+          .from("users")
+          .select("full_name, profile_photo_url")
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("conversations")
+          .select("id, buyer_id, buyer_deleted_at, seller_deleted_at")
+          .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`),
+        supabase
+          .from("notifications")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .eq("user_id", user.id)
+          .is("read_at", null),
+      ]);
+
+      if (profileError) {
+        console.error("Could not load the navigation profile:", profileError);
+      } else if (active) {
+        setProfilePhotoUrl(profile?.profile_photo_url ?? null);
+        setFullName(profile?.full_name ?? null);
+      }
 
       if (conversationError) {
         console.error("Could not load conversations:", conversationError);
@@ -83,16 +118,6 @@ export function MobileBottomNav() {
        * ----------------------------
        */
 
-      const { count: notificationCount, error: notificationError } =
-        await supabase
-          .from("notifications")
-          .select("id", {
-            count: "exact",
-            head: true,
-          })
-          .eq("user_id", user.id)
-          .is("read_at", null);
-
       if (notificationError) {
         console.error(
           "Could not load unread notifications:",
@@ -115,12 +140,26 @@ export function MobileBottomNav() {
       }
     }
 
+    function updateProfilePhoto(event: Event) {
+      const detail = (event as CustomEvent<ProfilePhotoUpdatedDetail>).detail;
+      setProfilePhotoUrl(detail.photoUrl);
+
+      if (detail.fullName !== undefined) {
+        setFullName(detail.fullName);
+      }
+    }
+
     document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener(PROFILE_PHOTO_UPDATED_EVENT, updateProfilePhoto);
 
     return () => {
       active = false;
 
       document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener(
+        PROFILE_PHOTO_UPDATED_EVENT,
+        updateProfilePhoto,
+      );
     };
   }, [pathname]);
 
@@ -185,7 +224,17 @@ export function MobileBottomNav() {
               }}
             >
               <div className="relative">
-                <Icon active={activeItem} />
+                {item.href === "/account" && profilePhotoUrl ? (
+                  <UserAvatar
+                    name={fullName}
+                    photoUrl={profilePhotoUrl}
+                    alt=""
+                    className="h-6 w-6 ring-1 ring-current"
+                    fallbackClassName="text-[10px]"
+                  />
+                ) : (
+                  <Icon active={activeItem} />
+                )}
 
                 {item.badge > 0 && (
                   <span

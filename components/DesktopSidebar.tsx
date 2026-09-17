@@ -6,6 +6,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import {
+  PROFILE_PHOTO_UPDATED_EVENT,
+  type ProfilePhotoUpdatedDetail,
+} from "@/lib/profile-photo";
+import { UserAvatar } from "@/components/UserAvatar";
 
 type Role = "buyer" | "seller" | "admin" | null;
 type IconName =
@@ -114,6 +119,7 @@ export function DesktopSidebar() {
   const [role, setRole] = useState<Role>(null);
   const [name, setName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
@@ -130,13 +136,14 @@ export function DesktopSidebar() {
         setRole(null);
         setName(null);
         setEmail(null);
+        setProfilePhotoUrl(null);
         setChecked(true);
         return;
       }
 
       const { data: profile } = await supabase
         .from("users")
-        .select("full_name, role")
+        .select("full_name, role, profile_photo_url")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -151,6 +158,7 @@ export function DesktopSidebar() {
           : "buyer",
       );
       setName(profile?.full_name?.trim() || null);
+      setProfilePhotoUrl(profile?.profile_photo_url ?? null);
       setEmail(user.email ?? null);
       setChecked(true);
     }
@@ -168,6 +176,26 @@ export function DesktopSidebar() {
       subscription.unsubscribe();
     };
   }, [supabase]);
+
+  useEffect(() => {
+    function updateProfilePhoto(event: Event) {
+      const detail = (event as CustomEvent<ProfilePhotoUpdatedDetail>).detail;
+      setProfilePhotoUrl(detail.photoUrl);
+
+      if (detail.fullName !== undefined) {
+        setName(detail.fullName?.trim() || null);
+      }
+    }
+
+    window.addEventListener(PROFILE_PHOTO_UPDATED_EVENT, updateProfilePhoto);
+
+    return () => {
+      window.removeEventListener(
+        PROFILE_PHOTO_UPDATED_EVENT,
+        updateProfilePhoto,
+      );
+    };
+  }, []);
 
   async function logOut() {
     await supabase.auth.signOut();
@@ -256,12 +284,12 @@ export function DesktopSidebar() {
             href="/account"
             className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-[#faf7f0]"
           >
-            <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-              style={{ background: "var(--indigo)" }}
-            >
-              {accountLabel.charAt(0).toUpperCase()}
-            </span>
+            <UserAvatar
+              name={accountLabel}
+              photoUrl={profilePhotoUrl}
+              alt=""
+              className="h-9 w-9"
+            />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold">{accountLabel}</span>
               <span className="block text-[11px] capitalize text-gray-500">{role} account</span>

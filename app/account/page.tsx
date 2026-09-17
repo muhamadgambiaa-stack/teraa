@@ -12,6 +12,7 @@ import {
   toGambianPhoneNumber,
 } from "@/lib/gambian-phone";
 import { SiteHeader } from "@/components/SiteHeader";
+import { ProfilePhotoEditor } from "@/components/ProfilePhotoEditor";
 import { GAMBIA_CITIES } from "@/types/database";
 
 type Role = "buyer" | "seller" | "admin";
@@ -20,6 +21,7 @@ type Profile = {
   full_name: string | null;
   phone_number: string | null;
   city: string | null;
+  profile_photo_url: string | null;
   role: Role;
 };
 
@@ -89,6 +91,7 @@ export default function AccountPage() {
           full_name,
           phone_number,
           city,
+          profile_photo_url,
           role
         `,
         )
@@ -367,8 +370,6 @@ export default function AccountPage() {
 
   const firstName = profile.full_name?.trim().split(" ")[0] || "Teraa user";
 
-  const initial = firstName.charAt(0).toUpperCase() || "T";
-
   const isSeller = profile.role === "seller";
   const isAdmin = profile.role === "admin";
 
@@ -379,17 +380,23 @@ export default function AccountPage() {
       <main className="max-w-2xl mx-auto px-4 py-5 sm:pb-8">
         {/* PROFILE */}
 
-        <section className="flex items-center gap-4 mb-6">
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0"
-            style={{
-              background: "var(--indigo)",
+        <section
+          className="mb-6 flex items-start gap-3 rounded-2xl border bg-white p-4 sm:items-center sm:gap-4"
+          style={{ borderColor: "var(--sand)" }}
+        >
+          <ProfilePhotoEditor
+            fullName={profile.full_name}
+            photoUrl={profile.profile_photo_url}
+            onPhotoChange={(profilePhotoUrl) => {
+              setProfile((current) =>
+                current
+                  ? { ...current, profile_photo_url: profilePhotoUrl }
+                  : current,
+              );
             }}
-          >
-            {initial}
-          </div>
+          />
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1 pt-1 sm:pt-0">
             <h1
               className="font-display text-xl font-bold truncate"
               style={{
@@ -400,6 +407,11 @@ export default function AccountPage() {
             </h1>
 
             {email && <p className="text-sm text-gray-500 truncate">{email}</p>}
+
+            <p className="mt-1 text-xs leading-5 text-gray-500">
+              Your photo helps buyers and sellers recognize who they are
+              dealing with.
+            </p>
 
             <div className="flex flex-wrap items-center gap-2 mt-1">
               <span
@@ -1042,5 +1054,4 @@ function StatusPill({
     </span>
   );
 }
-
 
