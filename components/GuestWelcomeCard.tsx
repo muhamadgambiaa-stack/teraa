@@ -34,7 +34,7 @@ export function GuestWelcomeCard() {
 
   return (
     <section
-      className="relative mb-4 overflow-hidden rounded-xl border bg-white"
+      className="relative mb-4 overflow-hidden rounded-xl border bg-white lg:hidden"
       style={{ borderColor: "var(--sand)" }}
       aria-labelledby="guest-welcome-title"
     >

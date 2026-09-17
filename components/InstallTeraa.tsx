@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -10,31 +10,34 @@ type BeforeInstallPromptEvent = Event & {
   }>;
 };
 
+function subscribeToPlatform() {
+  return () => undefined;
+}
+
+function getPlatformSnapshot() {
+  const standalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone ===
+      true;
+
+  if (standalone) return "installed";
+
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent) ? "ios" : "web";
+}
+
 export function InstallTeraa() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
 
-  const [showIOS, setShowIOS] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const platform = useSyncExternalStore(
+    subscribeToPlatform,
+    getPlatformSnapshot,
+    () => "loading",
+  );
+  const [installedThisSession, setInstalledThisSession] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone ===
-        true;
-
-    if (standalone) {
-      setIsInstalled(true);
-      return;
-    }
-
-    const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-
-    if (isIOS) {
-      setShowIOS(true);
-    }
-
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
 
@@ -42,7 +45,7 @@ export function InstallTeraa() {
     };
 
     const handleInstalled = () => {
-      setIsInstalled(true);
+      setInstalledThisSession(true);
       setDeferredPrompt(null);
     };
 
@@ -68,13 +71,15 @@ export function InstallTeraa() {
     const choice = await deferredPrompt.userChoice;
 
     if (choice.outcome === "accepted") {
-      setIsInstalled(true);
+      setInstalledThisSession(true);
     }
 
     setDeferredPrompt(null);
   }
 
-  if (isInstalled || dismissed) {
+  const showIOS = platform === "ios";
+
+  if (platform === "installed" || installedThisSession || dismissed) {
     return null;
   }
 
@@ -83,7 +88,10 @@ export function InstallTeraa() {
   }
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-lg">
+    <div
+      className="fixed left-3 right-3 z-40 mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:hidden"
+      style={{ bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}
+    >
       <button
         type="button"
         onClick={() => setDismissed(true)}
@@ -103,7 +111,7 @@ export function InstallTeraa() {
           </p>
         ) : (
           <p className="mt-1 text-sm text-slate-600">
-            Install Teraa on your phone for faster access.
+            Add Teraa to your phone for faster access.
           </p>
         )}
       </div>

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { accountIdentityErrorMessage } from "@/lib/account-identity";
 import GambianPhoneInput from "@/components/GambianPhoneInput";
+import { AuthPageShell } from "@/components/AuthPageShell";
 import {
   isValidGambianLocalNumber,
   toGambianPhoneNumber,
@@ -190,19 +191,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main
-      className="min-h-screen flex items-center justify-center px-4 py-8"
-      style={{ background: "var(--paper)" }}
-    >
-      <div className="w-full max-w-sm">
-        <Link
-          href="/"
-          className="block text-center mb-3 text-sm"
-          style={{ color: "var(--indigo)" }}
-        >
-          Teraa
-        </Link>
-
+    <AuthPageShell>
         <h1
           className="font-display text-3xl mb-2 text-center"
           style={{ color: "var(--ink)" }}
@@ -329,7 +318,6 @@ export default function OnboardingPage() {
             {saving ? "Finishing setup..." : "Continue to Teraa"}
           </button>
         </form>
-      </div>
-    </main>
+    </AuthPageShell>
   );
 }

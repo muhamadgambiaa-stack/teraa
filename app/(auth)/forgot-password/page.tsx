@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import AuthTurnstile, {
   isTurnstileConfigured,
 } from "@/components/AuthTurnstile";
+import { AuthPageShell } from "@/components/AuthPageShell";
 
 export default function ForgotPasswordPage() {
   const supabase = createClient();
@@ -49,11 +50,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: "var(--paper)" }}
-    >
-      <div className="w-full max-w-sm">
+    <AuthPageShell>
         <h1
           className="font-display text-2xl mb-2 text-center"
           style={{ color: "var(--indigo)" }}
@@ -113,7 +110,6 @@ export default function ForgotPasswordPage() {
             Back to log in
           </Link>
         </p>
-      </div>
-    </main>
+    </AuthPageShell>
   );
 }

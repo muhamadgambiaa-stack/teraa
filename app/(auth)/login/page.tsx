@@ -7,6 +7,7 @@ import GoogleAuthButton from "@/components/GoogleAuthButton";
 import AuthTurnstile, {
   isTurnstileConfigured,
 } from "@/components/AuthTurnstile";
+import { AuthPageShell } from "@/components/AuthPageShell";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
@@ -68,17 +69,17 @@ export default function LoginPage() {
   }
 
   return (
-    <main
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: "var(--paper)" }}
-    >
-      <div className="w-full max-w-sm">
+    <AuthPageShell>
         <h1
-          className="font-display text-2xl mb-6 text-center"
-          style={{ color: "var(--indigo)" }}
+          className="font-display mb-2 text-center text-3xl"
+          style={{ color: "var(--ink)" }}
         >
           Log in
         </h1>
+
+        <p className="mb-6 text-center text-sm text-gray-500">
+          Welcome back to Teraa.
+        </p>
 
         <AuthTurnstile
           resetKey={captchaResetKey}
@@ -113,6 +114,7 @@ export default function LoginPage() {
             <input
               type="email"
               required
+              autoComplete="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -133,6 +135,7 @@ export default function LoginPage() {
             <input
               type="password"
               required
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
@@ -174,7 +177,6 @@ export default function LoginPage() {
             support@getteraa.com
           </a>
         </p>
-      </div>
-    </main>
+    </AuthPageShell>
   );
 }

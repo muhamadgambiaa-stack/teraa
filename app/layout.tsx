@@ -6,7 +6,6 @@ import "./globals.css";
 
 import { AppShell } from "@/components/AppShell";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
-import { InstallTeraa } from "@/components/InstallTeraa";
 import { PushNotifications } from "@/components/PushNotifications";
 
 export const metadata: Metadata = {
@@ -45,11 +44,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full">
-        <div className="min-h-full pb-20 sm:pb-0">
+        <div className="min-h-full">
           <AppShell>{children}</AppShell>
         </div>
 
-        <InstallTeraa />
         <PushNotifications />
         <MobileBottomNav />
         <Analytics />

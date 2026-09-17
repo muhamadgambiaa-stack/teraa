@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import { usesSimpleLayout } from "@/lib/app-routes";
 import {
   PROFILE_PHOTO_UPDATED_EVENT,
   type ProfilePhotoUpdatedDetail,
@@ -13,6 +14,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const simpleLayout = usesSimpleLayout(pathname);
 
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -20,6 +22,8 @@ export function MobileBottomNav() {
   const [fullName, setFullName] = useState<string | null>(null);
 
   useEffect(() => {
+    if (simpleLayout) return;
+
     let active = true;
 
     async function loadBadges() {
@@ -161,7 +165,9 @@ export function MobileBottomNav() {
         updateProfilePhoto,
       );
     };
-  }, [pathname]);
+  }, [pathname, simpleLayout]);
+
+  if (simpleLayout) return null;
 
   const items = [
     {

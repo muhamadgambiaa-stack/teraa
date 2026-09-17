@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
-import { ProductCard } from "@/components/ProductCard";
+import {
+  ProductCard,
+  type ProductCardData,
+} from "@/components/ProductCard";
 
 type PublicProfile = {
   id: string;
@@ -18,6 +21,20 @@ type PublicProfile = {
 
   verification_status: string | null;
   member_since: string | null;
+};
+
+type SellerListingRow = {
+  id: string;
+  title: string;
+  price: number;
+  condition: ProductCardData["condition"];
+  location_city: string;
+  product_photos:
+    | {
+        photo_url: string;
+        is_cover: boolean;
+      }[]
+    | null;
 };
 
 export default async function PublicProfilePage({
@@ -52,7 +69,7 @@ export default async function PublicProfilePage({
   /*
    * SELLER ACTIVE LISTINGS
    */
-  let products: any[] = [];
+  let products: ProductCardData[] = [];
 
   if (isSeller) {
     const { data: listingData, error: listingError } = await supabase
@@ -64,16 +81,10 @@ export default async function PublicProfilePage({
         price,
         condition,
         location_city,
-        status,
 
         product_photos(
           photo_url,
           is_cover
-        ),
-
-        sellers(
-          business_name,
-          verification_status
         )
         `,
       )
@@ -87,7 +98,24 @@ export default async function PublicProfilePage({
       console.error("Could not load seller listings:", listingError);
     }
 
-    products = listingData ?? [];
+    products = ((listingData ?? []) as SellerListingRow[]).map((product) => {
+      const photos = product.product_photos ?? [];
+      const coverPhoto =
+        photos.find((photo) => photo.is_cover)?.photo_url ??
+        photos[0]?.photo_url ??
+        null;
+
+      return {
+        id: product.id,
+        title: product.title,
+        price: product.price,
+        condition: product.condition,
+        location_city: product.location_city,
+        coverPhoto,
+        sellerName: profile.business_name,
+        sellerVerified: profile.verification_status === "approved",
+      };
+    });
   }
 
   /*

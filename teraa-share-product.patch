@@ -1,0 +1,167 @@
+diff --git a/app/products/[id]/page.tsx b/app/products/[id]/page.tsx
+index 3d50484..bdb74ea 100644
+--- a/app/products/[id]/page.tsx
++++ b/app/products/[id]/page.tsx
+@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
+ import { ReportButton } from "@/components/ReportButton";
+ import { ProductGallery } from "@/components/ProductGallery";
+ import { MessageSellerButton } from "@/components/MessageSellerButton";
++import { ShareProductButton } from "@/components/ShareProductButton";
+ 
+ import { CONDITION_LABELS, type ProductCondition } from "@/types/database";
+ 
+@@ -432,28 +433,36 @@ export default async function ProductDetailPage({
+ 
+             {/* PRIMARY ACTION */}
+ 
+-            <div className="mt-4">
+-              {!isOwnListing ? (
+-                <Link
+-                  href={outOfStock ? "#" : `/products/${product.id}/checkout`}
+-                  aria-disabled={outOfStock}
+-                  className="block w-full text-center rounded-full py-3 text-white text-sm font-semibold transition-opacity"
+-                  style={{
+-                    background: outOfStock ? "#c9c9c0" : "var(--indigo)",
+-                    pointerEvents: outOfStock ? "none" : "auto",
+-                  }}
+-                >
+-                  {outOfStock ? "Out of stock" : "Buy now"}
+-                </Link>
+-              ) : (
+-                <Link
+-                  href={`/seller/dashboard/products/${product.id}`}
+-                  className="block w-full text-center rounded-full py-3 text-white text-sm font-semibold"
+-                  style={{ background: "var(--indigo)" }}
+-                >
+-                  Manage your listing
+-                </Link>
+-              )}
++            <div className="mt-4 grid grid-cols-2 gap-2.5">
++              <div className="min-w-0">
++                {!isOwnListing ? (
++                  <Link
++                    href={outOfStock ? "#" : `/products/${product.id}/checkout`}
++                    aria-disabled={outOfStock}
++                    className="block w-full truncate rounded-full py-3 text-center text-sm font-semibold text-white transition-opacity"
++                    style={{
++                      background: outOfStock ? "#c9c9c0" : "var(--indigo)",
++                      pointerEvents: outOfStock ? "none" : "auto",
++                    }}
++                  >
++                    {outOfStock ? "Out of stock" : "Buy now"}
++                  </Link>
++                ) : (
++                  <Link
++                    href={`/seller/dashboard/products/${product.id}`}
++                    className="block w-full truncate rounded-full py-3 text-center text-sm font-semibold text-white"
++                    style={{ background: "var(--indigo)" }}
++                  >
++                    Manage listing
++                  </Link>
++                )}
++              </div>
++
++              <ShareProductButton
++                productId={product.id}
++                productTitle={product.title}
++                price={Number(product.price)}
++              />
+             </div>
+ 
+             {/* SELLER */}
+diff --git a/components/ShareProductButton.tsx b/components/ShareProductButton.tsx
+new file mode 100644
+index 0000000..7ebda3e
+--- /dev/null
++++ b/components/ShareProductButton.tsx
+@@ -0,0 +1,89 @@
++"use client";
++
++import { useState } from "react";
++
++export function ShareProductButton({
++  productId,
++  productTitle,
++  price,
++}: {
++  productId: string;
++  productTitle: string;
++  price: number;
++}) {
++  const [feedback, setFeedback] = useState<string | null>(null);
++
++  async function shareProduct() {
++    const productUrl = `${window.location.origin}/products/${productId}`;
++    const shareData = {
++      title: `${productTitle} on Teraa`,
++      text: `${productTitle} for GMD ${price.toLocaleString()} on Teraa.`,
++      url: productUrl,
++    };
++
++    try {
++      if (navigator.share) {
++        await navigator.share(shareData);
++        setFeedback("Product shared");
++        return;
++      }
++
++      await navigator.clipboard.writeText(productUrl);
++      setFeedback("Product link copied");
++    } catch (error) {
++      if (error instanceof DOMException && error.name === "AbortError") {
++        return;
++      }
++
++      setFeedback("Could not share the product");
++    }
++  }
++
++  return (
++    <div className="min-w-0">
++      <button
++        type="button"
++        onClick={shareProduct}
++        className="flex w-full items-center justify-center gap-2 rounded-full border bg-white py-3 text-sm font-semibold transition hover:bg-gray-50"
++        style={{ borderColor: "var(--sand)", color: "var(--indigo)" }}
++      >
++        <ShareIcon />
++        Share product
++      </button>
++
++      {feedback ? (
++        <p
++          className={`mt-1.5 text-center text-xs ${
++            feedback.startsWith("Could not") ? "text-red-600" : "text-gray-500"
++          }`}
++          role="status"
++          aria-live="polite"
++        >
++          {feedback}
++        </p>
++      ) : null}
++    </div>
++  );
++}
++
++function ShareIcon() {
++  return (
++    <svg
++      width="17"
++      height="17"
++      viewBox="0 0 24 24"
++      fill="none"
++      stroke="currentColor"
++      strokeWidth="2"
++      strokeLinecap="round"
++      strokeLinejoin="round"
++      aria-hidden="true"
++    >
++      <circle cx="18" cy="5" r="3" />
++      <circle cx="6" cy="12" r="3" />
++      <circle cx="18" cy="19" r="3" />
++      <path d="m8.6 10.5 6.8-4" />
++      <path d="m8.6 13.5 6.8 4" />
++    </svg>
++  );
++}
+

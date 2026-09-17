@@ -10,6 +10,7 @@ import GambianPhoneInput from "@/components/GambianPhoneInput";
 import AuthTurnstile, {
   isTurnstileConfigured,
 } from "@/components/AuthTurnstile";
+import { AuthPageShell } from "@/components/AuthPageShell";
 import { accountIdentityErrorMessage } from "@/lib/account-identity";
 import {
   isValidGambianLocalNumber,
@@ -243,23 +244,7 @@ export default function SignupPage() {
   }
 
   return (
-    <main
-      className="min-h-screen flex items-center justify-center px-4 py-8"
-      style={{
-        background: "var(--paper)",
-      }}
-    >
-      <div className="w-full max-w-sm">
-        <Link
-          href="/"
-          className="block text-center mb-3 text-sm"
-          style={{
-            color: "var(--indigo)",
-          }}
-        >
-          Teraa
-        </Link>
-
+    <AuthPageShell>
         <h1
           className="font-display text-3xl mb-2 text-center"
           style={{
@@ -528,7 +513,6 @@ export default function SignupPage() {
             Safety
           </Link>
         </div>
-      </div>
-    </main>
+    </AuthPageShell>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getActiveMarketplaceCategories } from "@/lib/active-marketplace-categories";
 import { createClient } from "@/lib/supabase/server";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
+import { InstallTeraa } from "@/components/InstallTeraa";
 import {
   DesktopHomeAside,
   type MarketplaceRole,
@@ -413,6 +414,8 @@ export default async function Home() {
         </main>
         <DesktopHomeAside role={accountState.role} />
       </div>
+
+      {accountState.isGuest && <InstallTeraa />}
     </>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { AuthPageShell } from "@/components/AuthPageShell";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -16,8 +17,16 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setMessage(null);
 
-    if (password.length < 8) {
-      setMessage("Password must be at least 8 characters.");
+    if (
+      password.length < 10 ||
+      !/[a-z]/.test(password) ||
+      !/[A-Z]/.test(password) ||
+      !/[0-9]/.test(password) ||
+      !/[^A-Za-z0-9]/.test(password)
+    ) {
+      setMessage(
+        "Password must contain at least 10 characters, including uppercase, lowercase, a number and a symbol.",
+      );
       return;
     }
     if (password !== confirmPassword) {
@@ -41,11 +50,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: "var(--paper)" }}
-    >
-      <div className="w-full max-w-sm">
+    <AuthPageShell>
         <h1
           className="font-display text-2xl mb-6 text-center"
           style={{ color: "var(--indigo)" }}
@@ -61,13 +66,17 @@ export default function ResetPasswordPage() {
             <input
               type="password"
               required
-              minLength={8}
+              minLength={10}
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
               style={{ borderColor: "var(--sand)" }}
             />
-            <p className="text-xs text-gray-500 mt-1">At least 8 characters.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              At least 10 characters with uppercase, lowercase, a number and a
+              symbol.
+            </p>
           </div>
           <div>
             <label className="text-sm font-medium block mb-1">
@@ -76,6 +85,7 @@ export default function ResetPasswordPage() {
             <input
               type="password"
               required
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
@@ -92,7 +102,6 @@ export default function ResetPasswordPage() {
             {loading ? "Saving…" : "Update password"}
           </button>
         </form>
-      </div>
-    </main>
+    </AuthPageShell>
   );
 }
