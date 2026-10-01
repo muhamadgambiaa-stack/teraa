@@ -5,20 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import AppleAuthButton from "@/components/AppleAuthButton";
+import PhoneAuthForm from "@/components/PhoneAuthForm";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
-import GambianPhoneInput from "@/components/GambianPhoneInput";
 import AuthTurnstile, {
   isTurnstileConfigured,
 } from "@/components/AuthTurnstile";
 import { AuthPageShell } from "@/components/AuthPageShell";
 import { accountIdentityErrorMessage } from "@/lib/account-identity";
-import {
-  isValidGambianLocalNumber,
-  toGambianPhoneNumber,
-} from "@/lib/gambian-phone";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [method, setMethod] = useState<"email" | "phone">("email");
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -29,8 +27,6 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
 
   const [confirmPassword, setConfirmPassword] = useState("");
-
-  const [phone, setPhone] = useState("");
 
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
@@ -50,39 +46,6 @@ export default function SignupPage() {
     setCaptchaResetKey((current) => current + 1);
   }
 
-  async function createDatabaseRecords(userId: string) {
-    /*
-     * Check whether the main user profile
-     * already exists.
-     */
-    const { data: existingProfile, error: profileLookupError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (profileLookupError) {
-      throw new Error(profileLookupError.message);
-    }
-
-    if (!existingProfile) {
-      const { error: profileError } = await supabase.from("users").insert({
-        id: userId,
-
-        full_name: fullName.trim(),
-
-        phone_number: toGambianPhoneNumber(phone),
-
-        role: "buyer",
-      });
-
-      if (profileError) {
-        throw new Error(profileError.message);
-      }
-    }
-
-  }
-
   async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
@@ -91,8 +54,6 @@ export default function SignupPage() {
     const cleanName = fullName.trim();
 
     const cleanEmail = email.trim().toLowerCase();
-
-    const cleanPhone = toGambianPhoneNumber(phone);
 
     if (!cleanName) {
       setMessage("Please enter your full name.");
@@ -122,14 +83,6 @@ export default function SignupPage() {
 
     if (password !== confirmPassword) {
       setMessage("Passwords don't match.");
-
-      return;
-    }
-
-    if (!isValidGambianLocalNumber(phone)) {
-      setMessage(
-        "Enter your 7-digit legacy number or 9-digit number after +220. A 9-digit number must begin with 83, 86 or 87.",
-      );
 
       return;
     }
@@ -170,8 +123,6 @@ export default function SignupPage() {
            */
           data: {
             full_name: cleanName,
-
-            phone_number: cleanPhone,
 
             /*
              * Only buyer/seller can come
@@ -218,9 +169,7 @@ export default function SignupPage() {
        *    email confirmation link.
        */
       if (data.session) {
-        await createDatabaseRecords(data.user.id);
-
-        router.replace("/");
+        router.replace("/onboarding");
 
         router.refresh();
 
@@ -271,18 +220,31 @@ export default function SignupPage() {
           />
         </div>
 
+        <AppleAuthButton />
+
         <div className="flex items-center gap-3 my-5">
           <div
             className="h-px flex-1"
             style={{ background: "var(--sand)" }}
           />
-          <span className="text-xs text-gray-400">or continue with email</span>
+          <span className="text-xs text-gray-400">or continue with</span>
           <div
             className="h-px flex-1"
             style={{ background: "var(--sand)" }}
           />
         </div>
 
+        <div className="mb-5 grid grid-cols-2 gap-2" role="group" aria-label="Sign-in method">
+          {(["email", "phone"] as const).map((option) => (
+            <button key={option} type="button" aria-pressed={method === option} onClick={() => setMethod(option)} className="rounded-lg border py-3 text-sm font-medium" style={{ borderColor: "var(--sand)", background: method === option ? "var(--indigo)" : "white", color: method === option ? "white" : "var(--ink)" }}>
+              {option === "email" ? "Email" : "Phone"}
+            </button>
+          ))}
+        </div>
+
+        {method === "phone" ? (
+          <PhoneAuthForm signup captchaRequired={captchaRequired} captchaToken={captchaToken} onCaptchaConsumed={resetCaptcha} />
+        ) : (
         <form onSubmit={handleSignup} className="space-y-4">
           {/* FULL NAME */}
 
@@ -361,23 +323,6 @@ export default function SignupPage() {
                 borderColor: "var(--sand)",
               }}
             />
-          </div>
-
-          {/* PHONE */}
-
-          <div>
-            <label className="text-sm font-medium block mb-1">
-              Phone number
-            </label>
-
-            <GambianPhoneInput
-              value={phone}
-              onChange={setPhone}
-            />
-
-            <p className="text-xs text-gray-500 mt-1">
-              Enter your 7-digit legacy number or new 9-digit number.
-            </p>
           </div>
 
           {/* TERMS CONSENT */}
@@ -478,6 +423,7 @@ export default function SignupPage() {
             {loading ? "Creating account..." : "Create account"}
           </button>
         </form>
+        )}
 
         {/* LOGIN */}
 

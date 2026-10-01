@@ -629,3 +629,30 @@ Important remaining areas include:
 Teraa is under active development and is not yet considered a finished production marketplace.
 
 The current focus is building a stable, secure marketplace foundation for buyers and sellers in The Gambia before scaling users, payments, delivery and monetization.
+
+
+## Email, phone, Google and Apple authentication
+
+Email/password and the existing Google ID-token flow remain available. Email signup asks for a contact number during profile setup after authentication. New phone and social users complete the same profile and terms form. Every new public profile is created as a buyer; Auth user metadata is not an authorization source.
+
+### Phone SMS setup
+
+1. Enable Phone in Supabase Authentication providers and configure a supported SMS provider with delivery to Gambian numbers. This incurs the provider's SMS charges.
+2. Configure CAPTCHA and Supabase Auth rate limits. The client passes the existing CAPTCHA token when requesting SMS and adds a 60-second resend cooldown; server rate limits remain authoritative.
+3. Set `NEXT_PUBLIC_PHONE_AUTH_ENABLED=true` in the hosting environment and redeploy. Until then the Phone tab explains that phone sign-in is unavailable and offers email or Google.
+4. Keep SMS OTP length at six digits. Test a new number, an existing phone-auth account, invalid/expired codes, resends and SMS delivery in The Gambia before production rollout.
+
+Phone signup uses `signInWithOtp` with account creation enabled; phone login disables account creation. A profile is not created until SMS verification succeeds and onboarding is completed. Existing email/Google users' delivery numbers are not automatically converted to phone-auth identities. Use the original login method for those accounts; duplicate contact numbers are rejected by the existing database constraint. This change does not merge accounts or implement phone identity linking.
+
+### Apple setup later
+
+The Apple button is implemented but hidden unless `NEXT_PUBLIC_APPLE_AUTH_ENABLED=true`.
+
+1. Configure Sign in with Apple in Apple Developer and the Apple provider in Supabase. Keep Apple credentials in Supabase, never in public environment variables.
+2. Register the Supabase Auth callback URL shown by the provider settings with Apple. Add `https://getteraa.com/callback` and approved preview callbacks to Supabase's redirect allowlist.
+3. Enable the public feature flag and redeploy only after the provider is configured. Apple uses Supabase OAuth and the shared `/callback` route, then profile setup for new users. Name is requested during setup if Apple does not provide one.
+4. Maintain the Apple client secret according to Apple's expiry requirements and test cancellation, returning users, new users and private relay emails.
+
+Documentation: https://supabase.com/docs/guides/auth/phone-login and https://supabase.com/docs/guides/auth/social-login/auth-apple
+
+No database migration or live provider configuration is included in this change. Real SMS, Google and Apple authentication need testing against the configured Supabase project.

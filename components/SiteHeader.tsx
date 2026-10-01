@@ -118,7 +118,7 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
 
   return (
     <header
-      className="border-b bg-white sticky top-0 z-40"
+      className="marketplace-header border-b bg-white sticky top-0 z-40"
       style={{
         borderColor: "var(--sand)",
       }}
@@ -160,9 +160,10 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
       {/* DESKTOP SEARCH: the logo and account navigation live in the sidebar. */}
       {showSearch ? (
         <div className="mx-auto hidden w-full max-w-[1460px] items-center px-6 py-3 lg:flex">
-          <div className="w-full max-w-3xl">
+          <div className="w-full max-w-2xl">
             <SearchBar initialQuery={searchQuery} />
           </div>
+          <Link href="/seller/dashboard/new" className="primary-button ml-auto shrink-0">Sell an item <span aria-hidden="true">+</span></Link>
         </div>
       ) : backDestination ? (
         <div className="mx-auto hidden w-full max-w-[1460px] items-center px-4 py-1.5 lg:flex">
@@ -200,7 +201,7 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
         ) : (
           <div
             className={
-              showSearch ? "px-4 pt-3 pb-2.5" : "h-14 px-4 flex items-center"
+              showSearch ? "px-4 pt-4 pb-3 flex items-center justify-between" : "h-16 px-4 flex items-center"
             }
           >
             <Link
@@ -216,6 +217,7 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
                 className="h-7 w-auto"
               />
             </Link>
+            {showSearch && <span className="rounded-full bg-[#edf3f6] px-3 py-1.5 text-[11px] font-semibold" style={{ color: "var(--indigo)" }}>The Gambia</span>}
           </div>
         )}
 

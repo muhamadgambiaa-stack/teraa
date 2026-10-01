@@ -18,7 +18,7 @@ const roleActions: Record<
     title: "Have something to sell?",
     body: "Open your shop and reach buyers across The Gambia.",
     label: "Start selling",
-    href: "/seller/register",
+    href: "/seller/dashboard/new",
   },
   seller: {
     eyebrow: "Your shop",
@@ -40,7 +40,7 @@ export function DesktopHomeAside({ role }: { role: MarketplaceRole }) {
   const action = roleActions[role];
 
   return (
-    <aside className="sticky top-[84px] hidden h-fit space-y-4 xl:block">
+    <aside className="sticky top-[84px] hidden h-fit space-y-4 2xl:block">
       <section
         className="overflow-hidden rounded-2xl p-4 text-white"
         style={{

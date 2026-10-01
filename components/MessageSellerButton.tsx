@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useFormStatus } from "react-dom";
 
@@ -10,7 +10,7 @@ export function MessageSellerButton() {
       type="submit"
       disabled={pending}
       aria-disabled={pending}
-      className="w-full rounded-full border py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+      className="w-full rounded-full border min-h-12 px-2 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
       style={{
         borderColor: "var(--indigo)",
         color: "var(--indigo)",

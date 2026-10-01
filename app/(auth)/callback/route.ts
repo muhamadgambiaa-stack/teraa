@@ -69,21 +69,21 @@ export async function GET(request: Request) {
   }
 
   /*
-   * Google gives us authentication information, but Teraa still
+   * Social providers authenticate users, but Teraa still
    * requires a phone number and legal consent.
    *
-   * New Google users therefore finish their profile on onboarding.
+   * New social users therefore finish their profile on onboarding.
    */
   const provider =
     typeof user.app_metadata?.provider === "string"
       ? user.app_metadata.provider
       : "";
 
-  const isGoogleUser =
-    provider === "google" ||
-    user.identities?.some((identity) => identity.provider === "google");
+  const isSocialUser =
+    provider === "google" || provider === "apple" ||
+    user.identities?.some((identity) => identity.provider === "google" || identity.provider === "apple");
 
-  if (isGoogleUser) {
+  if (isSocialUser) {
     return NextResponse.redirect(`${origin}/onboarding`);
   }
 

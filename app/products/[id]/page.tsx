@@ -487,7 +487,7 @@ export default async function ProductDetailPage({
 
             {/* PRIMARY ACTION */}
 
-            <div className="mt-4 grid grid-cols-2 gap-2.5">
+            <div className={`mt-4 grid gap-2.5 ${isOwnListing ? "grid-cols-1" : "grid-cols-2"}`}>
               <div className="min-w-0">
                 {!isOwnListing ? (
                   <Link
@@ -512,11 +512,16 @@ export default async function ProductDetailPage({
                 )}
               </div>
 
-              <ShareProductButton
-                productId={product.id}
-                productTitle={product.title}
-                price={Number(product.price)}
-              />
+              {/* Contact remains available even when the seller card is hidden. */}
+              {!isOwnListing && (
+                <form
+                  action={messageSeller.bind(null, product.id)}
+                  className="min-w-0"
+                >
+                  <MessageSellerButton />
+                </form>
+              )}
+
             </div>
 
             {/* SELLER */}
@@ -574,19 +579,13 @@ export default async function ProductDetailPage({
               </div>
             )}
 
-            {/* MESSAGE SELLER
-                Keep contact independent from seller-card visibility.
-                messageSeller() performs its own secure seller checks.
-            */}
-
-            {!isOwnListing && (
-              <form
-                action={messageSeller.bind(null, product.id)}
-                className={seller ? "mt-3" : "mt-5"}
-              >
-                <MessageSellerButton />
-              </form>
-            )}
+            <div className="mt-3">
+              <ShareProductButton
+                productId={product.id}
+                productTitle={product.title}
+                price={Number(product.price)}
+              />
+            </div>
 
             {/* PAYMENT */}
 

@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 
+import { ListingImage } from "@/components/ListingImage";
 import { useRef, useState } from "react";
 
 type ProductPhoto = {
@@ -50,9 +51,9 @@ export function ProductGallery({
   return (
     <section className="w-full max-w-[420px] mx-auto md:mx-0">
       <div
-        className="relative w-full rounded-xl overflow-hidden flex items-center justify-center select-none"
+        className="relative w-full rounded-2xl overflow-hidden flex items-center justify-center select-none"
         style={{
-          background: "var(--sand)",
+          background: "#edf0f2",
           aspectRatio: "4 / 3",
           touchAction: "pan-y",
         }}
@@ -62,12 +63,12 @@ export function ProductGallery({
         onTouchEnd={handleTouchEnd}
       >
         {selectedPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <ListingImage
             src={selectedPhoto.photo_url}
             alt={title}
-            draggable={false}
-            className="w-full h-full object-contain"
+            sizes="(max-width: 639px) 100vw, 480px"
+            loading="eager"
+            className="object-contain"
           />
         ) : (
           <div className="w-full h-full min-h-[220px] flex flex-col items-center justify-center text-gray-400">
@@ -114,7 +115,7 @@ export function ProductGallery({
               type="button"
               onClick={() => setSelectedIndex(index)}
               aria-label={`View ${title} photo ${index + 1}`}
-              className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg border shrink-0 overflow-hidden bg-white"
+              className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg border shrink-0 overflow-hidden bg-white"
               style={{
                 borderColor:
                   selectedIndex === index
@@ -123,11 +124,11 @@ export function ProductGallery({
                 borderWidth: selectedIndex === index ? "2px" : "1px",
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <ListingImage
                 src={photo.photo_url}
                 alt={`${title} thumbnail ${index + 1}`}
-                className="w-full h-full object-cover"
+                sizes="64px"
+                className="object-cover"
               />
             </button>
           ))}

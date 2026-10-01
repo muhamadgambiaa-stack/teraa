@@ -16,7 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-full pb-20 sm:pb-0">
       <DesktopSidebar />
-      <div className="min-h-full min-w-0 lg:pl-[220px]">{children}</div>
+      <div className="teraa-content min-h-full min-w-0 lg:pl-[248px]">{children}</div>
     </div>
   );
 }

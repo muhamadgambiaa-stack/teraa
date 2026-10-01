@@ -207,11 +207,11 @@ export function DesktopSidebar() {
 
   return (
     <aside
-      className="fixed inset-y-0 left-0 z-50 hidden w-[220px] border-r bg-white lg:flex lg:flex-col"
+      className="desktop-sidebar fixed inset-y-0 left-0 z-50 hidden w-[248px] border-r bg-white lg:flex lg:flex-col"
       style={{ borderColor: "var(--sand)" }}
       aria-label="Desktop navigation"
     >
-      <div className="px-4 pb-4 pt-5">
+      <div className="px-6 pb-7 pt-7">
         <Link href="/" aria-label="Teraa home" className="inline-flex">
           <Image
             src="/branding/teraa-logo.svg"
@@ -227,7 +227,7 @@ export function DesktopSidebar() {
         </p>
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-3">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <NavGroup items={SHOPPING_LINKS} pathname={pathname} />
 
         {checked && role === null && (
@@ -340,10 +340,10 @@ function NavGroup({
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition"
+              className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition"
               style={{
                 color: isActive ? "var(--indigo)" : "#4b5563",
-                background: isActive ? "#f5efe4" : "transparent",
+                background: isActive ? "var(--brand-soft)" : "transparent",
               }}
             >
               <SidebarIcon name={item.icon} active={isActive} />

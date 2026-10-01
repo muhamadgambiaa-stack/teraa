@@ -24,7 +24,16 @@ const securityHeaders = [
   },
 ];
 
+const storageUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const storagePattern = storageUrl?.startsWith("https://")
+  ? new URL("/storage/v1/object/public/**", storageUrl)
+  : null;
+
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: storagePattern ? [{ protocol: "https", hostname: storagePattern.hostname, port: storagePattern.port, pathname: storagePattern.pathname }] : [],
+    formats: ["image/webp"],
+  },
   async headers() {
     return [
       {

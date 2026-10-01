@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import AppleAuthButton from "@/components/AppleAuthButton";
+import PhoneAuthForm from "@/components/PhoneAuthForm";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 import AuthTurnstile, {
   isTurnstileConfigured,
@@ -12,6 +14,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [method, setMethod] = useState<"email" | "phone">("email");
   const searchParams = useSearchParams();
   const supabase = createClient();
   const [email, setEmail] = useState("");
@@ -63,8 +66,19 @@ export default function LoginPage() {
       return;
     }
 
-    const redirect = searchParams.get("redirect");
-    router.push(redirect || "/");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setMessage("Could not load your account. Please try again.");
+      return;
+    }
+    const { data: profile, error: profileError } = await supabase.from("users").select("id").eq("id", user.id).maybeSingle();
+    if (profileError) {
+      setMessage("Could not load your profile. Please try again.");
+      return;
+    }
+    const destination = searchParams.get("redirect");
+    const safeDestination = destination?.startsWith("/") && !destination.startsWith("//") && !destination.includes("\\") ? destination : "/";
+    router.push(profile ? safeDestination : "/onboarding");
     router.refresh();
   }
 
@@ -94,18 +108,31 @@ export default function LoginPage() {
           />
         </div>
 
+        <AppleAuthButton />
+
         <div className="flex items-center gap-3 my-5">
           <div
             className="h-px flex-1"
             style={{ background: "var(--sand)" }}
           />
-          <span className="text-xs text-gray-400">or continue with email</span>
+          <span className="text-xs text-gray-400">or continue with</span>
           <div
             className="h-px flex-1"
             style={{ background: "var(--sand)" }}
           />
         </div>
 
+        <div className="mb-5 grid grid-cols-2 gap-2" role="group" aria-label="Sign-in method">
+          {(["email", "phone"] as const).map((option) => (
+            <button key={option} type="button" aria-pressed={method === option} onClick={() => setMethod(option)} className="rounded-lg border py-3 text-sm font-medium" style={{ borderColor: "var(--sand)", background: method === option ? "var(--indigo)" : "white", color: method === option ? "white" : "var(--ink)" }}>
+              {option === "email" ? "Email" : "Phone"}
+            </button>
+          ))}
+        </div>
+
+        {method === "phone" ? (
+          <PhoneAuthForm  captchaRequired={captchaRequired} captchaToken={captchaToken} onCaptchaConsumed={resetCaptcha} />
+        ) : (
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="text-sm font-medium block mb-1">
@@ -151,6 +178,7 @@ export default function LoginPage() {
             {loading ? "Logging in..." : "Log in"}
           </button>
         </form>
+        )}
 
         {message && (
           <p className="text-sm text-center mt-4 text-gray-600">{message}</p>

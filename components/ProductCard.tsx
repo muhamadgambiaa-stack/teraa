@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ListingImage } from "@/components/ListingImage";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -102,27 +103,26 @@ export function ProductCard({ product }: { product: ProductCardData }) {
 
   return (
     <article
-      className="group relative rounded-lg sm:rounded-xl border bg-white overflow-hidden hover:shadow-md transition-shadow"
+      className="product-card group relative border bg-white overflow-hidden"
       style={{
         borderColor: "var(--sand)",
       }}
     >
-      <Link href={`/products/${product.id}`} className="block">
+      <Link href={`/products/${product.id}`} prefetch={false} className="block">
         {/* IMAGE */}
 
         <div
-          className="aspect-square relative overflow-hidden"
+          className="product-photo aspect-square relative overflow-hidden"
           style={{
-            background: "var(--sand)",
+            background: "#edf0f2",
           }}
         >
           {product.coverPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ListingImage
               src={product.coverPhoto}
               alt={product.title}
-              loading="lazy"
-              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
+              sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, 300px"
+              className="object-cover"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[11px] text-gray-400">
@@ -144,29 +144,29 @@ export function ProductCard({ product }: { product: ProductCardData }) {
 
         {/* DETAILS */}
 
-        <div className="p-2 sm:p-3">
-          <p className="text-[12px] sm:text-sm font-medium leading-snug line-clamp-2 min-h-[2.3em]">
+        <div className="p-3 sm:p-4">
+          <p className="text-sm font-semibold leading-snug line-clamp-2 min-h-[2.3em]">
             {product.title}
           </p>
 
           <p
-            className="text-sm sm:text-base font-bold mt-1"
+            className="product-price text-lg sm:text-xl font-bold mt-2"
             style={{
-              color: "var(--clay)",
+              color: "var(--indigo)",
             }}
           >
             GMD {Number(product.price).toLocaleString()}
           </p>
 
-          <div className="flex items-center gap-1 mt-1 text-[10px] sm:text-xs text-gray-500 min-w-0">
+          <div className="flex items-center gap-1 mt-2 text-[11px] sm:text-xs text-gray-500 min-w-0">
             <LocationIcon />
 
             <span className="truncate">{product.location_city}</span>
           </div>
 
           {product.sellerName && (
-            <div className="flex items-center gap-1 mt-1 min-w-0">
-              <p className="text-[10px] sm:text-xs text-gray-500 truncate">
+            <div className="flex items-center gap-1 mt-2 border-t border-[#eef1f4] pt-2 min-w-0">
+              <p className="text-[11px] sm:text-xs text-gray-500 truncate">
                 {product.sellerName}
               </p>
 
@@ -184,7 +184,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         aria-label={saved ? "Remove from favorites" : "Save to favorites"}
         aria-pressed={saved}
         disabled={pending}
-        className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm disabled:opacity-60"
+        className="save-button absolute top-2 right-2 rounded-full flex items-center justify-center shadow-sm disabled:opacity-60"
       >
         <svg
           width="15"

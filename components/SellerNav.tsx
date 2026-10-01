@@ -13,15 +13,16 @@ export function SellerNav({ active }: { active: "listings" | "orders" | "commiss
   ] as const;
 
   return (
-    <div className="flex gap-1 border-b mb-6" style={{ borderColor: "var(--sand)" }}>
+    <div className="seller-tabs flex gap-1 mb-6" style={{ borderColor: "var(--sand)" }}>
       {tabs.map((t) => (
         <Link
           key={t.key}
           href={t.href}
-          className="px-3 py-2 text-sm font-medium -mb-px border-b-2"
+          aria-current={active === t.key ? "page" : undefined}
+          className="flex flex-1 items-center justify-center px-3 py-2 text-sm font-semibold"
           style={{
             borderColor: active === t.key ? "var(--indigo)" : "transparent",
-            color: active === t.key ? "var(--indigo)" : "#6b6b63",
+            color: active === t.key ? "white" : "var(--muted)",
           }}
         >
           {t.label}

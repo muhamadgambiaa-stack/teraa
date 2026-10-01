@@ -16,7 +16,7 @@ export function SearchBar({ initialQuery }: { initialQuery?: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex-1 max-w-lg">
+    <form onSubmit={handleSubmit} role="search" className="w-full">
       <div className="relative">
         <svg
           width="16"
@@ -34,10 +34,12 @@ export function SearchBar({ initialQuery }: { initialQuery?: string }) {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search phones, dresses, rice, generators…"
-          className="w-full rounded-full border pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2"
+          aria-label="Search products"
+          placeholder="What are you looking for?"
+          className="w-full rounded-xl border bg-[#f6f8fa] pl-10 pr-20 py-3 text-sm outline-none focus:ring-2"
           style={{ borderColor: "var(--sand)" }}
         />
+        <button type="submit" className="absolute right-1.5 top-1/2 min-h-9 -translate-y-1/2 rounded-lg px-3 text-xs font-semibold text-white" style={{ background: "var(--indigo)" }}>Search</button>
       </div>
     </form>
   );

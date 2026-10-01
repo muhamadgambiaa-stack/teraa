@@ -1,23 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 const DISMISSED_KEY = "teraa:seller-invite-dismissed";
 
 export function SellerInviteCard() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    try {
-      setVisible(window.localStorage.getItem(DISMISSED_KEY) !== "1");
-    } catch {
-      setVisible(true);
-    }
-  }, []);
+  const [dismissed, setDismissed] = useState(false);
+  const storedAsVisible = useSyncExternalStore(
+    () => () => undefined,
+    () => {
+      try {
+        return window.localStorage.getItem(DISMISSED_KEY) !== "1";
+      } catch {
+        return true;
+      }
+    },
+    () => false,
+  );
+  const visible = storedAsVisible && !dismissed;
 
   function dismissInvite() {
-    setVisible(false);
+    setDismissed(true);
 
     try {
       window.localStorage.setItem(DISMISSED_KEY, "1");
@@ -87,11 +91,11 @@ export function SellerInviteCard() {
         </div>
 
         <Link
-          href="/seller/register"
+          href="/seller/dashboard/new"
           className="mt-4 inline-flex w-full shrink-0 items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 sm:mt-0 sm:w-auto"
           style={{ background: "var(--indigo)" }}
         >
-          Apply to sell
+          Sell an item
         </Link>
       </div>
     </section>

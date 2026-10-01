@@ -9,6 +9,7 @@ import { accountIdentityErrorMessage } from "@/lib/account-identity";
 import GambianPhoneInput from "@/components/GambianPhoneInput";
 import { AuthPageShell } from "@/components/AuthPageShell";
 import {
+  gambianLocalNumberFromStored,
   isValidGambianLocalNumber,
   toGambianPhoneNumber,
 } from "@/lib/gambian-phone";
@@ -63,6 +64,8 @@ export default function OnboardingPage() {
             : "";
 
       setFullName(googleName.trim());
+      setPhone(gambianLocalNumberFromStored(user.phone));
+      setAcceptedTerms(metadata.accepted_terms === true);
       setChecking(false);
     }
 

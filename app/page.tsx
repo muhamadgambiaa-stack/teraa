@@ -3,14 +3,13 @@ import Link from "next/link";
 
 import { getActiveMarketplaceCategories } from "@/lib/active-marketplace-categories";
 import { createClient } from "@/lib/supabase/server";
-import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
+import { MarketplaceIntro } from "@/components/MarketplaceIntro";
 import { InstallTeraa } from "@/components/InstallTeraa";
 import {
   DesktopHomeAside,
   type MarketplaceRole,
 } from "@/components/DesktopHomeAside";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
-import { SellerInviteCard } from "@/components/SellerInviteCard";
 import { SiteHeader } from "@/components/SiteHeader";
 
 const HOME_URL = "https://www.getteraa.com/";
@@ -288,7 +287,7 @@ export default async function Home() {
             borderColor: "var(--sand)",
           }}
         >
-          <div className="max-w-[1460px] mx-auto px-3 sm:px-4 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
+          <div className="category-strip max-w-[1460px] mx-auto px-4 sm:px-6 py-3 flex gap-2 overflow-x-auto">
             <Link
               href="/search"
               className="whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] sm:text-xs hover:bg-gray-50 transition"
@@ -315,64 +314,37 @@ export default async function Home() {
 
       {/* MAIN */}
 
-      <div className="mx-auto grid w-full max-w-[1460px] gap-4 px-3 py-4 sm:px-4 sm:py-5 xl:grid-cols-[minmax(0,1fr)_240px]">
+      <div className="mx-auto grid w-full max-w-[1460px] gap-6 px-4 py-5 sm:px-6 sm:py-7 2xl:grid-cols-[minmax(0,1fr)_250px]">
         <main className="min-w-0 sm:pb-6">
-          {accountState.isGuest && <GuestWelcomeCard />}
+          <MarketplaceIntro />
 
-          {accountState.showSellerInvite && <SellerInviteCard />}
-
-          {error === "not_configured" && (
-          <div
-            className="rounded-xl border p-5 mb-6 text-sm"
-            style={{
-              borderColor: "var(--gold)",
-              background: "#fbf3df",
-            }}
-          >
-            <p className="font-medium mb-1">
-              Supabase isn&apos;t connected yet
-            </p>
-
-            <p className="text-gray-600">
-              Add your Supabase project URL and anon key to your environment
-              variables, then restart the development server.
-            </p>
-          </div>
-          )}
-
-          {error && error !== "not_configured" && (
-          <div
-            className="rounded-xl border p-5 mb-6 text-sm"
-            style={{
-              borderColor: "#e0a0a0",
-              background: "#fdf0f0",
-            }}
-          >
-            <p className="font-medium mb-1">Couldn&apos;t load listings</p>
-
-            <p className="text-gray-600">{error}. Try refreshing the page.</p>
-          </div>
+          {error && (
+            <div role="status" className="mb-6 rounded-xl border bg-white p-5 text-sm" style={{ borderColor: "var(--sand)" }}>
+              <p className="font-semibold">We couldn’t load the latest items.</p>
+              <p className="mt-1 text-gray-500">Please check your connection and try again.</p>
+              <Link href="/" className="mt-3 inline-flex font-semibold underline">Try again</Link>
+            </div>
           )}
 
           <div className="flex items-center justify-between gap-4 mb-3 sm:mb-4">
           <div>
-            <h1
+            <h2
               className="font-display text-xl sm:text-2xl"
               style={{
                 color: "var(--ink)",
               }}
             >
-              Fresh listings
-            </h1>
+              Fresh finds
+            </h2>
 
             <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">
-              Latest products on Teraa
+              Newly listed. Ready to discover.
             </p>
           </div>
 
           <Link
             href="/search"
-            className="text-xs font-medium hover:underline"
+            className="secondary-button"
             style={{
               color: "var(--indigo)",
             }}
@@ -395,7 +367,7 @@ export default async function Home() {
             </p>
 
             <Link
-              href="/seller/register"
+              href="/seller/dashboard/new"
               className="inline-block rounded-full px-5 py-2 text-white text-sm font-medium"
               style={{
                 background: "var(--indigo)",
@@ -406,7 +378,7 @@ export default async function Home() {
           </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 xl:grid-cols-4 2xl:grid-cols-3">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

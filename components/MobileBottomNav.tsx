@@ -178,6 +178,13 @@ export function MobileBottomNav() {
     },
 
     {
+      label: "Sell",
+      href: "/seller/dashboard/new",
+      icon: SellIcon,
+      badge: 0,
+    },
+
+    {
       label: "Messages",
       href: "/messages",
       icon: MessageIcon,
@@ -185,23 +192,17 @@ export function MobileBottomNav() {
     },
 
     {
-      label: "Notifications",
-      href: "/notifications",
-      icon: NotificationIcon,
-      badge: unreadNotifications,
-    },
-
-    {
-      label: "Me",
+      label: "Account",
       href: "/account",
       icon: UserIcon,
-      badge: 0,
+      badge: unreadNotifications,
     },
   ];
 
   return (
     <nav
-      className="sm:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-white"
+      aria-label="Main navigation"
+      className="mobile-nav sm:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-white"
       style={{
         borderColor: "var(--sand)",
       }}
@@ -216,7 +217,11 @@ export function MobileBottomNav() {
           const activeItem =
             item.href === "/"
               ? pathname === "/"
-              : pathname.startsWith(item.href);
+              : item.href === "/seller/dashboard/new"
+                ? pathname.startsWith("/seller/")
+                : item.href === "/account"
+                  ? pathname.startsWith("/account") || pathname === "/notifications" || pathname === "/orders" || pathname === "/favorites"
+                  : pathname.startsWith(item.href);
 
           const Icon = item.icon;
 
@@ -224,7 +229,10 @@ export function MobileBottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className="relative flex flex-col items-center justify-center gap-1 py-2.5 text-xs"
+              data-sell={item.label === "Sell" ? "true" : undefined}
+              aria-current={activeItem ? "page" : undefined}
+              aria-label={item.badge > 0 ? `${item.label}, ${item.badge} unread ${item.href === "/account" ? "notifications" : "messages"}` : item.label}
+              className="relative flex flex-col items-center justify-center gap-0.5 py-1.5 text-[11px]"
               style={{
                 color: activeItem ? "var(--indigo)" : "#6b7280",
               }}
@@ -305,22 +313,11 @@ function MessageIcon({ active }: { active: boolean }) {
   );
 }
 
-function NotificationIcon({ active }: { active: boolean }) {
+function SellIcon({ active }: { active: boolean }) {
   return (
-    <svg
-      width="23"
-      height="23"
-      viewBox="0 0 24 24"
-      fill={active ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth="1.8"
-      aria-hidden="true"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"
-      />
+    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? "2.4" : "1.8"} aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <path strokeLinecap="round" d="M12 7v10M7 12h10" />
     </svg>
   );
 }

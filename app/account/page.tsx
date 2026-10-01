@@ -381,7 +381,7 @@ export default function AccountPage() {
         {/* PROFILE */}
 
         <section
-          className="mb-6 flex items-start gap-3 rounded-2xl border bg-white p-4 sm:items-center sm:gap-4"
+          className="account-profile mb-6 flex items-start gap-3 rounded-2xl border bg-white p-4 sm:items-center sm:gap-4"
           style={{ borderColor: "var(--sand)" }}
         >
           <ProfilePhotoEditor
@@ -682,11 +682,11 @@ export default function AccountPage() {
           {!isAdmin && (
             <Link
               href="/account/delete"
-              className="flex items-center gap-3 px-4 py-3.5 border-b last:border-b-0 hover:bg-red-50 transition"
+              className="account-link flex items-center gap-3 px-4 py-4 border-b last:border-b-0 hover:bg-red-50 transition"
               style={{ borderColor: "var(--sand)" }}
             >
               <div
-                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                 style={{
                   background: "#fff1f1",
                   color: "#b42318",
@@ -817,15 +817,15 @@ function AccountLink({
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 px-4 py-3.5 border-b last:border-b-0 hover:bg-gray-50 transition"
+      className="account-link flex items-center gap-3 px-4 py-4 border-b last:border-b-0 hover:bg-gray-50 transition"
       style={{
         borderColor: "var(--sand)",
       }}
     >
       <div
-        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
         style={{
-          background: "#f6f6f3",
+          background: "var(--brand-soft)",
           color: "var(--indigo)",
         }}
       >

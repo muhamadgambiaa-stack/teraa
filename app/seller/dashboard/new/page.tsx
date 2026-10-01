@@ -12,21 +12,27 @@ export default async function NewListingPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/login?redirect=/seller/dashboard/new");
 
-  const [{ data: seller }, { count: coverageCount }] = await Promise.all([
+  const [{ data: seller, error: sellerError }, { count: coverageCount, error: coverageError }] = await Promise.all([
     supabase
       .from("sellers")
       .select("verification_status")
       .eq("id", user.id)
-      .single(),
+      .maybeSingle(),
     supabase
       .from("seller_delivery_areas")
       .select("seller_id", { count: "exact", head: true })
       .eq("seller_id", user.id),
   ]);
 
-  if (!seller || seller.verification_status !== "approved") {
+  if (sellerError || coverageError) {
+    throw new Error("Could not load your seller details. Please try again.");
+  }
+
+  if (!seller) redirect("/seller/register");
+
+  if (seller.verification_status !== "approved") {
     redirect("/seller/dashboard");
   }
 

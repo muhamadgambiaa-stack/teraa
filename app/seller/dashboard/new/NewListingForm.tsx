@@ -34,6 +34,7 @@ export function NewListingForm() {
   const router = useRouter();
   const [supabase] = useState(() => createClient());
 
+  const optionsRef = useRef<HTMLDetailsElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const photoPreviewsRef = useRef<string[]>([]);
 
@@ -263,6 +264,7 @@ export function NewListingForm() {
     try {
       availableSizes = parseProductOptions(sizes);
     } catch (optionError) {
+      if (optionsRef.current) optionsRef.current.open = true;
       setFieldError({
         field: "sizes",
         message:
@@ -276,6 +278,7 @@ export function NewListingForm() {
     try {
       availableColors = parseProductOptions(colors);
     } catch (optionError) {
+      if (optionsRef.current) optionsRef.current.open = true;
       setFieldError({
         field: "colors",
         message:
@@ -501,10 +504,10 @@ export function NewListingForm() {
           color: "var(--ink)",
         }}
       >
-        New listing
+        Sell an item
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+      <form onSubmit={handleSubmit} className="listing-form space-y-5 rounded-2xl border bg-white p-4 sm:p-6">
         {/* PHOTOS */}
 
         <div>
@@ -603,7 +606,7 @@ export function NewListingForm() {
         {/* TITLE */}
 
         <div>
-          <label className="text-sm font-medium block mb-1">Title</label>
+          <label className="text-sm font-medium block mb-1">Item name</label>
 
           <input
             required
@@ -701,54 +704,6 @@ export function NewListingForm() {
           </div>
         </div>
 
-        {/* PRODUCT OPTIONS */}
-
-        <div>
-          <div className="mb-2">
-            <p className="text-sm font-medium">Product choices (optional)</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Separate each choice with a comma. Buyers will select these at
-              checkout.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium block mb-1">
-                Available sizes
-              </label>
-              <input
-                value={sizes}
-                onChange={(event) => {
-                  setSizes(event.target.value);
-                  clearFieldError("sizes");
-                }}
-                placeholder="e.g. 38, 39, 40, 41"
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
-                style={{ borderColor: "var(--sand)" }}
-              />
-              <FieldError field="sizes" error={fieldError} />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium block mb-1">
-                Available colours
-              </label>
-              <input
-                value={colors}
-                onChange={(event) => {
-                  setColors(event.target.value);
-                  clearFieldError("colors");
-                }}
-                placeholder="e.g. Black, White, Blue"
-                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
-                style={{ borderColor: "var(--sand)" }}
-              />
-              <FieldError field="colors" error={fieldError} />
-            </div>
-          </div>
-        </div>
-
         {/* CATEGORY */}
 
         <div>
@@ -837,6 +792,54 @@ export function NewListingForm() {
           <FieldError field="city" error={fieldError} />
         </div>
 
+        {/* PRODUCT OPTIONS */}
+
+        <details ref={optionsRef} className="rounded-lg border p-3" style={{ borderColor: "var(--sand)" }}>
+          <summary className="cursor-pointer text-sm font-medium">Add sizes or colours (optional)</summary>
+          <div className="mb-2 mt-2">
+            <p className="text-xs text-gray-500 mt-1">
+              Separate each choice with a comma. Buyers will select these at
+              checkout.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium block mb-1">
+                Available sizes
+              </label>
+              <input
+                value={sizes}
+                onChange={(event) => {
+                  setSizes(event.target.value);
+                  clearFieldError("sizes");
+                }}
+                placeholder="e.g. 38, 39, 40, 41"
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+                style={{ borderColor: "var(--sand)" }}
+              />
+              <FieldError field="sizes" error={fieldError} />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">
+                Available colours
+              </label>
+              <input
+                value={colors}
+                onChange={(event) => {
+                  setColors(event.target.value);
+                  clearFieldError("colors");
+                }}
+                placeholder="e.g. Black, White, Blue"
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+                style={{ borderColor: "var(--sand)" }}
+              />
+              <FieldError field="colors" error={fieldError} />
+            </div>
+          </div>
+        </details>
+
         {/* ERROR */}
 
         {error && (
@@ -860,7 +863,7 @@ export function NewListingForm() {
             background: "var(--indigo)",
           }}
         >
-          {loading ? "Publishing…" : "Publish listing"}
+          {loading ? "Publishing…" : "Post item"}
         </button>
       </form>
     </main>
