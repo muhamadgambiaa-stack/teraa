@@ -91,7 +91,7 @@ export function SellerInviteCard() {
         </div>
 
         <Link
-          href="/seller/dashboard/new"
+          href="/sell"
           className="mt-4 inline-flex w-full shrink-0 items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 sm:mt-0 sm:w-auto"
           style={{ background: "var(--indigo)" }}
         >

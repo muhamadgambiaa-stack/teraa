@@ -178,24 +178,31 @@ export function MobileBottomNav() {
     },
 
     {
-      label: "Sell",
-      href: "/seller/dashboard/new",
+      label: "Deals",
+      href: "/search",
+      icon: BrowseIcon,
+      badge: 0,
+    },
+
+    {
+      label: "+",
+      href: "/sell",
       icon: SellIcon,
       badge: 0,
     },
 
     {
-      label: "Messages",
+      label: "Inbox",
       href: "/messages",
       icon: MessageIcon,
-      badge: unreadMessages,
+      badge: unreadMessages + unreadNotifications,
     },
 
     {
-      label: "Account",
+      label: "Me",
       href: "/account",
       icon: UserIcon,
-      badge: unreadNotifications,
+      badge: 0,
     },
   ];
 
@@ -208,7 +215,7 @@ export function MobileBottomNav() {
       }}
     >
       <div
-        className="grid grid-cols-4"
+        className="grid grid-cols-5"
         style={{
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
@@ -217,10 +224,12 @@ export function MobileBottomNav() {
           const activeItem =
             item.href === "/"
               ? pathname === "/"
-              : item.href === "/seller/dashboard/new"
-                ? pathname.startsWith("/seller/")
+              : item.href === "/sell"
+                ? pathname === "/sell" || pathname.startsWith("/seller/") || pathname.startsWith("/admin")
+                : item.href === "/messages"
+                  ? pathname.startsWith("/messages") || pathname === "/notifications"
                 : item.href === "/account"
-                  ? pathname.startsWith("/account") || pathname === "/notifications" || pathname === "/orders" || pathname === "/favorites"
+                  ? pathname.startsWith("/account") || pathname === "/orders" || pathname === "/favorites"
                   : pathname.startsWith(item.href);
 
           const Icon = item.icon;
@@ -229,9 +238,9 @@ export function MobileBottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              data-sell={item.label === "Sell" ? "true" : undefined}
+              data-sell={item.label === "+" ? "true" : undefined}
               aria-current={activeItem ? "page" : undefined}
-              aria-label={item.badge > 0 ? `${item.label}, ${item.badge} unread ${item.href === "/account" ? "notifications" : "messages"}` : item.label}
+              aria-label={item.label === "+" ? "Selling tools and dashboard" : item.badge > 0 ? `${item.label}, ${item.badge} unread` : item.label}
               className="relative flex flex-col items-center justify-center gap-0.5 py-1.5 text-[11px]"
               style={{
                 color: activeItem ? "var(--indigo)" : "#6b7280",
@@ -318,6 +327,17 @@ function SellIcon({ active }: { active: boolean }) {
     <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? "2.4" : "1.8"} aria-hidden="true">
       <rect x="3" y="3" width="18" height="18" rx="5" />
       <path strokeLinecap="round" d="M12 7v10M7 12h10" />
+    </svg>
+  );
+}
+
+function BrowseIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? "2.2" : "1.8"} aria-hidden="true">
+      <rect x="3" y="4" width="7" height="7" rx="1.5" />
+      <rect x="14" y="4" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
     </svg>
   );
 }

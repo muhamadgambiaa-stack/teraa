@@ -408,11 +408,6 @@ export default function AccountPage() {
 
             {email && <p className="text-sm text-gray-500 truncate">{email}</p>}
 
-            <p className="mt-1 text-xs leading-5 text-gray-500">
-              Your photo helps buyers and sellers recognize who they are
-              dealing with.
-            </p>
-
             <div className="flex flex-wrap items-center gap-2 mt-1">
               <span
                 className="text-xs capitalize font-medium"
@@ -490,6 +485,8 @@ export default function AccountPage() {
         </AccountSection>
 
         {/* SELLING */}
+
+        <div className="hidden sm:block space-y-5">
 
         {!isAdmin && !seller && (
           <AccountSection title="Selling">
@@ -670,6 +667,8 @@ export default function AccountPage() {
         )}
 
         {/* ACCOUNT SETTINGS */}
+
+        </div>
 
         <AccountSection title="Account">
           <AccountLink
@@ -1054,4 +1053,3 @@ function StatusPill({
     </span>
   );
 }
-

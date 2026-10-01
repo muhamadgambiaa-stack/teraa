@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/SiteHeader";
+import { InboxTabs } from "@/components/InboxTabs";
 
 import { markAllNotificationsRead, markNotificationRead } from "./actions";
 
@@ -63,6 +64,7 @@ export default async function NotificationsPage() {
       <SiteHeader />
 
       <main className="max-w-2xl mx-auto px-4 py-5 sm:pb-6">
+        <InboxTabs active="notifications" />
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-2">

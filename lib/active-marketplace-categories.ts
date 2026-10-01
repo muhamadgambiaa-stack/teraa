@@ -15,17 +15,9 @@ export async function getActiveMarketplaceCategories(): Promise<
 
     const { data, error } = await supabase
       .from("categories")
-      .select(
-        `
-        id,
-        name,
-        products!inner(id)
-        `,
-      )
+      .select("id, name")
       .is("parent_category_id", null)
-      .eq("products.status", "active")
-      .order("name", { ascending: true })
-      .limit(1, { referencedTable: "products" });
+      .order("name", { ascending: true });
 
     if (error) {
       console.error("Could not load active marketplace categories:", error);

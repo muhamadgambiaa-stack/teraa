@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ConfirmDeleteForm } from "@/components/ConfirmDeleteForm";
 import { SiteHeader } from "@/components/SiteHeader";
+import { InboxTabs } from "@/components/InboxTabs";
 
 import { removeConversation } from "./actions";
 
@@ -208,6 +209,7 @@ export default async function MessagesPage() {
       <SiteHeader />
 
       <main className="max-w-2xl mx-auto px-4 py-5">
+        <InboxTabs active="messages" />
         <div className="mb-4">
           <div className="flex items-center gap-2">
             <h1
