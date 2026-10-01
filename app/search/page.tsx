@@ -1,3 +1,4 @@
+import { withProductOffers } from "@/lib/product-offers";
 import Link from "next/link";
 
 import { getActiveMarketplaceCategories } from "@/lib/active-marketplace-categories";
@@ -49,7 +50,7 @@ async function searchProducts(params: SearchParams): Promise<{
      */
 
     let query = supabase
-      .from("products")
+      .from("marketplace_priced_products")
       .select(
         `
         id,
@@ -107,7 +108,7 @@ async function searchProducts(params: SearchParams): Promise<{
      */
 
     if (params.min && Number.isFinite(Number(params.min))) {
-      query = query.gte("price", Number(params.min));
+      query = query.gte("effective_price", Number(params.min));
     }
 
     /*
@@ -115,7 +116,7 @@ async function searchProducts(params: SearchParams): Promise<{
      */
 
     if (params.max && Number.isFinite(Number(params.max))) {
-      query = query.lte("price", Number(params.max));
+      query = query.lte("effective_price", Number(params.max));
     }
 
     /*
@@ -123,11 +124,11 @@ async function searchProducts(params: SearchParams): Promise<{
      */
 
     if (params.sort === "price_asc") {
-      query = query.order("price", {
+      query = query.order("effective_price", {
         ascending: true,
       });
     } else if (params.sort === "price_desc") {
-      query = query.order("price", {
+      query = query.order("effective_price", {
         ascending: false,
       });
     } else {
@@ -259,7 +260,7 @@ async function searchProducts(params: SearchParams): Promise<{
     });
 
     return {
-      products,
+      products: await withProductOffers(products),
       total: count ?? 0,
       error: null,
     };

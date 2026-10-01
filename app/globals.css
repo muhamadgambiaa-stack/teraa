@@ -65,7 +65,7 @@ img, video, canvas { max-width: 100%; }
 .mobile-nav a { min-height: 64px; }
 .mobile-nav a[aria-current="page"] > div { background: var(--brand-soft); }
 .mobile-nav a > div { border-radius: 12px; padding: 5px 13px; }
-.mobile-nav a[data-sell="true"] > div { background: var(--indigo); color: white; }
+.mobile-nav a[data-sell="true"] > div { display: grid; place-items: center; width: 48px; height: 48px; padding: 0; background: var(--indigo); color: white; border-radius: 16px; }
 
 .marketplace-intro {
   position: relative;

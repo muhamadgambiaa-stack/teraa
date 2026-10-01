@@ -1,3 +1,4 @@
+import { withProductOffers } from "@/lib/product-offers";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -212,7 +213,7 @@ async function getProducts(): Promise<{
     });
 
     return {
-      products,
+      products: await withProductOffers(products),
       error: null,
     };
   } catch (error) {

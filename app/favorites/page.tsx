@@ -1,3 +1,4 @@
+import { withProductOffers } from "@/lib/product-offers";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
@@ -120,6 +121,8 @@ export default async function FavoritesPage() {
     });
   }
 
+  const offeredProducts = await withProductOffers(products);
+
   return (
     <>
       <SiteHeader />
@@ -140,7 +143,7 @@ export default async function FavoritesPage() {
           </p>
         </div>
 
-        {products.length === 0 ? (
+        {offeredProducts.length === 0 ? (
           <div
             className="rounded-xl border bg-white p-10 text-center"
             style={{
@@ -161,14 +164,14 @@ export default async function FavoritesPage() {
         ) : (
           <>
             <p className="text-xs text-gray-500 mb-3">
-              {products.length} saved{" "}
-              {products.length === 1
+              {offeredProducts.length} saved{" "}
+              {offeredProducts.length === 1
                 ? "product"
                 : "products"}
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
-              {products.map((product) => (
+              {offeredProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}

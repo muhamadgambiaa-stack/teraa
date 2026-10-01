@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { currentOffer, normalizeVoucherCode, offerPrice, type ProductOffer } from "@/lib/offer-pricing";
 
 export type DeliveryCoverageOption = {
   region: string;
@@ -26,15 +27,44 @@ export function CheckoutPricing({
   availableSizes,
   availableColors,
   deliveryCoverage,
+  offer,
+  quoteTime,
+  initialVoucher,
 }: {
   productPrice: number;
   stockQuantity: number;
   availableSizes: string[];
   availableColors: string[];
   deliveryCoverage: DeliveryCoverageOption[];
+  offer: ProductOffer | null;
+  quoteTime: number;
+  initialVoucher: string;
 }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedValue, setSelectedValue] = useState("");
+  const [now, setNow] = useState(quoteTime);
+  const [code, setCode] = useState(initialVoucher);
+  const [appliedCode, setAppliedCode] = useState(
+    offer?.kind === "voucher" && normalizeVoucherCode(initialVoucher) === offer.voucher_code ? offer.voucher_code : "",
+  );
+  const [voucherError, setVoucherError] = useState("");
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const activeOffer = currentOffer(offer, now);
+  const discountApplied = activeOffer?.kind === "discount" || (activeOffer?.kind === "voucher" && appliedCode === activeOffer.voucher_code);
+  const unitPrice = discountApplied && activeOffer ? offerPrice(productPrice, activeOffer.percent_off) : productPrice;
+
+  function applyVoucher() {
+    if (activeOffer?.kind === "voucher" && normalizeVoucherCode(code) === activeOffer.voucher_code) {
+      setAppliedCode(activeOffer.voucher_code ?? "");
+      setVoucherError("");
+    } else {
+      setAppliedCode("");
+      setVoucherError("This voucher is invalid or expired for this product.");
+    }
+  }
 
   const selectedCoverage = useMemo(
     () => deliveryCoverage.find((option) => (
@@ -43,7 +73,8 @@ export function CheckoutPricing({
     [deliveryCoverage, selectedValue],
   );
 
-  const subtotal = productPrice * quantity;
+  const subtotal = Math.round(unitPrice * quantity * 100) / 100;
+  const savings = Math.round((productPrice - unitPrice) * quantity * 100) / 100;
   const deliveryFee = selectedCoverage?.deliveryFee ?? 0;
   const total = subtotal + deliveryFee;
   const regions = Array.from(
@@ -52,6 +83,16 @@ export function CheckoutPricing({
 
   return (
     <div className="space-y-3 sm:space-y-4">
+      <input type="hidden" name="voucherCode" value={activeOffer?.kind === "voucher" ? appliedCode : ""} />
+      <input type="hidden" name="expectedUnitPrice" value={unitPrice.toFixed(2)} />
+      {offer?.kind === "voucher" && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+        <label htmlFor="checkout-voucher" className="block text-sm font-medium mb-2">Voucher code</label>
+        <div className="flex gap-2"><input id="checkout-voucher" maxLength={20} value={code} onChange={(e) => { setCode(e.target.value); setAppliedCode(""); setVoucherError(""); }} placeholder="Enter code" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 uppercase" />
+          <button type="button" onClick={applyVoucher} className="secondary-button">Apply</button></div>
+        {voucherError && <p role="alert" className="mt-2 text-xs text-red-700">{voucherError}</p>}
+        {discountApplied && <p role="status" className="mt-2 text-xs text-emerald-800">{activeOffer?.percent_off}% voucher applied.</p>}
+        {!activeOffer && <p role="status" className="mt-2 text-xs text-gray-600">This offer has expired.</p>}
+      </div>}
       {(availableSizes.length > 0 || availableColors.length > 0) && (
         <div className="grid grid-cols-2 gap-3">
           {availableSizes.length > 0 && (
@@ -162,6 +203,7 @@ export function CheckoutPricing({
           <span className="text-gray-600">Product subtotal</span>
           <span>{money(subtotal)}</span>
         </div>
+        {savings > 0 && <div className="flex justify-between gap-4 text-emerald-800"><span>You save ({activeOffer?.percent_off}%)</span><span>{money(savings)}</span></div>}
         <div className="flex justify-between gap-4">
           <span className="text-gray-600">Delivery</span>
           <span>{selectedCoverage ? money(deliveryFee) : "Choose an area"}</span>

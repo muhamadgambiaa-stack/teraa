@@ -7,6 +7,7 @@ export const revalidate = 3600;
 
 const publicPages: MetadataRoute.Sitemap = [
   { url: SITE_URL, changeFrequency: "daily", priority: 1 },
+  { url: `${SITE_URL}/deals`, changeFrequency: "daily", priority: 0.9 },
   { url: `${SITE_URL}/search`, changeFrequency: "daily", priority: 0.9 },
   { url: `${SITE_URL}/signup`, changeFrequency: "monthly", priority: 0.6 },
   {

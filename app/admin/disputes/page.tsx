@@ -1,3 +1,4 @@
+import { requestTime } from "@/lib/server-time";
 import Link from "next/link";
 
 import { SiteHeader } from "@/components/SiteHeader";
@@ -59,7 +60,7 @@ export default async function AdminDisputesPage({
   ]);
 
   const issues = (data ?? []) as Issue[];
-  const now = Date.now();
+  const now = await requestTime();
 
   return (
     <>

@@ -1,3 +1,4 @@
+import Image from "next/image";
 export default function Loading() {
   return (
     <div
@@ -10,11 +11,11 @@ export default function Loading() {
       aria-label="Loading Teraa"
     >
       <div className="flex flex-col items-center text-center">
-        <img
+        <Image
           src="/branding/teraa-icon.svg"
           alt=""
-          width="72"
-          height="72"
+          width={72}
+          height={72}
           className="w-16 h-16 sm:w-[72px] sm:h-[72px]"
         />
 

@@ -203,6 +203,8 @@ export default async function SellerOrderDetailPage({
         product_id,
         quantity,
         price_at_purchase,
+        offer_percent_off,
+        voucher_code,
         selected_size,
         selected_color,
 
@@ -312,6 +314,8 @@ export default async function SellerOrderDetailPage({
           product_id: string;
           quantity: number;
           price_at_purchase: number;
+          offer_percent_off: number | null;
+          voucher_code: string | null;
           selected_size: string | null;
           selected_color: string | null;
 
@@ -513,6 +517,7 @@ export default async function SellerOrderDetailPage({
                       </p>
                     )}
 
+                    {item.offer_percent_off && <p className="text-xs text-emerald-800 mt-1">{item.offer_percent_off}% off{item.voucher_code ? ` · ${item.voucher_code}` : ""}</p>}
                     <p
                       className="text-sm font-semibold mt-1"
                       style={{

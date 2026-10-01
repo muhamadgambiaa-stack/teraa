@@ -163,7 +163,7 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
           <div className="w-full max-w-2xl">
             <SearchBar initialQuery={searchQuery} />
           </div>
-          <Link href="/seller/dashboard/new" className="primary-button ml-auto shrink-0">Sell an item <span aria-hidden="true">+</span></Link>
+          <Link href="/sell" className="primary-button ml-auto shrink-0">Sell an item <span aria-hidden="true">+</span></Link>
         </div>
       ) : backDestination ? (
         <div className="mx-auto hidden w-full max-w-[1460px] items-center px-4 py-1.5 lg:flex">

@@ -1,3 +1,4 @@
+import { withProductOffers } from "@/lib/product-offers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -117,6 +118,8 @@ export default async function PublicProfilePage({
       };
     });
   }
+
+  products = await withProductOffers(products);
 
   /*
    * COMPLETED SALES

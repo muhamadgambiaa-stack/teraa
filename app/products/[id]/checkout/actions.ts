@@ -26,6 +26,10 @@ export async function createOrder(formData: FormData) {
   }
 
   const quantity = Number(formData.get("quantity") ?? 1);
+  const voucherCode = String(formData.get("voucherCode") ?? "").trim().toUpperCase();
+  const expectedPriceValue = String(formData.get("expectedUnitPrice") ?? "");
+  const expectedUnitPrice = Number(expectedPriceValue);
+  if (!expectedPriceValue || !Number.isFinite(expectedUnitPrice) || expectedUnitPrice < 0) redirect(`/products/${productId}/checkout?error=price_changed`);
 
   const paymentMethodValue = String(formData.get("paymentMethod") ?? "").trim();
 
@@ -105,7 +109,7 @@ export async function createOrder(formData: FormData) {
    * - atomic stock reduction
    */
   const { data: orderId, error } = await supabase.rpc(
-    "create_marketplace_order_v2",
+    "create_marketplace_order_v3",
     {
       p_product_id: productId,
 
@@ -126,6 +130,8 @@ export async function createOrder(formData: FormData) {
       p_selected_size: selectedSize || null,
 
       p_selected_color: selectedColor || null,
+      p_voucher_code: voucherCode || null,
+      p_expected_unit_price: expectedUnitPrice,
     },
   );
 
@@ -133,6 +139,8 @@ export async function createOrder(formData: FormData) {
     console.error("Order creation failed:", error);
 
     const message = error?.message?.toLowerCase() ?? "";
+    if (message.includes("voucher")) redirect(`/products/${productId}/checkout?error=invalid_voucher`);
+    if (message.includes("price changed")) redirect(`/products/${productId}/checkout?error=price_changed`);
 
     if (
       message.includes("not enough stock") ||

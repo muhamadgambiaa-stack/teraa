@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://not-configured.supabase.co";
@@ -28,15 +28,15 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired â€” required for Server Components to read it.
+  // Refresh session if expired — required for Server Components to read it.
   // Wrapped in try/catch: if Supabase isn't configured (see fallback above)
   // this call will fail, and we don't want that to take down every page on
-  // the site â€” better to let the request through and have the page itself
+  // the site — better to let the request through and have the page itself
   // show its own "not connected" state.
   try {
     await supabase.auth.getUser();
   } catch {
-    // swallow â€” see comment above
+    // swallow — see comment above
   }
 
   return response;

@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -191,11 +193,11 @@ export default function AccountSettingsPage() {
         style={{ background: "#fffdf8" }}
       >
         <div className="text-center">
-          <img
+          <Image
             src="/branding/teraa-icon.svg"
             alt=""
-            width="64"
-            height="64"
+            width={64}
+            height={64}
             className="mx-auto"
           />
           <p

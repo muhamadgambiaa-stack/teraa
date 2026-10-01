@@ -179,7 +179,7 @@ export function MobileBottomNav() {
 
     {
       label: "Deals",
-      href: "/search",
+      href: "/deals",
       icon: BrowseIcon,
       badge: 0,
     },
@@ -271,9 +271,9 @@ export function MobileBottomNav() {
                 )}
               </div>
 
-              <span className={activeItem ? "font-semibold" : ""}>
+              {item.label !== "+" && <span className={activeItem ? "font-semibold" : ""}>
                 {item.label}
-              </span>
+              </span>}
             </Link>
           );
         })}
@@ -324,8 +324,7 @@ function MessageIcon({ active }: { active: boolean }) {
 
 function SellIcon({ active }: { active: boolean }) {
   return (
-    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? "2.4" : "1.8"} aria-hidden="true">
-      <rect x="3" y="3" width="18" height="18" rx="5" />
+    <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? "2.4" : "2"} aria-hidden="true">
       <path strokeLinecap="round" d="M12 7v10M7 12h10" />
     </svg>
   );

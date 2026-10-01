@@ -50,19 +50,8 @@ export default async function AdminCommissionDetailPage({
     notFound();
   }
 
-  const [{ data: seller }, { data: order }] = await Promise.all([
-    supabase
-      .from("sellers")
-      .select("business_name, legal_name, account_status")
-      .eq("id", commission.seller_id)
-      .maybeSingle(),
-
-    supabase
-      .from("orders")
-      .select("id, status, created_at")
-      .eq("id", commission.order_id)
-      .maybeSingle(),
-  ]);
+  const { data: seller } = await supabase.from("sellers")
+    .select("business_name, legal_name, account_status").eq("id", commission.seller_id).maybeSingle();
 
   let proofUrl: string | null = null;
 

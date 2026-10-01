@@ -1,3 +1,4 @@
+import { withProductOffers } from "@/lib/product-offers";
 ﻿import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -96,7 +97,8 @@ const getProduct = cache(async function getProduct(id: string) {
     return null;
   }
 
-  return data;
+  const [offeredProduct] = await withProductOffers([data]);
+  return offeredProduct;
 });
 
 type ProductPageProps = {
@@ -370,6 +372,11 @@ export default async function ProductDetailPage({
             >
               GMD {Number(product.price).toLocaleString()}
             </p>
+            {product.offer?.kind === "discount" && <p className="mt-1 text-sm text-gray-500"><s>GMD {Number(product.originalPrice).toLocaleString()}</s> · {product.offer.percent_off}% off</p>}
+            {product.offer?.kind === "voucher" && <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">
+              <p><strong>{product.offer.percent_off}% off</strong> with code <strong>{product.offer.voucher_code}</strong></p>
+              <Link href={`/products/${product.id}/checkout?voucher=${product.offer.voucher_code}`} className="mt-2 inline-block font-semibold underline">Use voucher</Link>
+            </div>}
 
             {/* PRODUCT RATING */}
 

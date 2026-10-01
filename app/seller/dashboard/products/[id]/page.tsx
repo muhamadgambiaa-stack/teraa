@@ -156,6 +156,7 @@ export default async function ManageListingPage({
             >
               Manage listing
             </h1>
+            <Link href={`/seller/dashboard/offers?product=${product.id}`} className="inline-block mt-3 text-sm font-semibold underline">Manage discount or voucher</Link>
 
             <p className="text-sm text-gray-500 mt-1">
               Update your product, category, stock, price or listing visibility.

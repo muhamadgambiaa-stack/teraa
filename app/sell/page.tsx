@@ -39,6 +39,7 @@ export default async function SellEntryPage() {
               Upload a product
             </Link>}
             <Link href="/seller/dashboard" className="secondary-button text-center py-4">{canUpload ? "Seller dashboard" : "View seller application and dashboard"}</Link>
+            {canUpload && <Link href="/seller/dashboard/offers" className="secondary-button text-center py-4">Discounts & vouchers</Link>}
           </div>
         </main>
       </>

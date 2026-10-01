@@ -4,6 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { gambianLocalNumberFromStored } from "@/lib/gambian-phone";
 import { SiteHeader } from "@/components/SiteHeader";
+import { getProductOffers } from "@/lib/product-offers";
+import { requestTime } from "@/lib/server-time";
+import { currentOffer, normalizeVoucherCode, offerPrice } from "@/lib/offer-pricing";
 
 import { createOrder } from "./actions";
 import { PlaceOrderButton } from "./PlaceOrderButton";
@@ -50,10 +53,11 @@ export default async function CheckoutPage({
   }>;
   searchParams: Promise<{
     error?: string;
+    voucher?: string;
   }>;
 }) {
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, voucher } = await searchParams;
 
   const supabase = await createClient();
 
@@ -62,7 +66,7 @@ export default async function CheckoutPage({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(`/login?redirect=/products/${id}/checkout`);
+    redirect(`/login?redirect=${encodeURIComponent(`/products/${id}/checkout${voucher ? `?voucher=${encodeURIComponent(voucher)}` : ""}`)}`);
   }
 
   const product = await getProduct(id);
@@ -70,6 +74,13 @@ export default async function CheckoutPage({
   if (!product) {
     notFound();
   }
+  if (product.seller_id === user.id) redirect(`/seller/dashboard/products/${id}`);
+  const offers = await getProductOffers([id]);
+  const offer = offers.get(id) ?? null;
+  const quoteTime = await requestTime();
+  const activeOffer = currentOffer(offer, quoteTime);
+  const quotePrice = activeOffer && (activeOffer.kind === "discount" || normalizeVoucherCode(voucher ?? "") === activeOffer.voucher_code)
+    ? offerPrice(Number(product.price), activeOffer.percent_off) : Number(product.price);
 
   const [{ data: coverageRows }, { data: buyer }] = await Promise.all([
     supabase
@@ -115,6 +126,8 @@ export default async function CheckoutPage({
     product.status !== "active" || product.stock_quantity === 0;
 
   const errorMessages: Record<string, string> = {
+    invalid_voucher: "This voucher is invalid or expired. Review the price before ordering.",
+    price_changed: "The price or offer changed. Review the updated total before placing your order.",
     missing_area: "Choose a delivery area to continue.",
 
     missing_address: "Enter the full delivery address.",
@@ -196,8 +209,9 @@ export default async function CheckoutPage({
                 color: "var(--clay)",
               }}
             >
-              GMD {Number(product.price).toLocaleString()}
+              GMD {quotePrice.toLocaleString()}
             </p>
+            {quotePrice < Number(product.price) && <p className="text-xs text-gray-500"><s>GMD {Number(product.price).toLocaleString()}</s></p>}
           </div>
         </div>
 
@@ -259,6 +273,9 @@ export default async function CheckoutPage({
               availableSizes={product.available_sizes}
               availableColors={product.available_colors}
               deliveryCoverage={deliveryCoverage}
+              offer={offer}
+              quoteTime={quoteTime}
+              initialVoucher={voucher ?? ""}
             />
 
             {/* DELIVERY ADDRESS */}

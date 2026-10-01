@@ -38,6 +38,7 @@ type NavItem = {
 
 const SHOPPING_LINKS: NavItem[] = [
   { label: "Home", href: "/", icon: "home" },
+  { label: "Deals", href: "/deals", icon: "browse" },
   {
     label: "Browse",
     href: "/search",
@@ -58,6 +59,7 @@ const BUYER_SELL_LINKS: NavItem[] = [
 ];
 
 const SELLER_LINKS: NavItem[] = [
+  { label: "Discounts & vouchers", href: "/seller/dashboard/offers", icon: "products" },
   {
     label: "Seller dashboard",
     href: "/seller/dashboard",

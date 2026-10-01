@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 import { CONDITION_LABELS, type ProductCondition } from "@/types/database";
+import type { ProductOffer } from "@/lib/offer-pricing";
 
 export interface ProductCardData {
   id: string;
@@ -18,6 +19,8 @@ export interface ProductCardData {
   coverPhoto: string | null;
   sellerName: string | null;
   sellerVerified: boolean;
+  originalPrice?: number;
+  offer?: ProductOffer | null;
 }
 
 export function ProductCard({ product }: { product: ProductCardData }) {
@@ -26,6 +29,23 @@ export function ProductCard({ product }: { product: ProductCardData }) {
 
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
+  const [expiredOffer, setExpiredOffer] = useState<string | null>(null);
+  const offer = product.offer && product.offer.expires_at !== expiredOffer ? product.offer : null;
+  const displayPrice = !offer && product.offer?.kind === "discount" ? product.originalPrice ?? product.price : product.price;
+
+  useEffect(() => {
+    const expiresAt = product.offer?.expires_at;
+    if (!expiresAt) return;
+    let timer: number;
+    function scheduleExpiry() {
+      timer = window.setTimeout(() => {
+        if (Date.now() >= Date.parse(expiresAt!)) setExpiredOffer(expiresAt!);
+        else scheduleExpiry();
+      }, Math.min(2147483647, Math.max(0, Date.parse(expiresAt!) - Date.now())));
+    }
+    scheduleExpiry();
+    return () => window.clearTimeout(timer);
+  }, [product.offer?.expires_at]);
 
   useEffect(() => {
     let active = true;
@@ -140,6 +160,9 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               {CONDITION_LABELS[product.condition]}
             </span>
           )}
+          {offer && <span className="absolute bottom-2 left-2 rounded-full bg-emerald-700 px-2 py-1 text-[11px] font-semibold text-white">
+            {offer.kind === "voucher" ? "Voucher · " : ""}{offer.percent_off}% off
+          </span>}
         </div>
 
         {/* DETAILS */}
@@ -155,8 +178,10 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               color: "var(--indigo)",
             }}
           >
-            GMD {Number(product.price).toLocaleString()}
+            GMD {Number(displayPrice).toLocaleString()}
           </p>
+          {offer?.kind === "discount" && <p className="text-xs text-gray-500"><s>GMD {Number(product.originalPrice).toLocaleString()}</s></p>}
+          {offer?.kind === "voucher" && <p className="mt-1 text-xs text-emerald-800">Use {offer.voucher_code} at checkout</p>}
 
           <div className="flex items-center gap-1 mt-2 text-[11px] sm:text-xs text-gray-500 min-w-0">
             <LocationIcon />

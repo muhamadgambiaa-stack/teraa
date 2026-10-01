@@ -54,7 +54,6 @@ async function requireActiveUser() {
 
 export async function createSupportThreadFromAnswer(
   answerId: string,
-  _formData: FormData,
 ) {
   const { supabase } = await requireActiveUser();
 
@@ -188,7 +187,6 @@ export async function sendSupportMessage(threadId: string, formData: FormData) {
 
 export async function resolveOwnSupportThread(
   threadId: string,
-  _formData: FormData,
 ) {
   const { supabase } = await requireActiveUser();
 
@@ -230,7 +228,6 @@ export async function resolveOwnSupportThread(
 
 export async function requestHumanSupport(
   threadId: string,
-  _formData: FormData,
 ) {
   const { supabase } = await requireActiveUser();
 

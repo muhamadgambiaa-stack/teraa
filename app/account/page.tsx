@@ -5,15 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
-import { accountIdentityErrorMessage } from "@/lib/account-identity";
-import {
-  gambianLocalNumberFromStored,
-  isValidGambianLocalNumber,
-  toGambianPhoneNumber,
-} from "@/lib/gambian-phone";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ProfilePhotoEditor } from "@/components/ProfilePhotoEditor";
-import { GAMBIA_CITIES } from "@/types/database";
+import Image from "next/image";
 
 type Role = "buyer" | "seller" | "admin";
 
@@ -56,18 +50,8 @@ export default function AccountPage() {
   const [seller, setSeller] = useState<Seller | null>(null);
   const [email, setEmail] = useState<string | null>(null);
 
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
-
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
-  const [deletingAccount, setDeletingAccount] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -110,10 +94,6 @@ export default function AccountPage() {
 
       setProfile(userProfile);
       setEmail(user.email ?? null);
-
-      setFullName(userProfile.full_name ?? "");
-      setPhone(gambianLocalNumberFromStored(userProfile.phone_number));
-      setCity(userProfile.city ?? "");
 
       if (userProfile.role !== "admin") {
         const [
@@ -167,125 +147,15 @@ export default function AccountPage() {
       setLoading(false);
     }
 
-    loadAccount();
+    loadAccount().catch((failure) => {
+      console.error("Account loading failed:", failure);
+      if (active) { setError("Couldn't load your account. Please try again."); setLoading(false); }
+    });
 
     return () => {
       active = false;
     };
   }, [router]);
-
-  async function handleSave(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    setSaving(true);
-    setSaved(false);
-    setError(null);
-
-    const supabase = createClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    if (!isValidGambianLocalNumber(phone)) {
-      setSaving(false);
-      setError(
-        "Enter your 7-digit legacy number or 9-digit number after +220. A 9-digit number must begin with 83, 86 or 87.",
-      );
-      return;
-    }
-
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({
-        full_name: fullName.trim(),
-        phone_number: toGambianPhoneNumber(phone),
-        city,
-      })
-      .eq("id", user.id);
-
-    setSaving(false);
-
-    if (updateError) {
-      setError(accountIdentityErrorMessage(updateError));
-      return;
-    }
-
-    setProfile((current) =>
-      current
-        ? {
-            ...current,
-            full_name: fullName.trim(),
-            phone_number: toGambianPhoneNumber(phone),
-            city,
-          }
-        : current,
-    );
-
-    setSaved(true);
-
-    setTimeout(() => {
-      setSaved(false);
-    }, 2500);
-  }
-
-  async function handleDeleteAccount() {
-    if (deleteConfirmation !== "delete my account") {
-      setDeleteError('Type exactly "delete my account" to continue.');
-      return;
-    }
-
-    setDeletingAccount(true);
-    setDeleteError(null);
-
-    const supabase = createClient();
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      setDeletingAccount(false);
-      setDeleteError("Your session has expired. Please log in again.");
-      return;
-    }
-
-    const { error: deleteAccountError } = await supabase.rpc(
-      "delete_my_account",
-      {
-        p_confirmation: deleteConfirmation,
-      },
-    );
-
-    if (deleteAccountError) {
-      console.error("Account deletion failed:", deleteAccountError);
-
-      setDeletingAccount(false);
-      setDeleteError(
-        "Couldn't delete your account. Please try again or contact support.",
-      );
-      return;
-    }
-
-    /*
-     * The Auth user has now been deleted server-side.
-     * Clear any remaining local session data before leaving /account.
-     */
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // The Auth identity is already deleted, so there may be nothing left
-      // for the server to sign out. Redirecting still clears the UI state.
-    }
-
-    window.location.replace("/");
-  }
 
   async function handleLogout() {
     const supabase = createClient();
@@ -306,11 +176,11 @@ export default function AccountPage() {
         aria-label="Loading Teraa"
       >
         <div className="flex flex-col items-center">
-          <img
+          <Image
             src="/branding/teraa-icon.svg"
             alt=""
-            width="72"
-            height="72"
+            width={72}
+            height={72}
             className="h-16 w-16 sm:h-[72px] sm:w-[72px]"
           />
 
@@ -361,8 +231,9 @@ export default function AccountPage() {
 
         <main className="max-w-2xl mx-auto px-4 py-8 pb-24">
           <p className="text-sm text-red-600">
-            Couldn&apos;t load your account.
+            {error ?? "Couldn’t load your account."}
           </p>
+          <button type="button" onClick={() => window.location.reload()} className="primary-button mt-4">Try again</button>
         </main>
       </>
     );

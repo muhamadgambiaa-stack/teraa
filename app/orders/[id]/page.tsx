@@ -93,6 +93,8 @@ export default async function OrderPage({
         product_id,
         quantity,
         price_at_purchase,
+        offer_percent_off,
+        voucher_code,
         selected_size,
         selected_color,
 
@@ -160,6 +162,8 @@ export default async function OrderPage({
           product_id: string;
           quantity: number;
           price_at_purchase: number;
+          offer_percent_off: number | null;
+          voucher_code: string | null;
           selected_size: string | null;
           selected_color: string | null;
 
@@ -348,6 +352,7 @@ export default async function OrderPage({
                   <span className="block">
                     {item.quantity} &times; {product?.title ?? "Product"}
                   </span>
+                  {item.offer_percent_off && <span className="block text-xs text-emerald-800 mt-1">{item.offer_percent_off}% off{item.voucher_code ? ` · ${item.voucher_code}` : ""}</span>}
                   {(item.selected_size || item.selected_color) && (
                     <span className="block text-xs text-gray-500 mt-1">
                       {[item.selected_size && `Size: ${item.selected_size}`,

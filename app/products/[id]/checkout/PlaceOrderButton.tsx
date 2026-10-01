@@ -13,7 +13,7 @@ export function PlaceOrderButton() {
       className="w-full min-h-12 rounded-full py-3 text-white text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
       style={{ background: "var(--indigo)" }}
     >
-      {pending ? "Placing order…" : "Place COD order"}
+      {pending ? "Placing order…" : "Place order"}
     </button>
   );
 }

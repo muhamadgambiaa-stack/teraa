@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:offers": "node --test tests/offer-pricing.test.mjs"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.6.1",
