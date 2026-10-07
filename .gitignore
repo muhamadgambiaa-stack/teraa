@@ -44,3 +44,5 @@ next-env.d.ts
 vapid-keys.txt
 
 *.patch
+
+.teraa-backups-search-ui/

@@ -315,8 +315,8 @@ export default async function Home() {
 
       {/* MAIN */}
 
-      <div className="mx-auto grid w-full max-w-[1460px] gap-6 px-4 py-5 sm:px-6 sm:py-7 2xl:grid-cols-[minmax(0,1fr)_250px]">
-        <main className="min-w-0 sm:pb-6">
+      <div className="mx-auto grid w-full max-w-[1460px] gap-6 px-4 py-5 sm:px-6 sm:py-7 lg:gap-8 2xl:grid-cols-[minmax(0,1fr)_250px]">
+        <main className="min-w-0 pb-28 sm:pb-6">
           <MarketplaceIntro />
 
           {error && (
@@ -379,7 +379,7 @@ export default async function Home() {
           </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 xl:grid-cols-4 2xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 xl:grid-cols-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

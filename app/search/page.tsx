@@ -23,6 +23,19 @@ interface SearchParams {
 
 const PAGE_SIZE = 30;
 
+/*
+ * Split the search text into words and strip characters that have
+ * special meaning in PostgREST filters or ILIKE patterns.
+ */
+function getSearchTerms(q?: string): string[] {
+  return (q ?? "")
+    .trim()
+    .split(/\s+/)
+    .map((term) => term.replace(/[%_*,()"\\]/g, ""))
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
 type PublicSellerProfile = {
   id: string;
   public_role: "buyer" | "seller";
@@ -75,8 +88,15 @@ async function searchProducts(params: SearchParams): Promise<{
      * SEARCH TEXT
      */
 
-    if (params.q?.trim()) {
-      query = query.ilike("title", `%${params.q.trim()}%`);
+    /*
+     * Every word must match the title, description or city.
+     * "black air force" finds "Black and White Air Force".
+     * Separate .or() calls are combined with AND by PostgREST.
+     */
+    for (const term of getSearchTerms(params.q)) {
+      query = query.or(
+        `title.ilike.%${term}%,description.ilike.%${term}%,location_city.ilike.%${term}%`,
+      );
     }
 
     /*

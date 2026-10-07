@@ -160,7 +160,7 @@ export function SiteHeader({ searchQuery }: { searchQuery?: string }) {
       {/* DESKTOP SEARCH: the logo and account navigation live in the sidebar. */}
       {showSearch ? (
         <div className="mx-auto hidden w-full max-w-[1460px] items-center px-6 py-3 lg:flex">
-          <div className="w-full max-w-2xl">
+          <div className="w-full max-w-4xl">
             <SearchBar initialQuery={searchQuery} />
           </div>
           <Link href="/sell" className="primary-button ml-auto shrink-0">Sell an item <span aria-hidden="true">+</span></Link>

@@ -149,7 +149,8 @@ img, video, canvas { max-width: 100%; }
 .secondary-button { background: white; color: var(--indigo); border: 1px solid var(--sand); }
 .primary-button:hover { background: #102e42; }
 .secondary-button:hover { background: var(--brand-soft); }
-.category-strip { scrollbar-width: thin; scrollbar-color: #c4cfd8 transparent; }
+.category-strip { scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
+.category-strip::-webkit-scrollbar { display: none; }
 .category-strip a { min-height: 40px; display: inline-flex; align-items: center; padding: .5rem 1rem; font-size: .8rem; font-weight: 600; background: #fff; }
 .category-strip a:first-child { background: var(--indigo); border-color: var(--indigo); color: white; }
 .product-card { box-shadow: var(--shadow-card); border-radius: 16px; }

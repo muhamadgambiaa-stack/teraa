@@ -24,10 +24,16 @@ export async function getActiveMarketplaceCategories(): Promise<
       return [];
     }
 
-    return (data ?? []).map((category) => ({
-      id: category.id,
-      name: category.name,
-    }));
+    /*
+     * The UI already has its own "All" option, so hide a database
+     * category called "All" instead of deleting it.
+     */
+    return (data ?? [])
+      .filter((category) => category.name.trim().toLowerCase() !== "all")
+      .map((category) => ({
+        id: category.id,
+        name: category.name,
+      }));
   } catch (error) {
     console.error("Could not load active marketplace categories:", error);
     return [];

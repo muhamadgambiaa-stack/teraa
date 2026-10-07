@@ -35,6 +35,9 @@ export function SearchBar({ initialQuery }: { initialQuery?: string }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search products"
+          enterKeyHint="search"
+          autoComplete="off"
+          maxLength={80}
           placeholder="What are you looking for?"
           className="w-full rounded-xl border bg-[#f6f8fa] pl-10 pr-20 py-3 text-sm outline-none focus:ring-2"
           style={{ borderColor: "var(--sand)" }}
