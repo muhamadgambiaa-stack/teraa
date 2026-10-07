@@ -10,14 +10,18 @@ import {
   SendMessageButton,
 } from "@/components/MessageEnhancements";
 import { removeConversation } from "../actions";
+import { CONTACT_BLOCK_MESSAGE } from "@/lib/contact-filter";
 import { sendMessage } from "./actions";
 
 export default async function ConversationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ notice?: string }>;
 }) {
   const { id } = await params;
+  const { notice } = await searchParams;
 
   const supabase = await createClient();
 
@@ -447,6 +451,15 @@ export default async function ConversationPage({
           }}
         >
           <div className="max-w-2xl mx-auto">
+            {notice === "contact" && (
+              <p
+                role="alert"
+                className="mb-2 rounded-xl border px-3 py-2 text-xs"
+                style={{ borderColor: "#e0a0a0", background: "#fdf0f0" }}
+              >
+                {CONTACT_BLOCK_MESSAGE}
+              </p>
+            )}
             <form action={sendMessage.bind(null, conversation.id)}>
               <div
                 className="flex items-end gap-2 rounded-2xl border p-2 bg-white"

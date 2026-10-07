@@ -310,7 +310,7 @@ export default async function SellerOrdersPage() {
                 <div className="text-xs text-gray-500 mt-2 space-y-0.5">
                   {buyer && (
                     <p>
-                      {buyer.full_name} · {buyer.phone_number}
+                      {buyer.full_name}
                     </p>
                   )}
 

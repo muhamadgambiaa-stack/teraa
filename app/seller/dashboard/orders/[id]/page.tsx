@@ -759,7 +759,8 @@ export default async function SellerOrderDetailPage({
             </p>
           )}
 
-          {order.delivery_phone && (
+          {order.delivery_phone &&
+            (status === "confirmed" || status === "shipped") && (
             <a
               href={`tel:${order.delivery_phone}`}
               className="text-sm font-medium mt-2 inline-block hover:underline"

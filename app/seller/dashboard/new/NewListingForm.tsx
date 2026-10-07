@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CONTACT_BLOCK_MESSAGE, containsContactInfo } from "@/lib/contact-filter";
 import { useRouter } from "next/navigation";
 
 import { parseProductOptions } from "@/lib/product-options";
@@ -245,6 +246,16 @@ export function NewListingForm() {
         field: "description",
         message: "Enter a product description.",
       });
+      return;
+    }
+
+    if (containsContactInfo(cleanTitle)) {
+      setFieldError({ field: "title", message: CONTACT_BLOCK_MESSAGE });
+      return;
+    }
+
+    if (containsContactInfo(cleanDescription)) {
+      setFieldError({ field: "description", message: CONTACT_BLOCK_MESSAGE });
       return;
     }
 

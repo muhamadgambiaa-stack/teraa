@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { CONTACT_BLOCK_MESSAGE, containsContactInfo } from "@/lib/contact-filter";
 import { redirect } from "next/navigation";
 
 import { parseProductOptions } from "@/lib/product-options";
@@ -170,6 +171,10 @@ export async function updateListing(productId: string, formData: FormData) {
 
   if (!description) {
     throw new Error("Product description is required.");
+  }
+
+  if (containsContactInfo(title) || containsContactInfo(description)) {
+    throw new Error(CONTACT_BLOCK_MESSAGE);
   }
 
   if (!categoryId) {

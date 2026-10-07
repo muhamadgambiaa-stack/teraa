@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { containsContactInfo } from "@/lib/contact-filter";
 import { createClient } from "@/lib/supabase/server";
 
 async function requireConversation(conversationId: string) {
@@ -74,6 +75,10 @@ export async function sendMessage(conversationId: string, formData: FormData) {
     throw new Error("Message is too long.");
   }
 
+  if (containsContactInfo(content)) {
+    redirect(`/messages/${conversationId}?notice=contact`);
+  }
+
   const { error } = await supabase.from("messages").insert({
     conversation_id: conversationId,
     sender_id: user.id,
@@ -81,6 +86,10 @@ export async function sendMessage(conversationId: string, formData: FormData) {
   });
 
   if (error) {
+    if (error.message?.includes("contact_info_not_allowed")) {
+      redirect(`/messages/${conversationId}?notice=contact`);
+    }
+
     throw new Error(error.message || "Couldn't send message.");
   }
 
